@@ -221,6 +221,11 @@ function ReCordSettings() {
                                 text="Open UserPlugins Folder"
                                 action={() => VencordNative.settings.openUserPluginsFolder()}
                             />
+                            <QuickAction
+                                Icon={FolderIcon}
+                                text="Open BD Plugins Folder"
+                                action={() => (VencordNative.pluginHelpers as any).BetterDiscordCompat?.openPluginsDir?.()}
+                            />
                         </>
                     )}
                     <QuickAction
