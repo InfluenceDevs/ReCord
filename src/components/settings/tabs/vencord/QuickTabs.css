@@ -1,0 +1,10 @@
+/* ReCord quick navigation tabs in settings */
+.vc-record-quick-tabs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+}
+
+.vc-record-quick-tabs .vc-btn-base {
+    justify-content: center;
+}

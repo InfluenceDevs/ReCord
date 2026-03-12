@@ -16,13 +16,17 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+import "./QuickTabs.css";
+
 import { openNotificationLogModal } from "@api/Notifications/notificationLog";
 import { useSettings } from "@api/Settings";
+import { Button } from "@components/Button";
 import { Divider } from "@components/Divider";
 import { FormSwitch } from "@components/FormSwitch";
 import { FolderIcon, GithubIcon, LogIcon, PaintbrushIcon, RestartIcon } from "@components/Icons";
 import { QuickAction, QuickActionCard } from "@components/settings/QuickAction";
 import { SpecialCard } from "@components/settings/SpecialCard";
+import { BackupAndRestoreTab, CloudTab, openSettingsTabModal, PluginsTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { openContributorModal } from "@components/settings/tabs/plugins/ContributorModal";
 import { openPluginModal } from "@components/settings/tabs/plugins/PluginModal";
@@ -125,12 +129,17 @@ function Switches() {
 }
 
 function ReCordSettings() {
+    const settings = useSettings(["plugins.Settings.enableQuickNavigationTabs"]);
     const donateImage = useMemo(() =>
         Math.random() > 0.5 ? DEFAULT_DONATE_IMAGE : SHIGGY_DONATE_IMAGE,
         []
     );
 
     const needsVibrancySettings = IS_DISCORD_DESKTOP && IS_MAC;
+    const showQuickTabs = settings.plugins.Settings.enableQuickNavigationTabs ?? true;
+    const openUpdaterTab = () => {
+        if (UpdaterTab) openSettingsTabModal(UpdaterTab);
+    };
 
     const user = UserStore?.getCurrentUser();
 
@@ -216,6 +225,22 @@ function ReCordSettings() {
                 </QuickActionCard>
             </section>
 
+            {showQuickTabs && (
+                <section className={Margins.top16}>
+                    <Forms.FormTitle tag="h5">Quick Tabs</Forms.FormTitle>
+                    <Forms.FormText className={Margins.bottom8}>
+                        Jump to frequently used ReCord settings tabs instantly.
+                    </Forms.FormText>
+                    <div className="vc-record-quick-tabs">
+                        <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(PluginsTab)}>Plugins</Button>
+                        <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(ThemesTab)}>Themes</Button>
+                        <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(CloudTab)}>Cloud</Button>
+                        <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(BackupAndRestoreTab)}>Backup</Button>
+                        {!!UpdaterTab && <Button size="small" variant="secondary" onClick={openUpdaterTab}>Updater</Button>}
+                    </div>
+                </section>
+            )}
+
             <Divider />
 
             <section className={Margins.top16}>
@@ -228,6 +253,23 @@ function ReCordSettings() {
                 </Forms.FormText>
 
                 <Switches />
+
+                <FormSwitch
+                    title="Enable Quick Tabs"
+                    description="Show fast navigation tabs at the top of ReCord Settings"
+                    value={settings.plugins.Settings.enableQuickNavigationTabs ?? true}
+                    onChange={v => settings.plugins.Settings.enableQuickNavigationTabs = v}
+                />
+            </section>
+
+            <section className={Margins.top16}>
+                <Forms.FormTitle tag="h5">About ReCord</Forms.FormTitle>
+                <Forms.FormText>
+                    ReCord is a custom Discord client mod with blurple theming, custom plugin support, and BetterDiscord-style CSS compatibility.
+                </Forms.FormText>
+                <Forms.FormText className={Margins.top8}>
+                    Created by Rloxx.
+                </Forms.FormText>
             </section>
 
 
