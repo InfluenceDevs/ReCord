@@ -187,6 +187,18 @@ export default definePlugin({
         stopLoadedPlugins();
     },
 
+    async reloadPlugins() {
+        await loadAllPlugins();
+    },
+
+    getLoadedPluginNames() {
+        return Array.from(loadedPlugins.values()).map(p => p.pluginName);
+    },
+
+    async getInstalledPluginFiles() {
+        return Native.listPluginFiles();
+    },
+
     flux: {
         SETTINGS_UPDATE: async () => {
             if (IS_WEB) return;

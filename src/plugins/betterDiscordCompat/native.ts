@@ -7,7 +7,7 @@
 import { DATA_DIR } from "@main/utils/constants";
 import { shell } from "electron";
 import { mkdirSync } from "fs";
-import { readdir, readFile } from "fs/promises";
+import { readdir, readFile, rm, writeFile } from "fs/promises";
 import { extname, join, normalize } from "path";
 
 const BD_PLUGINS_DIR = join(DATA_DIR, "bdplugins");
@@ -37,4 +37,26 @@ export async function readPluginFile(_, fileName: string) {
     if (!safePath) return null;
 
     return readFile(safePath, "utf-8").catch(() => null);
+}
+
+export async function uploadPluginFile(_, fileName: string, content: string) {
+    if (!fileName || typeof content !== "string") return false;
+
+    const normalizedName = fileName.trim();
+    const extension = extname(normalizedName).toLowerCase();
+    if (extension !== ".js") return false;
+
+    const safePath = ensureSafePath(BD_PLUGINS_DIR, normalizedName);
+    if (!safePath) return false;
+
+    await writeFile(safePath, content, "utf-8");
+    return true;
+}
+
+export async function deletePluginFile(_, fileName: string) {
+    const safePath = ensureSafePath(BD_PLUGINS_DIR, fileName);
+    if (!safePath) return false;
+
+    await rm(safePath, { force: true });
+    return true;
 }

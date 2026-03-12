@@ -25,7 +25,6 @@ import { Divider } from "@components/Divider";
 import { FormSwitch } from "@components/FormSwitch";
 import { FolderIcon, GithubIcon, LogIcon, PaintbrushIcon, RestartIcon } from "@components/Icons";
 import { QuickAction, QuickActionCard } from "@components/settings/QuickAction";
-import { SpecialCard } from "@components/settings/SpecialCard";
 import { BackupAndRestoreTab, CloudTab, openSettingsTabModal, PluginsTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { openContributorModal } from "@components/settings/tabs/plugins/ContributorModal";
@@ -35,18 +34,13 @@ import { IS_MAC, IS_WINDOWS } from "@utils/constants";
 import { Margins } from "@utils/margins";
 import { isPluginDev } from "@utils/misc";
 import { relaunch } from "@utils/native";
-import { Alerts, Forms, React, useMemo, UserStore } from "@webpack/common";
+import { Alerts, Forms, React, UserStore } from "@webpack/common";
 
-import { DonateButtonComponent, isDonor } from "./DonateButton";
 import { VibrancySettings } from "./MacVibrancySettings";
 import { NotificationSection } from "./NotificationSettings";
 import { openReCordConsoleModal } from "./ReCordConsole";
 
-const DEFAULT_DONATE_IMAGE = "https://cdn.discordapp.com/emojis/1026533090627174460.png";
-const SHIGGY_DONATE_IMAGE = "https://media.discordapp.net/stickers/1039992459209490513.png";
-const VENNIE_DONATOR_IMAGE = "https://cdn.discordapp.com/emojis/1238120638020063377.png";
 const COZY_CONTRIB_IMAGE = "https://cdn.discordapp.com/emojis/1026533070955872337.png";
-const DONOR_BACKGROUND_IMAGE = "https://media.discordapp.net/stickers/1311070116305436712.png?size=2048";
 const CONTRIB_BACKGROUND_IMAGE = "https://media.discordapp.net/stickers/1311070166481895484.png?size=2048";
 
 type KeysOfType<Object, Type> = {
@@ -131,10 +125,6 @@ function Switches() {
 
 function ReCordSettings() {
     const settings = useSettings(["plugins.Settings.enableQuickNavigationTabs"]);
-    const donateImage = useMemo(() =>
-        Math.random() > 0.5 ? DEFAULT_DONATE_IMAGE : SHIGGY_DONATE_IMAGE,
-        []
-    );
 
     const needsVibrancySettings = IS_DISCORD_DESKTOP && IS_MAC;
     const showQuickTabs = settings.plugins.Settings.enableQuickNavigationTabs ?? true;
@@ -143,46 +133,64 @@ function ReCordSettings() {
     };
 
     const user = UserStore?.getCurrentUser();
+    const [installedPlugins, setInstalledPlugins] = React.useState<string[]>([]);
+    const [pluginListLoading, setPluginListLoading] = React.useState(false);
+    const filePickerRef = React.useRef<HTMLInputElement>(null);
+
+    const bdNative = (VencordNative.pluginHelpers as any).BetterDiscordCompat;
+    const bdCompatPlugin = (Vencord.Plugins.plugins as any).BetterDiscordCompat;
+
+    const refreshInstalledPlugins = React.useCallback(async () => {
+        if (IS_WEB || !bdNative?.listPluginFiles) return;
+
+        setPluginListLoading(true);
+        try {
+            const files = await bdNative.listPluginFiles();
+            setInstalledPlugins(Array.isArray(files) ? files : []);
+        } finally {
+            setPluginListLoading(false);
+        }
+    }, [bdNative]);
+
+    React.useEffect(() => {
+        refreshInstalledPlugins();
+    }, [refreshInstalledPlugins]);
+
+    const onUploadPlugins = React.useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const { files } = event.target;
+        if (!files?.length || !bdNative?.uploadPluginFile) return;
+
+        for (const file of Array.from(files)) {
+            const content = await file.text();
+            await bdNative.uploadPluginFile(file.name, content);
+        }
+
+        await bdCompatPlugin?.reloadPlugins?.();
+        await refreshInstalledPlugins();
+
+        event.target.value = "";
+    }, [bdNative, bdCompatPlugin, refreshInstalledPlugins]);
+
+    const onDeletePlugin = React.useCallback(async (fileName: string) => {
+        if (!bdNative?.deletePluginFile) return;
+
+        await bdNative.deletePluginFile(fileName);
+        await bdCompatPlugin?.reloadPlugins?.();
+        await refreshInstalledPlugins();
+    }, [bdNative, bdCompatPlugin, refreshInstalledPlugins]);
 
     return (
         <SettingsTab>
-            {isDonor(user?.id)
-                ? (
-                    <SpecialCard
-                        title="Donations"
-                        subtitle="Thank you for donating!"
-                        description="You can manage your perks at any time by messaging @vending.machine."
-                        cardImage={VENNIE_DONATOR_IMAGE}
-                        backgroundImage={DONOR_BACKGROUND_IMAGE}
-                        backgroundColor="#ED87A9"
-                    >
-                        <DonateButtonComponent />
-                    </SpecialCard>
-                )
-                : (
-                    <SpecialCard
-                        title="Support the Project"
-                        description="Please consider supporting the development of ReCord by donating!"
-                        cardImage={donateImage}
-                        backgroundImage={DONOR_BACKGROUND_IMAGE}
-                        backgroundColor="#c3a3ce"
-                    >
-                        <DonateButtonComponent />
-                    </SpecialCard>
-                )
-            }
-
             {isPluginDev(user?.id) && (
-                <SpecialCard
-                    title="Contributions"
-                    subtitle="Thank you for contributing!"
-                    description="Since you've contributed to ReCord you now have a cool new badge!"
-                    cardImage={COZY_CONTRIB_IMAGE}
-                    backgroundImage={CONTRIB_BACKGROUND_IMAGE}
-                    backgroundColor="#EDCC87"
-                    buttonTitle="See what you've contributed to"
-                    buttonOnClick={() => openContributorModal(user)}
-                />
+                <section className={Margins.bottom16}>
+                    <Forms.FormTitle tag="h5">Contributions</Forms.FormTitle>
+                    <Forms.FormText className={Margins.bottom8}>
+                        Since you've contributed to ReCord, you have a contributor badge.
+                    </Forms.FormText>
+                    <Button size="small" variant="secondary" onClick={() => openContributorModal(user)}>
+                        See what you've contributed to
+                    </Button>
+                </section>
             )}
 
             <section>
@@ -253,6 +261,69 @@ function ReCordSettings() {
             )}
 
             <Divider />
+
+            <section className={Margins.top16}>
+                <Forms.FormTitle tag="h5">Custom Plugins</Forms.FormTitle>
+                <Forms.FormText className={Margins.bottom8}>
+                    Upload BetterDiscord-style JavaScript plugins, manage installed files, and reload without restarting.
+                </Forms.FormText>
+
+                {!IS_WEB && (
+                    <>
+                        <input
+                            ref={filePickerRef}
+                            type="file"
+                            multiple
+                            accept=".js,.plugin.js"
+                            style={{ display: "none" }}
+                            onChange={onUploadPlugins}
+                        />
+
+                        <QuickActionCard>
+                            <QuickAction
+                                Icon={FolderIcon}
+                                text="Open BD Plugins Folder"
+                                action={() => bdNative?.openPluginsDir?.()}
+                            />
+                            <QuickAction
+                                Icon={RestartIcon}
+                                text="Reload BD Plugins"
+                                action={async () => {
+                                    await bdCompatPlugin?.reloadPlugins?.();
+                                    await refreshInstalledPlugins();
+                                }}
+                            />
+                            <QuickAction
+                                Icon={FolderIcon}
+                                text="Upload Plugin Files"
+                                action={() => filePickerRef.current?.click()}
+                            />
+                        </QuickActionCard>
+
+                        <Forms.FormTitle tag="h5" className={Margins.top16}>Installed</Forms.FormTitle>
+                        {pluginListLoading && <Forms.FormText>Loading plugin list...</Forms.FormText>}
+                        {!pluginListLoading && installedPlugins.length === 0 && (
+                            <Forms.FormText>No custom plugins installed yet.</Forms.FormText>
+                        )}
+                        {!pluginListLoading && installedPlugins.length > 0 && (
+                            <div style={{ display: "grid", gap: 8 }}>
+                                {installedPlugins.map(fileName => (
+                                    <div key={fileName} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                                        <Forms.FormText>{fileName}</Forms.FormText>
+                                        <Button
+                                            size="small"
+                                            variant="dangerSecondary"
+                                            onClick={() => onDeletePlugin(fileName)}
+                                        >
+                                            Remove
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
+            </section>
 
             <section className={Margins.top16}>
                 <Forms.FormTitle tag="h5">Settings</Forms.FormTitle>
