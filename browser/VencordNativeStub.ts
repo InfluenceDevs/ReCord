@@ -130,6 +130,7 @@ window.VencordNative = {
         },
         set: async (s: Settings) => localStorage.setItem("VencordSettings", JSON.stringify(s)),
         openFolder: async () => Promise.reject("settings:openFolder is not supported on web"),
+        openUserPluginsFolder: async () => Promise.reject("settings:openUserPluginsFolder is not supported on web"),
     },
 
     pluginHelpers: {} as any,

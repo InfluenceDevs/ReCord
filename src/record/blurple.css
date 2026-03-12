@@ -1,0 +1,35 @@
+:root {
+    --record-blurple: #5865f2;
+    --record-blurple-strong: #4752c4;
+    --record-blurple-soft: #7983f5;
+}
+
+/* ReCord default accent layer */
+.theme-dark {
+    --brand-500: var(--record-blurple);
+    --brand-560: var(--record-blurple-strong);
+    --brand-600: #3f4ab8;
+    --button-filled-brand-background: var(--record-blurple);
+    --button-filled-brand-background-hover: var(--record-blurple-strong);
+    --button-filled-brand-background-active: #3f4ab8;
+}
+
+.theme-light {
+    --brand-500: var(--record-blurple);
+    --brand-560: var(--record-blurple-strong);
+    --button-filled-brand-background: var(--record-blurple);
+    --button-filled-brand-background-hover: var(--record-blurple-strong);
+    --button-filled-brand-background-active: #3f4ab8;
+}
+
+/* Subtle atmospheric tint to separate ReCord from stock Discord styling */
+#app-mount::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(1200px 700px at 12% -10%, rgb(88 101 242 / 14%), transparent 70%),
+        radial-gradient(1000px 600px at 100% 0%, rgb(121 131 245 / 10%), transparent 62%);
+    z-index: 0;
+}

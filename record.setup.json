@@ -1,0 +1,34 @@
+{
+  "name": "ReCord",
+  "repository": "https://github.com/InfluenceDevs/ReCord.git",
+  "credits": {
+    "creator": "Rloxx",
+    "baseProject": "Vencord by Vendicated and contributors"
+  },
+  "setup": {
+    "install": "pnpm install",
+    "build": "pnpm build",
+    "dev": "pnpm dev",
+    "inject": "pnpm inject",
+    "uninject": "pnpm uninject",
+    "tests": "pnpm testTsc"
+  },
+  "paths": {
+    "dataDirDefault": "../ReCord",
+    "settingsDir": "settings",
+    "themesDir": "themes",
+    "quickCssFile": "settings/quickCss.css",
+    "settingsFile": "settings/settings.json",
+    "nativeSettingsFile": "settings/native-settings.json",
+    "userPluginsSourceDir": "src/userplugins"
+  },
+  "environmentVariables": {
+    "RECORD_USER_DATA_DIR": "Absolute path for ReCord data directory",
+    "RECORD_USER_PLUGINS_DIR": "Absolute path for custom plugin source folder",
+    "VENCORD_USER_DATA_DIR": "Legacy fallback env var still supported"
+  },
+  "notes": [
+    "Do not rename internal Vencord module aliases unless you update the build pipeline.",
+    "ReCord branding is applied to user-facing names, logs, and setup files."
+  ]
+}

@@ -57,6 +57,7 @@ export default {
         set: (settings: Settings, pathToNotify?: string) => invoke<void>(IpcEvents.SET_SETTINGS, settings, pathToNotify),
 
         openFolder: () => invoke<void>(IpcEvents.OPEN_SETTINGS_FOLDER),
+        openUserPluginsFolder: () => invoke<void>(IpcEvents.OPEN_USER_PLUGINS_FOLDER),
     },
 
     quickCss: {

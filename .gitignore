@@ -19,7 +19,9 @@ lerna-debug.log*
 .pnpm-debug.log*
 *.tsbuildinfo
 
-src/userplugins
+src/userplugins/*
+!src/userplugins/_README.md
+!src/userplugins/_ExampleReCordPlugin.ts
 
 ExtensionCache/
 /settings

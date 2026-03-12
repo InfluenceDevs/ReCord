@@ -1,27 +1,27 @@
 {
-    "name": "vencord",
+    "name": "record",
     "private": "true",
     "version": "1.14.5",
-    "description": "The cutest Discord client mod",
-    "homepage": "https://github.com/Vendicated/Vencord#readme",
+    "description": "ReCord - a blurple-first Discord client mod forked from Vencord",
+    "homepage": "https://github.com/InfluenceDevs/ReCord#readme",
     "bugs": {
-        "url": "https://github.com/Vendicated/Vencord/issues"
+        "url": "https://github.com/InfluenceDevs/ReCord/issues"
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/Vendicated/Vencord.git"
+        "url": "git+https://github.com/InfluenceDevs/ReCord.git"
     },
     "license": "GPL-3.0-or-later",
-    "author": "Vendicated",
+    "author": "Rloxx",
     "scripts": {
         "build": "node --require=./scripts/suppressExperimentalWarnings.js scripts/build/build.mjs",
-        "buildStandalone": "pnpm build --standalone",
+        "buildStandalone": "corepack pnpm build --standalone",
         "buildWeb": "node --require=./scripts/suppressExperimentalWarnings.js scripts/build/buildWeb.mjs",
-        "buildWebStandalone": "pnpm buildWeb --standalone",
-        "buildReporter": "pnpm buildWebStandalone --reporter --skip-extension",
-        "buildReporterDesktop": "pnpm build --reporter",
+        "buildWebStandalone": "corepack pnpm buildWeb --standalone",
+        "buildReporter": "corepack pnpm buildWebStandalone --reporter --skip-extension",
+        "buildReporterDesktop": "corepack pnpm build --reporter",
         "watch": "pnpm build --watch",
-        "dev": "pnpm watch",
+        "dev": "corepack pnpm watch",
         "watchWeb": "pnpm buildWeb --watch",
         "generatePluginJson": "tsx scripts/generatePluginList.ts",
         "generateTypes": "tspc --emitDeclarationOnly --declaration --outDir packages/vencord-types --allowJs false",
@@ -29,9 +29,9 @@
         "uninject": "node scripts/runInstaller.mjs -- --uninstall",
         "lint": "eslint",
         "lint-styles": "stylelint \"src/**/*.css\" --ignore-pattern src/userplugins",
-        "lint:fix": "pnpm lint --fix",
-        "test": "pnpm buildStandalone && pnpm testTsc && pnpm lint && pnpm lint-styles && pnpm generatePluginJson",
-        "testWeb": "pnpm lint && pnpm buildWeb && pnpm testTsc",
+        "lint:fix": "corepack pnpm lint --fix",
+        "test": "corepack pnpm buildStandalone && corepack pnpm testTsc && corepack pnpm lint && corepack pnpm lint-styles && corepack pnpm generatePluginJson",
+        "testWeb": "corepack pnpm lint && corepack pnpm buildWeb && corepack pnpm testTsc",
         "testTsc": "tsc --noEmit"
     },
     "dependencies": {
