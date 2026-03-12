@@ -2,7 +2,7 @@
     "name": "record",
     "private": "true",
     "version": "1.14.5",
-    "description": "ReCord - a blurple-first Discord client mod forked from Vencord",
+    "description": "ReCord - a Discord client mod forked from Vencord made by Rloxx",
     "homepage": "https://github.com/InfluenceDevs/ReCord#readme",
     "bugs": {
         "url": "https://github.com/InfluenceDevs/ReCord/issues"

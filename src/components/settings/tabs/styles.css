@@ -4,6 +4,27 @@
     border-bottom: 1px solid var(--border-subtle);
 }
 
+/* ReCord-specific layout direction for settings */
+.vc-settings-tab {
+    border: 1px solid rgb(88 101 242 / 26%);
+    border-radius: 14px;
+    padding: 16px;
+    background:
+        linear-gradient(180deg, rgb(88 101 242 / 10%), rgb(88 101 242 / 3%)),
+        var(--background-base-lower);
+}
+
+.vc-settings-tab h5 {
+    letter-spacing: 0.02em;
+}
+
+.vc-record-quick-tabs {
+    background: rgb(88 101 242 / 8%);
+    border: 1px solid rgb(88 101 242 / 22%);
+    border-radius: 10px;
+    padding: 10px;
+}
+
 .vc-settings-tab-bar-item {
     margin-right: 32px;
     padding-bottom: 16px;

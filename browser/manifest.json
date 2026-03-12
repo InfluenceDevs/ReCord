@@ -2,10 +2,10 @@
     "manifest_version": 3,
     "minimum_chrome_version": "111",
 
-    "name": "Vencord Web",
+    "name": "ReCord Web",
     "description": "The cutest Discord mod now in your browser",
-    "author": "Vendicated",
-    "homepage_url": "https://github.com/Vendicated/Vencord",
+    "author": "Rloxx",
+    "homepage_url": "https://github.com/InfluenceDevs/ReCord",
     "icons": {
         "128": "icon.png"
     },
@@ -28,7 +28,7 @@
         {
             "run_at": "document_start",
             "matches": ["*://*.discord.com/*"],
-            "js": ["dist/Vencord.js"],
+            "js": ["dist/ReCord.js"],
             "all_frames": true,
             "world": "MAIN"
         }
@@ -51,3 +51,4 @@
         ]
     }
 }
+

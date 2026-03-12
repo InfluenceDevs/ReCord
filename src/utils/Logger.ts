@@ -17,6 +17,28 @@
 */
 
 export class Logger {
+    static history: Array<{ ts: number; level: "log" | "error" | "warn" | "info" | "debug"; scope: string; text: string; }> = [];
+    static maxHistory = 500;
+
+    static getHistory() {
+        return [...Logger.history];
+    }
+
+    static clearHistory() {
+        Logger.history = [];
+    }
+
+    static toText(args: any[]) {
+        return args.map(arg => {
+            if (typeof arg === "string") return arg;
+            try {
+                return JSON.stringify(arg);
+            } catch {
+                return String(arg);
+            }
+        }).join(" ");
+    }
+
     /**
      * Returns the console format args for a title with the specified background colour and black text
      * @param color Background colour
@@ -32,6 +54,17 @@ export class Logger {
     constructor(public name: string, public color: string = "white") { }
 
     private _log(level: "log" | "error" | "warn" | "info" | "debug", levelColor: string, args: any[], customFmt = "") {
+        Logger.history.push({
+            ts: Date.now(),
+            level,
+            scope: this.name,
+            text: Logger.toText(args)
+        });
+
+        if (Logger.history.length > Logger.maxHistory) {
+            Logger.history.splice(0, Logger.history.length - Logger.maxHistory);
+        }
+
         if (IS_REPORTER && IS_WEB && !IS_VESKTOP) {
             console[level]("[ReCord]", this.name + ":", ...args);
             return;

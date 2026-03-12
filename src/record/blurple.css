@@ -33,3 +33,13 @@
         radial-gradient(1000px 600px at 100% 0%, rgb(121 131 245 / 10%), transparent 62%);
     z-index: 0;
 }
+
+/* Fullscreen readability and overlap fixes */
+[data-fullscreen="true"] #app-mount::before,
+[data-fullscreen="true"] .vc-settings-tab {
+    background: transparent !important;
+}
+
+[data-fullscreen="true"] .baseLayer-W6S8cY {
+    backdrop-filter: none !important;
+}

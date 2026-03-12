@@ -13,7 +13,7 @@ export const metaReady = new Promise<void>(res => resolveMetaReady = res);
 
 if (IS_EXTENSION) {
     const listener = (e: MessageEvent) => {
-        if (e.data?.type === "vencord:meta") {
+        if (e.data?.type === "record:meta") {
             ({ EXTENSION_BASE_URL, EXTENSION_VERSION, RENDERER_CSS_URL } = e.data.meta);
             window.removeEventListener("message", listener);
             resolveMetaReady();
