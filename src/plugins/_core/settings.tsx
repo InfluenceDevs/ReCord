@@ -18,7 +18,7 @@
 
 import { definePluginSettings } from "@api/Settings";
 import { BackupRestoreIcon, CloudIcon, MainSettingsIcon, NotesIcon, PaintbrushIcon, PatchHelperIcon, PlaceholderIcon, PluginsIcon, SafetyIcon, UpdaterIcon, VesktopSettingsIcon } from "@components/Icons";
-import { BackupAndRestoreTab, CloudTab, ConsoleTab, ModulesTab, OpsecTab, PatchHelperTab, PerformanceTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
+import { BackupAndRestoreTab, CloudTab, ConsoleTab, DownloadsTab, ModulesTab, OpsecTab, PatchHelperTab, PerformanceTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
 import { Devs } from "@utils/constants";
 import { isTruthy } from "@utils/guards";
 import definePlugin, { IconProps, OptionType } from "@utils/types";
@@ -108,7 +108,8 @@ const settingsSectionMap: [string, string][] = [
     ["ReCordConsole", "vencord_console_panel"],
     ["ReCordOpsec", "vencord_opsec_panel"],
     ["ReCordPerformance", "vencord_performance_panel"],
-    ["ReCordModules", "vencord_modules_panel"]
+    ["ReCordModules", "vencord_modules_panel"],
+    ["ReCordDownloads", "vencord_downloads_panel"]
 ];
 
 export default definePlugin({
@@ -268,6 +269,13 @@ export default definePlugin({
                 panelTitle: "ReCord Modules",
                 Component: ModulesTab,
                 Icon: PluginsIcon
+            }),
+            buildEntry({
+                key: "vencord_downloads",
+                title: "Downloads",
+                panelTitle: "Download History",
+                Component: DownloadsTab,
+                Icon: CloudIcon
             }),
             IS_DEV && PatchHelperTab && buildEntry({
                 key: "vencord_patch_helper",
