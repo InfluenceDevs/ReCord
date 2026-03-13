@@ -19,3 +19,5 @@ export { default as ReCordTab } from "./vencord";
 export { default as VencordTab } from "./vencord";
 export { default as ConsoleTab } from "./console";
 export { default as OpsecTab } from "./opsec";
+export { default as PerformanceTab } from "./performance";
+export { default as ModulesTab } from "./modules";

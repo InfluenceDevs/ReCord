@@ -18,7 +18,7 @@
 
 import { definePluginSettings } from "@api/Settings";
 import { BackupRestoreIcon, CloudIcon, MainSettingsIcon, NotesIcon, PaintbrushIcon, PatchHelperIcon, PlaceholderIcon, PluginsIcon, SafetyIcon, UpdaterIcon, VesktopSettingsIcon } from "@components/Icons";
-import { BackupAndRestoreTab, CloudTab, ConsoleTab, OpsecTab, PatchHelperTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
+import { BackupAndRestoreTab, CloudTab, ConsoleTab, ModulesTab, OpsecTab, PatchHelperTab, PerformanceTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
 import { Devs } from "@utils/constants";
 import { isTruthy } from "@utils/guards";
 import definePlugin, { IconProps, OptionType } from "@utils/types";
@@ -106,7 +106,9 @@ const settingsSectionMap: [string, string][] = [
     ["ReCordBackupAndRestore", "vencord_backup_restore_panel"],
     ["ReCordPatchHelper", "vencord_patch_helper_panel"],
     ["ReCordConsole", "vencord_console_panel"],
-    ["ReCordOpsec", "vencord_opsec_panel"]
+    ["ReCordOpsec", "vencord_opsec_panel"],
+    ["ReCordPerformance", "vencord_performance_panel"],
+    ["ReCordModules", "vencord_modules_panel"]
 ];
 
 export default definePlugin({
@@ -252,6 +254,20 @@ export default definePlugin({
                 panelTitle: "OPSEC Tools",
                 Component: OpsecTab,
                 Icon: SafetyIcon
+            }),
+            buildEntry({
+                key: "vencord_performance",
+                title: "Performance",
+                panelTitle: "ReCord Performance",
+                Component: PerformanceTab,
+                Icon: UpdaterIcon
+            }),
+            buildEntry({
+                key: "vencord_modules",
+                title: "Modules",
+                panelTitle: "ReCord Modules",
+                Component: ModulesTab,
+                Icon: PluginsIcon
             }),
             IS_DEV && PatchHelperTab && buildEntry({
                 key: "vencord_patch_helper",
