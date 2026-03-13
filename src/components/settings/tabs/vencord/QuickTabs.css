@@ -1,7 +1,7 @@
 /* ReCord quick navigation tabs in settings */
 .vc-record-quick-tabs {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
 }
 

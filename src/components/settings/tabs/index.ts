@@ -17,3 +17,5 @@ export { default as ThemesTab } from "./themes";
 export { default as UpdaterTab } from "./updater";
 export { default as ReCordTab } from "./vencord";
 export { default as VencordTab } from "./vencord";
+export { default as ConsoleTab } from "./console";
+export { default as OpsecTab } from "./opsec";

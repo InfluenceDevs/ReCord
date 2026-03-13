@@ -17,8 +17,8 @@
 */
 
 import { definePluginSettings } from "@api/Settings";
-import { BackupRestoreIcon, CloudIcon, MainSettingsIcon, PaintbrushIcon, PatchHelperIcon, PlaceholderIcon, PluginsIcon, UpdaterIcon, VesktopSettingsIcon } from "@components/Icons";
-import { BackupAndRestoreTab, CloudTab, PatchHelperTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
+import { BackupRestoreIcon, CloudIcon, MainSettingsIcon, NotesIcon, PaintbrushIcon, PatchHelperIcon, PlaceholderIcon, PluginsIcon, SafetyIcon, UpdaterIcon, VesktopSettingsIcon } from "@components/Icons";
+import { BackupAndRestoreTab, CloudTab, ConsoleTab, OpsecTab, PatchHelperTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
 import { Devs } from "@utils/constants";
 import { isTruthy } from "@utils/guards";
 import definePlugin, { IconProps, OptionType } from "@utils/types";
@@ -104,7 +104,9 @@ const settingsSectionMap: [string, string][] = [
     ["ReCordUpdater", "vencord_updater_panel"],
     ["ReCordCloud", "vencord_cloud_panel"],
     ["ReCordBackupAndRestore", "vencord_backup_restore_panel"],
-    ["ReCordPatchHelper", "vencord_patch_helper_panel"]
+    ["ReCordPatchHelper", "vencord_patch_helper_panel"],
+    ["ReCordConsole", "vencord_console_panel"],
+    ["ReCordOpsec", "vencord_opsec_panel"]
 ];
 
 export default definePlugin({
@@ -236,6 +238,20 @@ export default definePlugin({
                 title: "Backup & Restore",
                 Component: BackupAndRestoreTab,
                 Icon: BackupRestoreIcon
+            }),
+            buildEntry({
+                key: "vencord_console",
+                title: "Console",
+                panelTitle: "ReCord Console",
+                Component: ConsoleTab,
+                Icon: NotesIcon
+            }),
+            buildEntry({
+                key: "vencord_opsec",
+                title: "OPSEC",
+                panelTitle: "OPSEC Tools",
+                Component: OpsecTab,
+                Icon: SafetyIcon
             }),
             IS_DEV && PatchHelperTab && buildEntry({
                 key: "vencord_patch_helper",

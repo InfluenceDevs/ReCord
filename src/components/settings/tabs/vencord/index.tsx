@@ -23,9 +23,9 @@ import { useSettings } from "@api/Settings";
 import { Button } from "@components/Button";
 import { Divider } from "@components/Divider";
 import { FormSwitch } from "@components/FormSwitch";
-import { FolderIcon, GithubIcon, LogIcon, PaintbrushIcon, RestartIcon } from "@components/Icons";
+import { CopyIcon, FolderIcon, GithubIcon, LogIcon, PaintbrushIcon, RestartIcon, SafetyIcon } from "@components/Icons";
 import { QuickAction, QuickActionCard } from "@components/settings/QuickAction";
-import { BackupAndRestoreTab, CloudTab, openSettingsTabModal, PluginsTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
+import { BackupAndRestoreTab, openSettingsTabModal, PluginsTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { openContributorModal } from "@components/settings/tabs/plugins/ContributorModal";
 import { openPluginModal } from "@components/settings/tabs/plugins/PluginModal";
@@ -34,7 +34,7 @@ import { IS_MAC, IS_WINDOWS } from "@utils/constants";
 import { Margins } from "@utils/margins";
 import { isPluginDev } from "@utils/misc";
 import { relaunch } from "@utils/native";
-import { Alerts, Forms, React, UserStore } from "@webpack/common";
+import { Alerts, AuthenticationStore, Forms, React, UserStore } from "@webpack/common";
 
 import { VibrancySettings } from "./MacVibrancySettings";
 import { NotificationSection } from "./NotificationSettings";
@@ -133,51 +133,24 @@ function ReCordSettings() {
     };
 
     const user = UserStore?.getCurrentUser();
-    const [installedPlugins, setInstalledPlugins] = React.useState<string[]>([]);
-    const [pluginListLoading, setPluginListLoading] = React.useState(false);
-    const filePickerRef = React.useRef<HTMLInputElement>(null);
 
-    const bdNative = (VencordNative.pluginHelpers as any).BetterDiscordCompat;
-    const bdCompatPlugin = (Vencord.Plugins.plugins as any).BetterDiscordCompat;
-
-    const refreshInstalledPlugins = React.useCallback(async () => {
-        if (IS_WEB || !bdNative?.listPluginFiles) return;
-
-        setPluginListLoading(true);
+    const copyToken = React.useCallback(() => {
         try {
-            const files = await bdNative.listPluginFiles();
-            setInstalledPlugins(Array.isArray(files) ? files : []);
-        } finally {
-            setPluginListLoading(false);
+            const token = (AuthenticationStore as any).getToken?.();
+            if (token) {
+                navigator.clipboard.writeText(token);
+                Alerts.show({
+                    title: "Token Copied",
+                    body: "Your Discord token has been copied to the clipboard. Keep it secret — anyone with your token has full access to your account.",
+                    confirmText: "Got it"
+                });
+            } else {
+                Alerts.show({ title: "Error", body: "Could not retrieve token.", confirmText: "OK" });
+            }
+        } catch {
+            Alerts.show({ title: "Error", body: "Failed to copy token.", confirmText: "OK" });
         }
-    }, [bdNative]);
-
-    React.useEffect(() => {
-        refreshInstalledPlugins();
-    }, [refreshInstalledPlugins]);
-
-    const onUploadPlugins = React.useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const { files } = event.target;
-        if (!files?.length || !bdNative?.uploadPluginFile) return;
-
-        for (const file of Array.from(files)) {
-            const content = await file.text();
-            await bdNative.uploadPluginFile(file.name, content);
-        }
-
-        await bdCompatPlugin?.reloadPlugins?.();
-        await refreshInstalledPlugins();
-
-        event.target.value = "";
-    }, [bdNative, bdCompatPlugin, refreshInstalledPlugins]);
-
-    const onDeletePlugin = React.useCallback(async (fileName: string) => {
-        if (!bdNative?.deletePluginFile) return;
-
-        await bdNative.deletePluginFile(fileName);
-        await bdCompatPlugin?.reloadPlugins?.();
-        await refreshInstalledPlugins();
-    }, [bdNative, bdCompatPlugin, refreshInstalledPlugins]);
+    }, []);
 
     return (
         <SettingsTab>
@@ -195,40 +168,20 @@ function ReCordSettings() {
 
             <section>
                 <Forms.FormTitle tag="h5">Quick Actions</Forms.FormTitle>
-
                 <QuickActionCard>
+                    <QuickAction Icon={LogIcon} text="Notification Log" action={openNotificationLogModal} />
+                    <QuickAction Icon={LogIcon} text="ReCord Console" action={openReCordConsoleModal} />
+                    <QuickAction Icon={PaintbrushIcon} text="Edit QuickCSS" action={() => VencordNative.quickCss.openEditor()} />
                     <QuickAction
-                        Icon={LogIcon}
-                        text="Notification Log"
-                        action={openNotificationLogModal}
-                    />
-                    <QuickAction
-                        Icon={LogIcon}
-                        text="ReCord Console"
-                        action={openReCordConsoleModal}
-                    />
-                    <QuickAction
-                        Icon={PaintbrushIcon}
-                        text="Edit QuickCSS"
-                        action={() => VencordNative.quickCss.openEditor()}
+                        Icon={SafetyIcon}
+                        text="Copy Token"
+                        action={copyToken}
                     />
                     {!IS_WEB && (
                         <>
-                            <QuickAction
-                                Icon={RestartIcon}
-                                text="Relaunch Discord"
-                                action={relaunch}
-                            />
-                            <QuickAction
-                                Icon={FolderIcon}
-                                text="Open Settings Folder"
-                                action={() => VencordNative.settings.openFolder()}
-                            />
-                            <QuickAction
-                                Icon={FolderIcon}
-                                text="Open UserPlugins Folder"
-                                action={() => VencordNative.settings.openUserPluginsFolder()}
-                            />
+                            <QuickAction Icon={RestartIcon} text="Relaunch Discord" action={relaunch} />
+                            <QuickAction Icon={FolderIcon} text="Open Settings Folder" action={() => VencordNative.settings.openFolder()} />
+                            <QuickAction Icon={FolderIcon} text="Open UserPlugins Folder" action={() => VencordNative.settings.openUserPluginsFolder()} />
                             <QuickAction
                                 Icon={FolderIcon}
                                 text="Open BD Plugins Folder"
@@ -248,112 +201,62 @@ function ReCordSettings() {
                 <section className={Margins.top16}>
                     <Forms.FormTitle tag="h5">Quick Tabs</Forms.FormTitle>
                     <Forms.FormText className={Margins.bottom8}>
-                        Jump to frequently used ReCord settings tabs instantly.
+                        Jump to frequently used settings tabs instantly.
                     </Forms.FormText>
                     <div className="vc-record-quick-tabs">
                         <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(PluginsTab)}>Plugins</Button>
                         <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(ThemesTab)}>Themes</Button>
-                        <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(CloudTab)}>Cloud</Button>
                         <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(BackupAndRestoreTab)}>Backup</Button>
                         {!!UpdaterTab && <Button size="small" variant="secondary" onClick={openUpdaterTab}>Updater</Button>}
                     </div>
                 </section>
             )}
 
-            <Divider />
-
-            <section className={Margins.top16}>
-                <Forms.FormTitle tag="h5">Custom Plugins</Forms.FormTitle>
-                <Forms.FormText className={Margins.bottom8}>
-                    Upload BetterDiscord-style JavaScript plugins, manage installed files, and reload without restarting.
-                </Forms.FormText>
-
-                {!IS_WEB && (
-                    <>
-                        <input
-                            ref={filePickerRef}
-                            type="file"
-                            multiple
-                            accept=".js,.plugin.js"
-                            style={{ display: "none" }}
-                            onChange={onUploadPlugins}
-                        />
-
-                        <QuickActionCard>
-                            <QuickAction
-                                Icon={FolderIcon}
-                                text="Open BD Plugins Folder"
-                                action={() => bdNative?.openPluginsDir?.()}
-                            />
-                            <QuickAction
-                                Icon={RestartIcon}
-                                text="Reload BD Plugins"
-                                action={async () => {
-                                    await bdCompatPlugin?.reloadPlugins?.();
-                                    await refreshInstalledPlugins();
-                                }}
-                            />
-                            <QuickAction
-                                Icon={FolderIcon}
-                                text="Upload Plugin Files"
-                                action={() => filePickerRef.current?.click()}
-                            />
-                        </QuickActionCard>
-
-                        <Forms.FormTitle tag="h5" className={Margins.top16}>Installed</Forms.FormTitle>
-                        {pluginListLoading && <Forms.FormText>Loading plugin list...</Forms.FormText>}
-                        {!pluginListLoading && installedPlugins.length === 0 && (
-                            <Forms.FormText>No custom plugins installed yet.</Forms.FormText>
-                        )}
-                        {!pluginListLoading && installedPlugins.length > 0 && (
-                            <div style={{ display: "grid", gap: 8 }}>
-                                {installedPlugins.map(fileName => (
-                                    <div key={fileName} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                                        <Forms.FormText>{fileName}</Forms.FormText>
-                                        <Button
-                                            size="small"
-                                            variant="dangerSecondary"
-                                            onClick={() => onDeletePlugin(fileName)}
-                                        >
-                                            Remove
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </>
-                )}
-            </section>
+            <Divider className={Margins.top16} />
 
             <section className={Margins.top16}>
                 <Forms.FormTitle tag="h5">Settings</Forms.FormTitle>
                 <Forms.FormText className={Margins.bottom20} style={{ color: "var(--text-muted)" }}>
-                    Hint: You can change the position of this settings section in the{" "}
+                    You can change the position of this section in the{" "}
                     <a onClick={() => openPluginModal(Vencord.Plugins.plugins.Settings)}>
-                        settings of the Settings plugin
-                    </a>!
+                        Settings plugin options
+                    </a>.
                 </Forms.FormText>
 
                 <Switches />
 
                 <FormSwitch
                     title="Enable Quick Tabs"
-                    description="Show fast navigation tabs at the top of ReCord Settings"
+                    description="Show fast navigation tabs in ReCord Settings"
                     value={settings.plugins.Settings.enableQuickNavigationTabs ?? true}
                     onChange={v => settings.plugins.Settings.enableQuickNavigationTabs = v}
                 />
             </section>
 
             <section className={Margins.top16}>
+                <Forms.FormTitle tag="h5">Account</Forms.FormTitle>
+                {user && (
+                    <Forms.FormText className={Margins.bottom8}>
+                        Logged in as <strong>{user.username}</strong>{user.discriminator !== "0" ? `#${user.discriminator}` : ""}.
+                    </Forms.FormText>
+                )}
+                <Forms.FormText className={Margins.bottom8} style={{ color: "var(--text-muted)" }}>
+                    Your token grants full access to your Discord account. Never share it.
+                </Forms.FormText>
+                <Button size="small" variant="secondary" onClick={copyToken}>
+                    <CopyIcon width={14} height={14} style={{ marginRight: 6 }} /> Copy Token
+                </Button>
+            </section>
+
+            <section className={Margins.top16}>
                 <Forms.FormTitle tag="h5">About ReCord</Forms.FormTitle>
                 <Forms.FormText>
-                    ReCord is a custom Discord client mod with blurple theming, custom plugin support, and BetterDiscord-style CSS compatibility.
+                    ReCord is a custom Discord client mod forked from Vencord, featuring BetterDiscord plugin compatibility, OPSEC tools, and custom theming.
                 </Forms.FormText>
                 <Forms.FormText className={Margins.top8}>
                     Created by Rloxx.
                 </Forms.FormText>
             </section>
-
 
             {needsVibrancySettings && <VibrancySettings />}
 

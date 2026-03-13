@@ -25,7 +25,9 @@ import { Card } from "@components/Card";
 import { Divider } from "@components/Divider";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { HeadingTertiary } from "@components/Heading";
+import { FolderIcon, RestartIcon } from "@components/Icons";
 import { Paragraph } from "@components/Paragraph";
+import { QuickAction, QuickActionCard } from "@components/settings/QuickAction";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { ChangeList } from "@utils/ChangeList";
 import { classNameFactory } from "@utils/css";
@@ -317,7 +319,142 @@ function PluginSettings() {
                     : <Paragraph>No plugins meet the search criteria.</Paragraph>
                 }
             </div>
+
+            <CustomPluginsSection />
         </SettingsTab >
+    );
+}
+
+function CustomPluginsSection() {
+    const [installedPlugins, setInstalledPlugins] = React.useState<string[]>([]);
+    const [loading, setLoading] = React.useState(false);
+    const [dragOver, setDragOver] = React.useState(false);
+    const filePickerRef = React.useRef<HTMLInputElement>(null);
+
+    const bdNative = (VencordNative.pluginHelpers as any).BetterDiscordCompat;
+    const bdPlugin = (Vencord.Plugins.plugins as any).BetterDiscordCompat;
+
+    const refresh = React.useCallback(async () => {
+        if (IS_WEB || !bdNative?.listPluginFiles) return;
+        setLoading(true);
+        try {
+            const files = await bdNative.listPluginFiles();
+            setInstalledPlugins(Array.isArray(files) ? files : []);
+        } finally { setLoading(false); }
+    }, [bdNative]);
+
+    React.useEffect(() => { refresh(); }, [refresh]);
+
+    const uploadFiles = React.useCallback(async (fileList: FileList | null) => {
+        if (!fileList?.length || !bdNative?.uploadPluginFile) return;
+        for (const file of Array.from(fileList)) {
+            const content = await file.text();
+            await bdNative.uploadPluginFile(file.name, content);
+        }
+        await bdPlugin?.reloadPlugins?.();
+        await refresh();
+    }, [bdNative, bdPlugin, refresh]);
+
+    const handleInputChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        uploadFiles(e.target.files);
+        e.target.value = "";
+    }, [uploadFiles]);
+
+    const handleDrop = React.useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setDragOver(false);
+        uploadFiles(e.dataTransfer.files);
+    }, [uploadFiles]);
+
+    const removePlugin = React.useCallback(async (fileName: string) => {
+        if (!bdNative?.deletePluginFile) return;
+        await bdNative.deletePluginFile(fileName);
+        await bdPlugin?.reloadPlugins?.();
+        await refresh();
+    }, [bdNative, bdPlugin, refresh]);
+
+    if (IS_WEB || !bdNative) return null;
+
+    return (
+        <>
+            <Divider className={Margins.top20} />
+
+            <HeadingTertiary className={classes(Margins.top20, Margins.bottom8)}>
+                Custom Plugins (BetterDiscord)
+            </HeadingTertiary>
+
+            <Paragraph className={Margins.bottom8}>
+                Drop <code>.js</code> / <code>.plugin.js</code> files here or use the upload button to add BetterDiscord plugins.
+            </Paragraph>
+
+            <input
+                ref={filePickerRef}
+                type="file"
+                multiple
+                accept=".js,.plugin.js"
+                style={{ display: "none" }}
+                onChange={handleInputChange}
+            />
+
+            <div
+                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                style={{
+                    border: `2px dashed ${dragOver ? "var(--text-brand)" : "var(--border-subtle)"}`,
+                    borderRadius: 8,
+                    padding: "16px",
+                    textAlign: "center",
+                    marginBottom: 12,
+                    transition: "border-color 0.15s",
+                    background: dragOver ? "var(--background-modifier-hover)" : undefined
+                }}
+            >
+                <Paragraph style={{ color: "var(--text-muted)", marginBottom: 8 }}>
+                    {dragOver ? "Drop to upload" : "Drag & drop plugin files here"}
+                </Paragraph>
+                <Button size="small" variant="secondary" onClick={() => filePickerRef.current?.click()}>
+                    Browse Files
+                </Button>
+            </div>
+
+            <QuickActionCard>
+                <QuickAction
+                    Icon={FolderIcon}
+                    text="Open BD Plugins Folder"
+                    action={() => bdNative?.openPluginsDir?.()}
+                />
+                <QuickAction
+                    Icon={RestartIcon}
+                    text="Reload BD Plugins"
+                    action={async () => { await bdPlugin?.reloadPlugins?.(); await refresh(); }}
+                />
+            </QuickActionCard>
+
+            <HeadingTertiary className={classes(Margins.top20, Margins.bottom8)}>
+                Installed ({installedPlugins.length})
+            </HeadingTertiary>
+
+            {loading && <Paragraph>Loading...</Paragraph>}
+            {!loading && installedPlugins.length === 0 && (
+                <Paragraph style={{ color: "var(--text-muted)" }}>No custom plugins installed yet.</Paragraph>
+            )}
+            {!loading && installedPlugins.length > 0 && (
+                <div className={cl("grid")}>
+                    {installedPlugins.map(fileName => (
+                        <Card key={fileName} style={{ padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                            <div>
+                                <Paragraph style={{ fontWeight: 600, marginBottom: 2 }}>{fileName.replace(/\.plugin\.js$|\.js$/, "")}</Paragraph>
+                                <Paragraph style={{ color: "var(--text-muted)", fontSize: 12 }}>{fileName}</Paragraph>
+                            </div>
+                            <Button size="small" variant="dangerSecondary" onClick={() => removePlugin(fileName)}>
+                                Remove
+                            </Button>
+                        </Card>
+                    ))}
+                </div>
+            )}
+        </>
     );
 }
 
