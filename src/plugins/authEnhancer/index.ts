@@ -13,6 +13,7 @@ import definePlugin from "@utils/types";
 const logger = new Logger("AuthEnhancer");
 const DOWNLOAD_HISTORY_KEY = "record_download_history";
 const RECORD_ICON = "vencord://assets/icon.png";
+const RECORD_LIGHT_ICON = "vencord://assets/light-theme-icon.png";
 const RECORD_DARK_BANNER = "vencord://assets/dark-theme-logo.png";
 const RECORD_LIGHT_BANNER = "vencord://assets/light-theme-logo.png";
 
@@ -28,6 +29,17 @@ type DownloadEntry = {
 let openExternalOriginal: ((url: string) => unknown) | null = null;
 let uncapInterval: number | null = null;
 let injectInterval: number | null = null;
+
+function isDarkTheme() {
+    return document.body.classList.contains("theme-dark");
+}
+
+function getBrandingAssets() {
+    return {
+        icon: isDarkTheme() ? RECORD_ICON : RECORD_LIGHT_ICON,
+        banner: isDarkTheme() ? RECORD_DARK_BANNER : RECORD_LIGHT_BANNER
+    };
+}
 
 function parseFileName(url: string) {
     try {
@@ -121,10 +133,10 @@ function injectTokenLogin() {
     card.style.padding = "12px";
     card.style.boxShadow = "0 8px 24px rgba(0,0,0,.35)";
 
-    const isDark = document.body.classList.contains("theme-dark");
+    const assets = getBrandingAssets();
 
     const banner = document.createElement("img");
-    banner.src = isDark ? RECORD_DARK_BANNER : RECORD_LIGHT_BANNER;
+    banner.src = assets.banner;
     banner.alt = "ReCord";
     banner.style.width = "100%";
     banner.style.height = "42px";
@@ -140,7 +152,7 @@ function injectTokenLogin() {
     title.style.marginBottom = "6px";
 
     const icon = document.createElement("img");
-    icon.src = RECORD_ICON;
+    icon.src = assets.icon;
     icon.alt = "icon";
     icon.style.width = "18px";
     icon.style.height = "18px";
@@ -232,10 +244,10 @@ function injectSwitcherTokenLogin() {
         host.style.paddingTop = "10px";
         host.style.borderTop = "1px solid var(--border-subtle)";
 
-        const isDark = document.body.classList.contains("theme-dark");
+        const assets = getBrandingAssets();
 
         const banner = document.createElement("img");
-        banner.src = isDark ? RECORD_DARK_BANNER : RECORD_LIGHT_BANNER;
+        banner.src = assets.banner;
         banner.alt = "ReCord";
         banner.style.width = "100%";
         banner.style.height = "32px";
@@ -285,23 +297,116 @@ function injectSwitcherTokenLogin() {
     }
 }
 
+function injectHeaderBranding() {
+    const assets = getBrandingAssets();
+    const headings = Array.from(document.querySelectorAll("h1, h2")) as HTMLElement[];
+
+    for (const heading of headings) {
+        const text = heading.textContent?.toLowerCase() || "";
+        const matches = text.includes("login")
+            || text.includes("log in")
+            || text.includes("switch account")
+            || text.includes("add account")
+            || text.includes("welcome back")
+            || text.includes("auth");
+
+        if (!matches || heading.querySelector(".record-inline-brand-icon")) continue;
+
+        const icon = document.createElement("img");
+        icon.className = "record-inline-brand-icon";
+        icon.src = assets.icon;
+        icon.alt = "ReCord";
+        icon.style.width = "18px";
+        icon.style.height = "18px";
+        icon.style.borderRadius = "4px";
+        icon.style.marginRight = "8px";
+        icon.style.verticalAlign = "middle";
+
+        heading.prepend(icon);
+    }
+
+    const authContainers = Array.from(document.querySelectorAll("form, div[role='dialog'], [class*='authBox'], [class*='centeringWrapper']")) as HTMLElement[];
+    for (const container of authContainers) {
+        if (container.querySelector(".record-surface-banner")) continue;
+        const text = container.textContent?.toLowerCase() || "";
+        if (!(text.includes("login") || text.includes("switch account") || text.includes("add account") || text.includes("welcome back"))) continue;
+
+        const banner = document.createElement("img");
+        banner.className = "record-surface-banner";
+        banner.src = assets.banner;
+        banner.alt = "ReCord";
+        banner.style.width = "100%";
+        banner.style.height = "36px";
+        banner.style.objectFit = "cover";
+        banner.style.borderRadius = "8px";
+        banner.style.marginBottom = "10px";
+
+        container.prepend(banner);
+    }
+}
+
+function injectLoadingBranding() {
+    const assets = getBrandingAssets();
+    const likelyLoading = document.body.textContent?.includes("Loading Discord")
+        || !!document.querySelector("[class*='loading'], [class*='splash'], [class*='spinner']");
+
+    const existing = document.getElementById("record-loading-branding");
+    if (!likelyLoading) {
+        existing?.remove();
+        return;
+    }
+
+    if (existing) return;
+
+    const host = document.createElement("div");
+    host.id = "record-loading-branding";
+    host.style.position = "fixed";
+    host.style.top = "18px";
+    host.style.left = "50%";
+    host.style.transform = "translateX(-50%)";
+    host.style.zIndex = "9999";
+    host.style.display = "flex";
+    host.style.alignItems = "center";
+    host.style.gap = "10px";
+    host.style.padding = "8px 10px";
+    host.style.border = "1px solid var(--border-subtle)";
+    host.style.borderRadius = "12px";
+    host.style.background = "color-mix(in srgb, var(--background-secondary) 92%, transparent)";
+    host.style.backdropFilter = "blur(8px)";
+
+    const icon = document.createElement("img");
+    icon.src = assets.icon;
+    icon.alt = "ReCord";
+    icon.style.width = "20px";
+    icon.style.height = "20px";
+    icon.style.borderRadius = "5px";
+
+    const banner = document.createElement("img");
+    banner.src = assets.banner;
+    banner.alt = "ReCord";
+    banner.style.height = "28px";
+    banner.style.width = "180px";
+    banner.style.objectFit = "cover";
+    banner.style.borderRadius = "6px";
+
+    host.append(icon, banner);
+    document.body.append(host);
+}
+
 function applyDiscordIconBranding() {
-    const iconHrefs = [
-        RECORD_ICON,
-        RECORD_ICON
-    ];
+    const { icon } = getBrandingAssets();
 
     const existing = Array.from(document.querySelectorAll("link[rel*='icon']")) as HTMLLinkElement[];
     if (!existing.length) {
         const link = document.createElement("link");
         link.rel = "icon";
-        link.href = RECORD_ICON;
+        link.href = icon;
         document.head.appendChild(link);
         return;
     }
 
-    for (const [i, el] of existing.entries()) {
-        el.href = iconHrefs[i] ?? RECORD_ICON;
+    for (const el of existing) {
+        el.href = icon;
     }
 }
 
@@ -317,10 +422,14 @@ export default definePlugin({
         applyDiscordIconBranding();
         injectTokenLogin();
         injectSwitcherTokenLogin();
+        injectHeaderBranding();
+        injectLoadingBranding();
         window.addEventListener("hashchange", injectTokenLogin);
         injectInterval = window.setInterval(() => {
             injectTokenLogin();
             injectSwitcherTokenLogin();
+            injectHeaderBranding();
+            injectLoadingBranding();
             applyDiscordIconBranding();
         }, 1200);
 
@@ -358,5 +467,6 @@ export default definePlugin({
 
         document.getElementById("record-token-login")?.remove();
         document.getElementById("record-switcher-token-login")?.remove();
+        document.getElementById("record-loading-branding")?.remove();
     }
 });

@@ -41,6 +41,7 @@ import { NotificationSection } from "./NotificationSettings";
 import { openReCordConsoleModal } from "./ReCordConsole";
 
 const RECORD_ICON = "vencord://assets/icon.png";
+const RECORD_LIGHT_ICON = "vencord://assets/light-theme-icon.png";
 const RECORD_DARK_BANNER = "vencord://assets/dark-theme-logo.png";
 const RECORD_LIGHT_BANNER = "vencord://assets/light-theme-logo.png";
 
@@ -135,6 +136,7 @@ function ReCordSettings() {
 
     const user = UserStore?.getCurrentUser();
     const isDark = document.body.classList.contains("theme-dark");
+    const currentIcon = isDark ? RECORD_ICON : RECORD_LIGHT_ICON;
 
     const copyToken = React.useCallback(() => {
         try {
@@ -254,7 +256,7 @@ function ReCordSettings() {
                 <Forms.FormTitle tag="h5">About ReCord</Forms.FormTitle>
                 <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
                     <img
-                        src={RECORD_ICON}
+                        src={currentIcon}
                         alt="ReCord Icon"
                         width={20}
                         height={20}
