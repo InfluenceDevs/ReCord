@@ -28,10 +28,24 @@ import { installExt } from "./utils/extensions";
 
 if (IS_VESKTOP || !IS_VANILLA) {
     app.whenReady().then(() => {
+        const assetsDir = join(process.cwd(), "Images");
+
         protocol.handle("vencord", ({ url: unsafeUrl }) => {
             let url = decodeURI(unsafeUrl).slice("vencord://".length).replace(/\?v=\d+$/, "");
 
             if (url.endsWith("/")) url = url.slice(0, -1);
+
+            if (url.startsWith("/assets/")) {
+                const assetPath = url.slice("/assets/".length);
+                const safeUrl = ensureSafePath(assetsDir, assetPath);
+                if (!safeUrl) {
+                    return new Response(null, {
+                        status: 404
+                    });
+                }
+
+                return net.fetch(pathToFileURL(safeUrl).toString());
+            }
 
             if (url.startsWith("/themes/")) {
                 const theme = url.slice("/themes/".length);

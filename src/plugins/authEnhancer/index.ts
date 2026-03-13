@@ -12,6 +12,9 @@ import definePlugin from "@utils/types";
 
 const logger = new Logger("AuthEnhancer");
 const DOWNLOAD_HISTORY_KEY = "record_download_history";
+const RECORD_ICON = "vencord://assets/icon.png";
+const RECORD_DARK_BANNER = "vencord://assets/dark-theme-logo.png";
+const RECORD_LIGHT_BANNER = "vencord://assets/light-theme-logo.png";
 
 const AccountSwitcherStore = findByPropsLazy("canAddAccount", "getAccounts");
 
@@ -24,6 +27,7 @@ type DownloadEntry = {
 
 let openExternalOriginal: ((url: string) => unknown) | null = null;
 let uncapInterval: number | null = null;
+let injectInterval: number | null = null;
 
 function parseFileName(url: string) {
     try {
@@ -117,10 +121,34 @@ function injectTokenLogin() {
     card.style.padding = "12px";
     card.style.boxShadow = "0 8px 24px rgba(0,0,0,.35)";
 
+    const isDark = document.body.classList.contains("theme-dark");
+
+    const banner = document.createElement("img");
+    banner.src = isDark ? RECORD_DARK_BANNER : RECORD_LIGHT_BANNER;
+    banner.alt = "ReCord";
+    banner.style.width = "100%";
+    banner.style.height = "42px";
+    banner.style.objectFit = "cover";
+    banner.style.borderRadius = "8px";
+    banner.style.marginBottom = "8px";
+
     const title = document.createElement("div");
-    title.textContent = "Token Login";
+    title.style.display = "flex";
+    title.style.alignItems = "center";
+    title.style.gap = "8px";
     title.style.fontWeight = "700";
     title.style.marginBottom = "6px";
+
+    const icon = document.createElement("img");
+    icon.src = RECORD_ICON;
+    icon.alt = "icon";
+    icon.style.width = "18px";
+    icon.style.height = "18px";
+    icon.style.borderRadius = "4px";
+
+    const titleText = document.createElement("span");
+    titleText.textContent = "Token Login";
+    title.append(icon, titleText);
 
     const hint = document.createElement("div");
     hint.textContent = "Paste a token to log in instantly.";
@@ -186,8 +214,95 @@ function injectTokenLogin() {
     };
 
     row.append(btn, show);
-    card.append(title, hint, input, row);
+    card.append(banner, title, hint, input, row);
     document.body.append(card);
+}
+
+function injectSwitcherTokenLogin() {
+    const dialogs = Array.from(document.querySelectorAll('div[role="dialog"], [aria-modal="true"]')) as HTMLElement[];
+    for (const dialog of dialogs) {
+        const text = dialog.textContent?.toLowerCase() || "";
+        const isSwitcher = text.includes("switch account") || text.includes("switch accounts") || text.includes("add account");
+        if (!isSwitcher) continue;
+        if (dialog.querySelector("#record-switcher-token-login")) continue;
+
+        const host = document.createElement("div");
+        host.id = "record-switcher-token-login";
+        host.style.marginTop = "10px";
+        host.style.paddingTop = "10px";
+        host.style.borderTop = "1px solid var(--border-subtle)";
+
+        const isDark = document.body.classList.contains("theme-dark");
+
+        const banner = document.createElement("img");
+        banner.src = isDark ? RECORD_DARK_BANNER : RECORD_LIGHT_BANNER;
+        banner.alt = "ReCord";
+        banner.style.width = "100%";
+        banner.style.height = "32px";
+        banner.style.objectFit = "cover";
+        banner.style.borderRadius = "8px";
+        banner.style.marginBottom = "8px";
+
+        const row = document.createElement("div");
+        row.style.display = "flex";
+        row.style.gap = "8px";
+
+        const input = document.createElement("input");
+        input.type = "password";
+        input.placeholder = "Token";
+        input.style.flex = "1";
+        input.style.minWidth = "0";
+        input.style.padding = "8px 10px";
+        input.style.borderRadius = "8px";
+        input.style.border = "1px solid var(--border-subtle)";
+        input.style.background = "var(--background-tertiary)";
+        input.style.color = "var(--text-normal)";
+
+        const button = document.createElement("button");
+        button.textContent = "Token Login";
+        button.style.padding = "8px 10px";
+        button.style.border = "none";
+        button.style.borderRadius = "8px";
+        button.style.background = "var(--brand-500, #5865f2)";
+        button.style.color = "#fff";
+        button.style.cursor = "pointer";
+
+        button.onclick = () => {
+            const token = input.value.trim().replace(/^"|"$/g, "");
+            if (!token) {
+                showToast("Please paste a token", Toasts.Type.FAILURE);
+                return;
+            }
+
+            localStorage.setItem("token", JSON.stringify(token));
+            showToast("Token set. Reloading...", Toasts.Type.SUCCESS);
+            setTimeout(() => location.reload(), 200);
+        };
+
+        row.append(input, button);
+        host.append(banner, row);
+        dialog.append(host);
+    }
+}
+
+function applyDiscordIconBranding() {
+    const iconHrefs = [
+        RECORD_ICON,
+        RECORD_ICON
+    ];
+
+    const existing = Array.from(document.querySelectorAll("link[rel*='icon']")) as HTMLLinkElement[];
+    if (!existing.length) {
+        const link = document.createElement("link");
+        link.rel = "icon";
+        link.href = RECORD_ICON;
+        document.head.appendChild(link);
+        return;
+    }
+
+    for (const [i, el] of existing.entries()) {
+        el.href = iconHrefs[i] ?? RECORD_ICON;
+    }
 }
 
 export default definePlugin({
@@ -199,8 +314,15 @@ export default definePlugin({
         applyUncapPatches();
         uncapInterval = window.setInterval(applyUncapPatches, 5000);
 
+        applyDiscordIconBranding();
         injectTokenLogin();
+        injectSwitcherTokenLogin();
         window.addEventListener("hashchange", injectTokenLogin);
+        injectInterval = window.setInterval(() => {
+            injectTokenLogin();
+            injectSwitcherTokenLogin();
+            applyDiscordIconBranding();
+        }, 1200);
 
         document.addEventListener("click", onDocumentClick, true);
 
@@ -220,6 +342,11 @@ export default definePlugin({
             uncapInterval = null;
         }
 
+        if (injectInterval != null) {
+            clearInterval(injectInterval);
+            injectInterval = null;
+        }
+
         window.removeEventListener("hashchange", injectTokenLogin);
         document.removeEventListener("click", onDocumentClick, true);
 
@@ -230,5 +357,6 @@ export default definePlugin({
         }
 
         document.getElementById("record-token-login")?.remove();
+        document.getElementById("record-switcher-token-login")?.remove();
     }
 });

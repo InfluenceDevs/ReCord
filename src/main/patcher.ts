@@ -18,6 +18,7 @@
 
 import { onceDefined } from "@shared/onceDefined";
 import electron, { app, BrowserWindowConstructorOptions, Menu } from "electron";
+import { existsSync } from "fs";
 import { dirname, join } from "path";
 
 import { RendererSettings } from "./settings";
@@ -68,6 +69,11 @@ if (!IS_VANILLA) {
 
     class BrowserWindow extends electron.BrowserWindow {
         constructor(options: BrowserWindowConstructorOptions) {
+            const customIconPath = join(process.cwd(), "Images", "icon.png");
+            if (!options.icon && existsSync(customIconPath)) {
+                options.icon = customIconPath;
+            }
+
             if (options?.webPreferences?.preload && options.title) {
                 const original = options.webPreferences.preload;
                 options.webPreferences.preload = join(__dirname, "preload.js");

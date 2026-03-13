@@ -40,8 +40,9 @@ import { VibrancySettings } from "./MacVibrancySettings";
 import { NotificationSection } from "./NotificationSettings";
 import { openReCordConsoleModal } from "./ReCordConsole";
 
-const COZY_CONTRIB_IMAGE = "https://cdn.discordapp.com/emojis/1026533070955872337.png";
-const CONTRIB_BACKGROUND_IMAGE = "https://media.discordapp.net/stickers/1311070166481895484.png?size=2048";
+const RECORD_ICON = "vencord://assets/icon.png";
+const RECORD_DARK_BANNER = "vencord://assets/dark-theme-logo.png";
+const RECORD_LIGHT_BANNER = "vencord://assets/light-theme-logo.png";
 
 type KeysOfType<Object, Type> = {
     [K in keyof Object]: Object[K] extends Type ? K : never;
@@ -133,6 +134,7 @@ function ReCordSettings() {
     };
 
     const user = UserStore?.getCurrentUser();
+    const isDark = document.body.classList.contains("theme-dark");
 
     const copyToken = React.useCallback(() => {
         try {
@@ -250,6 +252,20 @@ function ReCordSettings() {
 
             <section className={Margins.top16}>
                 <Forms.FormTitle tag="h5">About ReCord</Forms.FormTitle>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
+                    <img
+                        src={RECORD_ICON}
+                        alt="ReCord Icon"
+                        width={20}
+                        height={20}
+                        style={{ borderRadius: 5, objectFit: "cover" }}
+                    />
+                    <img
+                        src={isDark ? RECORD_DARK_BANNER : RECORD_LIGHT_BANNER}
+                        alt="ReCord Banner"
+                        style={{ height: 34, width: "100%", objectFit: "cover", borderRadius: 8, border: "1px solid var(--border-subtle)" }}
+                    />
+                </div>
                 <Forms.FormText>
                     ReCord is a custom Discord client mod forked from Vencord, featuring BetterDiscord plugin compatibility, OPSEC tools, and custom theming.
                 </Forms.FormText>
