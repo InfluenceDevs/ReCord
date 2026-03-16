@@ -4,9 +4,11 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { Button } from "@components/Button";
+import { Divider } from "@components/Divider";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { Margins } from "@utils/margins";
-import { Alerts, Button, Forms, React, Text, TextInput } from "@webpack/common";
+import { Alerts, Forms, React, Text, TextInput } from "@webpack/common";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -129,7 +131,7 @@ function NetworkTab() {
                 {ipError && <Text variant="text-sm/normal" style={{ color: "#ed4245" }}>{ipError}</Text>}
             </div>
 
-            <Forms.FormDivider className={Margins.bottom16} />
+            <Divider className={Margins.bottom16} />
 
             <Forms.FormTitle tag="h5">Proxy Manager</Forms.FormTitle>
             <Forms.FormText className={Margins.bottom8} style={{ color: "var(--text-muted)" }}>
@@ -153,7 +155,7 @@ function NetworkTab() {
                 {proxyEnabled && <Text variant="text-sm/normal" style={{ color: "var(--text-positive)" }}>Proxy active</Text>}
             </div>
 
-            <Forms.FormDivider className={Margins.bottom16} />
+            <Divider className={Margins.bottom16} />
 
             <Forms.FormTitle tag="h5">DNS Protection</Forms.FormTitle>
             <Forms.FormText className={Margins.bottom8} style={{ color: "var(--text-muted)" }}>
@@ -265,7 +267,7 @@ function FingerprintTab() {
                 {uaActive && <Text variant="text-sm/normal" style={{ color: "var(--text-positive)" }}>Active</Text>}
             </div>
 
-            <Forms.FormDivider className={Margins.bottom16} />
+            <Divider className={Margins.bottom16} />
 
             <Forms.FormTitle tag="h5">Locale Spoof</Forms.FormTitle>
             <Forms.FormText className={Margins.bottom8} style={{ color: "var(--text-muted)" }}>
@@ -284,7 +286,7 @@ function FingerprintTab() {
                 {localeActive && <Text variant="text-sm/normal" style={{ color: "var(--text-positive)" }}>Active</Text>}
             </div>
 
-            <Forms.FormDivider className={Margins.bottom16} />
+            <Divider className={Margins.bottom16} />
 
             <Forms.FormTitle tag="h5">Timezone Freeze</Forms.FormTitle>
             <Forms.FormText className={Margins.bottom8} style={{ color: "var(--text-muted)" }}>
@@ -325,7 +327,7 @@ function PrivacyTab() {
                     (this as any).__blocked = true;
                     return;
                 }
-                return origXhrOpen.call(this, method, url, ...rest);
+                return (origXhrOpen as any).call(this, method, url, ...rest);
             };
             const origXhrSend = XMLHttpRequest.prototype.send;
             XMLHttpRequest.prototype.send = function (...args) {
@@ -391,7 +393,7 @@ function PrivacyTab() {
                 {telemetryBlocked && <Text variant="text-sm/normal" style={{ color: "var(--text-positive)" }}>Active</Text>}
             </div>
 
-            <Forms.FormDivider className={Margins.bottom16} />
+            <Divider className={Margins.bottom16} />
 
             <Forms.FormTitle tag="h5">Data Cleaner</Forms.FormTitle>
             <Forms.FormText className={Margins.bottom8} style={{ color: "var(--text-muted)" }}>
@@ -406,7 +408,7 @@ function PrivacyTab() {
                 <Button size="small" variant="secondary" onClick={cleanData}>Clean Now</Button>
             </div>
 
-            <Forms.FormDivider className={Margins.bottom16} />
+            <Divider className={Margins.bottom16} />
 
             <ToggleRow
                 title="Auto Wipe (every 30 min)"
@@ -503,7 +505,7 @@ function SafetyTab() {
                 : <Forms.FormText style={{ color: "var(--text-muted)", marginBottom: 16 }}>Token unavailable.</Forms.FormText>
             }
 
-            <Forms.FormDivider className={Margins.bottom16} />
+            <Divider className={Margins.bottom16} />
 
             <Forms.FormTitle tag="h5">Link Scanner</Forms.FormTitle>
             <Forms.FormText className={Margins.bottom8} style={{ color: "var(--text-muted)" }}>
@@ -534,7 +536,7 @@ function SafetyTab() {
                 </div>
             )}
 
-            <Forms.FormDivider className={Margins.bottom16} />
+            <Divider className={Margins.bottom16} />
 
             <ToggleRow
                 title="Webhook Warning"
@@ -590,11 +592,11 @@ function AdvancedTab() {
             const ws = new origWs(url, ...args);
             const origSend = ws.send.bind(ws);
             ws.send = (data: any) => {
-                setWsLog(prev => [{ ts: Date.now(), dir: "out", data: JSON.stringify(data).slice(0, 200) }, ...prev].slice(0, 200));
+                setWsLog(prev => [{ ts: Date.now(), dir: "out" as const, data: JSON.stringify(data).slice(0, 200) }, ...prev].slice(0, 200));
                 return origSend(data);
             };
             ws.addEventListener("message", (e: MessageEvent) => {
-                setWsLog(prev => [{ ts: Date.now(), dir: "in", data: JSON.stringify(e.data).slice(0, 200) }, ...prev].slice(0, 200));
+                setWsLog(prev => [{ ts: Date.now(), dir: "in" as const, data: JSON.stringify(e.data).slice(0, 200) }, ...prev].slice(0, 200));
             });
             return ws;
         };
@@ -633,7 +635,7 @@ function AdvancedTab() {
                 </div>
             )}
 
-            <Forms.FormDivider className={Margins.bottom16} />
+            <Divider className={Margins.bottom16} />
 
             <Forms.FormTitle tag="h5">Packet Logger</Forms.FormTitle>
             <Forms.FormText className={Margins.bottom8} style={{ color: "var(--text-muted)" }}>
@@ -661,7 +663,7 @@ function AdvancedTab() {
                 </div>
             )}
 
-            <Forms.FormDivider className={Margins.bottom16} />
+            <Divider className={Margins.bottom16} />
 
             <Forms.FormTitle tag="h5">Endpoint Blocklist</Forms.FormTitle>
             <Forms.FormText className={Margins.bottom8} style={{ color: "var(--text-muted)" }}>

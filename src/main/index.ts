@@ -28,7 +28,7 @@ import { installExt } from "./utils/extensions";
 
 if (IS_VESKTOP || !IS_VANILLA) {
     app.whenReady().then(() => {
-        const assetsDir = join(process.cwd(), "Images");
+        const assetsDir = join(process.env.VENCORD_USER_DATA_DIR || join(__dirname, ".."), "Images");
 
         protocol.handle("vencord", ({ url: unsafeUrl }) => {
             let url = decodeURI(unsafeUrl).slice("vencord://".length).replace(/\?v=\d+$/, "");

@@ -69,7 +69,7 @@ if (!IS_VANILLA) {
 
     class BrowserWindow extends electron.BrowserWindow {
         constructor(options: BrowserWindowConstructorOptions) {
-            const customIconPath = join(process.cwd(), "Images", process.platform === "win32" ? "app.ico" : "icon.png");
+            const customIconPath = join(process.env.VENCORD_USER_DATA_DIR || join(__dirname, ".."), "Images", process.platform === "win32" ? "app.ico" : "icon.png");
             if (!options.icon && existsSync(customIconPath)) {
                 options.icon = customIconPath;
             }

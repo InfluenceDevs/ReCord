@@ -85,7 +85,7 @@ async function downloadInstaller(tempDir) {
 
 function makeInstallScripts() {
     const cfg = getInstallerConfig();
-    const readme = `ReCord Release Bundle\n\n1. Run the installer script for your platform.\n2. The bundled dist assets from this release are used automatically.\n3. Use the uninstall script to remove the patch later.\n`;
+    const readme = `ReCord Release Bundle\n\n1. Run Install-ReCord.cmd (or .ps1) to patch Discord.\n2. Optional first arg for branch: auto|stable|ptb|canary\n3. Optional second arg for custom location path.\n4. Use Repair-ReCord.cmd/.ps1 to repair patching.\n5. Use Uninstall-ReCord.cmd/.ps1 to remove the patch.\n`;
 
     writeFileSync(join(BUNDLE_DIR, "README.txt"), readme);
 
@@ -93,9 +93,25 @@ function makeInstallScripts() {
         "@echo off",
         "setlocal",
         "set ROOT=%~dp0",
+        "set BRANCH=%~1",
+        "if \"%BRANCH%\"==\"\" set BRANCH=auto",
+        "set LOCATION=%~2",
         "set VENCORD_USER_DATA_DIR=%ROOT%app",
         "set VENCORD_DEV_INSTALL=1",
-        `\"%ROOT%${cfg.outputName}\" --install`,
+        `if \"%LOCATION%\"==\"\" (\"%ROOT%${cfg.outputName}\" --install -branch %BRANCH%) else (\"%ROOT%${cfg.outputName}\" --install -location \"%LOCATION%\")`,
+        "endlocal"
+    ].join("\r\n"));
+
+    writeFileSync(join(BUNDLE_DIR, "Repair-ReCord.cmd"), [
+        "@echo off",
+        "setlocal",
+        "set ROOT=%~dp0",
+        "set BRANCH=%~1",
+        "if \"%BRANCH%\"==\"\" set BRANCH=auto",
+        "set LOCATION=%~2",
+        "set VENCORD_USER_DATA_DIR=%ROOT%app",
+        "set VENCORD_DEV_INSTALL=1",
+        `if \"%LOCATION%\"==\"\" (\"%ROOT%${cfg.outputName}\" -repair -branch %BRANCH%) else (\"%ROOT%${cfg.outputName}\" -repair -location \"%LOCATION%\")`,
         "endlocal"
     ].join("\r\n"));
 
@@ -103,26 +119,43 @@ function makeInstallScripts() {
         "@echo off",
         "setlocal",
         "set ROOT=%~dp0",
+        "set BRANCH=%~1",
+        "if \"%BRANCH%\"==\"\" set BRANCH=auto",
+        "set LOCATION=%~2",
         "set VENCORD_USER_DATA_DIR=%ROOT%app",
         "set VENCORD_DEV_INSTALL=1",
-        `\"%ROOT%${cfg.outputName}\" --uninstall`,
+        `if \"%LOCATION%\"==\"\" (\"%ROOT%${cfg.outputName}\" --uninstall -branch %BRANCH%) else (\"%ROOT%${cfg.outputName}\" --uninstall -location \"%LOCATION%\")`,
         "endlocal"
     ].join("\r\n"));
 
     writeFileSync(join(BUNDLE_DIR, "Install-ReCord.ps1"), [
         "$ErrorActionPreference = 'Stop'",
+        "param([string]$Branch = 'auto', [string]$Location = '')",
         "$root = Split-Path -Parent $MyInvocation.MyCommand.Path",
         "$env:VENCORD_USER_DATA_DIR = Join-Path $root 'app'",
         "$env:VENCORD_DEV_INSTALL = '1'",
-        `& (Join-Path $root '${cfg.outputName}') --install`
+        `$exe = (Join-Path $root '${cfg.outputName}')`,
+        "if ($Location -ne '') { & $exe --install -location $Location } else { & $exe --install -branch $Branch }"
+    ].join("\n"));
+
+    writeFileSync(join(BUNDLE_DIR, "Repair-ReCord.ps1"), [
+        "$ErrorActionPreference = 'Stop'",
+        "param([string]$Branch = 'auto', [string]$Location = '')",
+        "$root = Split-Path -Parent $MyInvocation.MyCommand.Path",
+        "$env:VENCORD_USER_DATA_DIR = Join-Path $root 'app'",
+        "$env:VENCORD_DEV_INSTALL = '1'",
+        `$exe = (Join-Path $root '${cfg.outputName}')`,
+        "if ($Location -ne '') { & $exe -repair -location $Location } else { & $exe -repair -branch $Branch }"
     ].join("\n"));
 
     writeFileSync(join(BUNDLE_DIR, "Uninstall-ReCord.ps1"), [
         "$ErrorActionPreference = 'Stop'",
+        "param([string]$Branch = 'auto', [string]$Location = '')",
         "$root = Split-Path -Parent $MyInvocation.MyCommand.Path",
         "$env:VENCORD_USER_DATA_DIR = Join-Path $root 'app'",
         "$env:VENCORD_DEV_INSTALL = '1'",
-        `& (Join-Path $root '${cfg.outputName}') --uninstall`
+        `$exe = (Join-Path $root '${cfg.outputName}')`,
+        "if ($Location -ne '') { & $exe --uninstall -location $Location } else { & $exe --uninstall -branch $Branch }"
     ].join("\n"));
 }
 

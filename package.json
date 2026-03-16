@@ -28,6 +28,7 @@
         "inject": "node scripts/runInstaller.mjs -- --install",
         "uninject": "node scripts/runInstaller.mjs -- --uninstall",
         "buildReleaseInstaller": "node scripts/buildReleaseInstaller.mjs",
+        "buildWindowsSetupInstaller": "node scripts/buildWindowsSetupInstaller.mjs",
         "lint": "eslint",
         "lint-styles": "stylelint \"src/**/*.css\" --ignore-pattern src/userplugins",
         "lint:fix": "corepack pnpm lint --fix",

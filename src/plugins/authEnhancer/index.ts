@@ -188,10 +188,10 @@ function injectTokenLogin() {
     btn.textContent = "Login with Token";
     btn.style.flex = "1";
     btn.style.padding = "8px 10px";
-    btn.style.border = "none";
+    btn.style.border = "1px solid var(--border-subtle)";
     btn.style.borderRadius = "8px";
-    btn.style.background = "var(--brand-500, #5865f2)";
-    btn.style.color = "white";
+    btn.style.background = "var(--button-secondary-background)";
+    btn.style.color = "var(--text-normal)";
     btn.style.cursor = "pointer";
 
     const show = document.createElement("button");
@@ -230,169 +230,6 @@ function injectTokenLogin() {
     document.body.append(card);
 }
 
-function injectSwitcherTokenLogin() {
-    const dialogs = Array.from(document.querySelectorAll('div[role="dialog"], [aria-modal="true"]')) as HTMLElement[];
-    for (const dialog of dialogs) {
-        const text = dialog.textContent?.toLowerCase() || "";
-        const isSwitcher = text.includes("switch account") || text.includes("switch accounts") || text.includes("add account");
-        if (!isSwitcher) continue;
-        if (dialog.querySelector("#record-switcher-token-login")) continue;
-
-        const host = document.createElement("div");
-        host.id = "record-switcher-token-login";
-        host.style.marginTop = "10px";
-        host.style.paddingTop = "10px";
-        host.style.borderTop = "1px solid var(--border-subtle)";
-
-        const assets = getBrandingAssets();
-
-        const banner = document.createElement("img");
-        banner.src = assets.banner;
-        banner.alt = "ReCord";
-        banner.style.width = "100%";
-        banner.style.height = "32px";
-        banner.style.objectFit = "cover";
-        banner.style.borderRadius = "8px";
-        banner.style.marginBottom = "8px";
-
-        const row = document.createElement("div");
-        row.style.display = "flex";
-        row.style.gap = "8px";
-
-        const input = document.createElement("input");
-        input.type = "password";
-        input.placeholder = "Token";
-        input.style.flex = "1";
-        input.style.minWidth = "0";
-        input.style.padding = "8px 10px";
-        input.style.borderRadius = "8px";
-        input.style.border = "1px solid var(--border-subtle)";
-        input.style.background = "var(--background-tertiary)";
-        input.style.color = "var(--text-normal)";
-
-        const button = document.createElement("button");
-        button.textContent = "Token Login";
-        button.style.padding = "8px 10px";
-        button.style.border = "none";
-        button.style.borderRadius = "8px";
-        button.style.background = "var(--brand-500, #5865f2)";
-        button.style.color = "#fff";
-        button.style.cursor = "pointer";
-
-        button.onclick = () => {
-            const token = input.value.trim().replace(/^"|"$/g, "");
-            if (!token) {
-                showToast("Please paste a token", Toasts.Type.FAILURE);
-                return;
-            }
-
-            localStorage.setItem("token", JSON.stringify(token));
-            showToast("Token set. Reloading...", Toasts.Type.SUCCESS);
-            setTimeout(() => location.reload(), 200);
-        };
-
-        row.append(input, button);
-        host.append(banner, row);
-        dialog.append(host);
-    }
-}
-
-function injectHeaderBranding() {
-    const assets = getBrandingAssets();
-    const headings = Array.from(document.querySelectorAll("h1, h2")) as HTMLElement[];
-
-    for (const heading of headings) {
-        const text = heading.textContent?.toLowerCase() || "";
-        const matches = text.includes("login")
-            || text.includes("log in")
-            || text.includes("switch account")
-            || text.includes("add account")
-            || text.includes("welcome back")
-            || text.includes("auth");
-
-        if (!matches || heading.querySelector(".record-inline-brand-icon")) continue;
-
-        const icon = document.createElement("img");
-        icon.className = "record-inline-brand-icon";
-        icon.src = assets.icon;
-        icon.alt = "ReCord";
-        icon.style.width = "18px";
-        icon.style.height = "18px";
-        icon.style.borderRadius = "4px";
-        icon.style.marginRight = "8px";
-        icon.style.verticalAlign = "middle";
-
-        heading.prepend(icon);
-    }
-
-    const authContainers = Array.from(document.querySelectorAll("form, div[role='dialog'], [class*='authBox'], [class*='centeringWrapper']")) as HTMLElement[];
-    for (const container of authContainers) {
-        if (container.querySelector(".record-surface-banner")) continue;
-        const text = container.textContent?.toLowerCase() || "";
-        if (!(text.includes("login") || text.includes("switch account") || text.includes("add account") || text.includes("welcome back"))) continue;
-
-        const banner = document.createElement("img");
-        banner.className = "record-surface-banner";
-        banner.src = assets.banner;
-        banner.alt = "ReCord";
-        banner.style.width = "100%";
-        banner.style.height = "36px";
-        banner.style.objectFit = "cover";
-        banner.style.borderRadius = "8px";
-        banner.style.marginBottom = "10px";
-
-        container.prepend(banner);
-    }
-}
-
-function injectLoadingBranding() {
-    const assets = getBrandingAssets();
-    const likelyLoading = document.body.textContent?.includes("Loading Discord")
-        || !!document.querySelector("[class*='loading'], [class*='splash'], [class*='spinner']");
-
-    const existing = document.getElementById("record-loading-branding");
-    if (!likelyLoading) {
-        existing?.remove();
-        return;
-    }
-
-    if (existing) return;
-
-    const host = document.createElement("div");
-    host.id = "record-loading-branding";
-    host.style.position = "fixed";
-    host.style.top = "18px";
-    host.style.left = "50%";
-    host.style.transform = "translateX(-50%)";
-    host.style.zIndex = "9999";
-    host.style.display = "flex";
-    host.style.alignItems = "center";
-    host.style.gap = "10px";
-    host.style.padding = "8px 10px";
-    host.style.border = "1px solid var(--border-subtle)";
-    host.style.borderRadius = "12px";
-    host.style.background = "color-mix(in srgb, var(--background-secondary) 92%, transparent)";
-    host.style.backdropFilter = "blur(8px)";
-
-    const icon = document.createElement("img");
-    icon.src = assets.icon;
-    icon.alt = "ReCord";
-    icon.style.width = "20px";
-    icon.style.height = "20px";
-    icon.style.borderRadius = "5px";
-
-    const banner = document.createElement("img");
-    banner.src = assets.banner;
-    banner.alt = "ReCord";
-    banner.style.height = "28px";
-    banner.style.width = "180px";
-    banner.style.objectFit = "cover";
-    banner.style.borderRadius = "6px";
-
-    host.append(icon, banner);
-    document.body.append(host);
-}
-
 function applyDiscordIconBranding() {
     const { icon } = getBrandingAssets();
 
@@ -414,6 +251,7 @@ export default definePlugin({
     name: "AuthEnhancer",
     description: "Adds token login on login screen, removes account switching limits, and tracks download history.",
     authors: [Devs.Rloxx],
+    tags: ["token", "login", "account", "switcher", "download", "history", "record"],
 
     start() {
         applyUncapPatches();
@@ -421,15 +259,9 @@ export default definePlugin({
 
         applyDiscordIconBranding();
         injectTokenLogin();
-        injectSwitcherTokenLogin();
-        injectHeaderBranding();
-        injectLoadingBranding();
         window.addEventListener("hashchange", injectTokenLogin);
         injectInterval = window.setInterval(() => {
             injectTokenLogin();
-            injectSwitcherTokenLogin();
-            injectHeaderBranding();
-            injectLoadingBranding();
             applyDiscordIconBranding();
         }, 1200);
 
@@ -466,7 +298,5 @@ export default definePlugin({
         }
 
         document.getElementById("record-token-login")?.remove();
-        document.getElementById("record-switcher-token-login")?.remove();
-        document.getElementById("record-loading-branding")?.remove();
     }
 });

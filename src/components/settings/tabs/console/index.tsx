@@ -4,10 +4,11 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { Button } from "@components/Button";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { Logger } from "@utils/Logger";
 import { Margins } from "@utils/margins";
-import { Button, Forms, React, Text } from "@webpack/common";
+import { Forms, React, Text } from "@webpack/common";
 
 type LogLevel = "log" | "warn" | "error" | "info" | "debug";
 
@@ -112,7 +113,6 @@ function JavaScriptRepl() {
 
         let result: ReplEntry;
         try {
-            // eslint-disable-next-line no-eval
             const val = (0, eval)(code);
             const out = captured.length
                 ? captured.join("\n") + "\n" + fmt(val)
