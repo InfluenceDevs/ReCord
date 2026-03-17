@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a Discord client mod
  * Copyright (c) 2026 Rloxx
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -693,6 +693,67 @@ function AdvancedTab() {
 }
 
 // ─── MAIN OPSEC TAB ───────────────────────────────────────────────────────────
+// ─── SCREEN PRIVACY ──────────────────────────────────────────────────────────
+
+let privacyStyleEl: HTMLStyleElement | null = null;
+
+function applyPrivacyCSS(active: boolean) {
+    if (active) {
+        if (!privacyStyleEl) {
+            privacyStyleEl = document.createElement("style");
+            privacyStyleEl.id = "record-screen-privacy";
+            document.head.appendChild(privacyStyleEl);
+        }
+        privacyStyleEl.textContent = [
+            "[class*='timestamp_'] { filter: blur(6px) !important; transition: filter 0.2s !important; user-select: none !important; }",
+            "[class*='timestamp_']:hover { filter: blur(0) !important; user-select: text !important; }",
+        ].join("\n");
+    } else {
+        privacyStyleEl?.remove();
+        privacyStyleEl = null;
+    }
+}
+
+function ScreenPrivacyTab() {
+    const [hideTs, setHideTs] = useSetting<boolean>("screen.hideTimestamps", false);
+
+    React.useEffect(() => {
+        applyPrivacyCSS(hideTs);
+    }, [hideTs]);
+
+    const toggle = React.useCallback(() => {
+        const next = !hideTs;
+        setHideTs(next);
+        applyPrivacyCSS(next);
+    }, [hideTs, setHideTs]);
+
+    return (
+        <div>
+            <Forms.FormTitle tag="h5">Screen Privacy</Forms.FormTitle>
+            <Forms.FormText className={Margins.bottom16} style={{ color: "var(--text-muted)" }}>
+                Hide sensitive information when streaming or taking screenshots. Hover over items to reveal them.
+            </Forms.FormText>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--border-faint)" }}>
+                <div style={{ flex: 1 }}>
+                    <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>Hide Timestamps</Forms.FormTitle>
+                    <Forms.FormText style={{ color: "var(--text-muted)", fontSize: 13 }}>
+                        Blur all message timestamps so your timezone cannot be inferred from streams or screenshots. Hover over a timestamp to reveal it.
+                    </Forms.FormText>
+                </div>
+                <Button
+                    size="small"
+                    variant={hideTs ? "primary" : "secondary"}
+                    onClick={toggle}
+                    style={{ marginLeft: 16, minWidth: 60 }}
+                >
+                    {hideTs ? "ON" : "OFF"}
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+// ─── MAIN OPSEC TAB ───────────────────────────────────────────────────────────
 
 const TABS = [
     { id: "network", label: "Network" },
@@ -700,8 +761,8 @@ const TABS = [
     { id: "privacy", label: "Privacy" },
     { id: "safety", label: "Safety" },
     { id: "advanced", label: "Advanced" },
+    { id: "screen-privacy", label: "Screen Privacy" },
 ] as const;
-
 type TabId = typeof TABS[number]["id"];
 
 function OpsecSettings() {
@@ -733,6 +794,7 @@ function OpsecSettings() {
             {activeTab === "privacy" && <PrivacyTab />}
             {activeTab === "safety" && <SafetyTab />}
             {activeTab === "advanced" && <AdvancedTab />}
+            {activeTab === "screen-privacy" && <ScreenPrivacyTab />}
         </SettingsTab>
     );
 }
