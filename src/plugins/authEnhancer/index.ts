@@ -13,9 +13,9 @@ import definePlugin from "@utils/types";
 const logger = new Logger("AuthEnhancer");
 const DOWNLOAD_HISTORY_KEY = "record_download_history";
 const RECORD_ICON = "vencord://assets/icon.png";
-const RECORD_LIGHT_ICON = "vencord://assets/light-theme-icon.png";
+const RECORD_LIGHT_ICON = RECORD_ICON;
 const RECORD_DARK_BANNER = "vencord://assets/dark-theme-logo.png";
-const RECORD_LIGHT_BANNER = "vencord://assets/light-theme-logo.png";
+const RECORD_LIGHT_BANNER = RECORD_DARK_BANNER;
 
 const AccountSwitcherStore = findByPropsLazy("canAddAccount", "getAccounts");
 
@@ -29,15 +29,245 @@ type DownloadEntry = {
 let openExternalOriginal: ((url: string) => unknown) | null = null;
 let uncapInterval: number | null = null;
 let injectInterval: number | null = null;
+let switchAccountsHoverPanel: HTMLDivElement | null = null;
+let switchAccountsHideTimeout: number | null = null;
+let switchAccountsAnchor: HTMLElement | null = null;
 
-function isDarkTheme() {
-    return document.body.classList.contains("theme-dark");
+function cleanupLegacyInjectedElements() {
+    document.getElementById("record-switcher-token-login")?.remove();
+    document.getElementById("record-loading-branding")?.remove();
+    document.querySelectorAll(".record-inline-brand-icon,.record-surface-banner").forEach(el => el.remove());
 }
 
-function getBrandingAssets() {
+function clearSwitchAccountsHideTimeout() {
+    if (switchAccountsHideTimeout != null) {
+        clearTimeout(switchAccountsHideTimeout);
+        switchAccountsHideTimeout = null;
+    }
+}
+
+function hideSwitchAccountsHoverPanel() {
+    clearSwitchAccountsHideTimeout();
+    switchAccountsHoverPanel?.remove();
+    switchAccountsHoverPanel = null;
+    switchAccountsAnchor = null;
+}
+
+function scheduleHideSwitchAccountsHoverPanel() {
+    clearSwitchAccountsHideTimeout();
+    switchAccountsHideTimeout = window.setTimeout(() => {
+        hideSwitchAccountsHoverPanel();
+    }, 140);
+}
+
+function submitTokenLogin(rawToken: string, redirectToChannels = false) {
+    const token = rawToken.trim().replace(/^"|"$/g, "");
+    if (!token) {
+        showToast("Please paste a token", Toasts.Type.FAILURE);
+        return false;
+    }
+
+    localStorage.setItem("token", JSON.stringify(token));
+    showToast("Token set. Reloading...", Toasts.Type.SUCCESS);
+
+    setTimeout(() => {
+        if (redirectToChannels) {
+            location.href = "/channels/@me";
+        }
+        location.reload();
+    }, 250);
+
+    return true;
+}
+
+function isSwitchAccountsMenuItem(element: HTMLElement | null) {
+    if (!element) return false;
+
+    const item = element.closest("[class*='menuItem_']") as HTMLElement | null;
+    if (!item) return false;
+
+    const label = (item.querySelector("[class*='menuItemLabelText']") as HTMLElement | null)?.textContent
+        || item.textContent
+        || "";
+    const text = label.toLowerCase().replace(/\s+/g, " ").trim();
+    return text === "switch accounts" || text === "switch account";
+}
+
+function createSwitchAccountsHoverPanel(target: HTMLElement) {
+    hideSwitchAccountsHoverPanel();
+
+    const assets = getBrandingAssets(target);
+    const panel = document.createElement("div");
+    panel.id = "record-switch-accounts-hover-panel";
+    panel.style.position = "absolute";
+    panel.style.top = "-6px";
+    panel.style.left = "calc(100% + 8px)";
+    panel.style.zIndex = "10001";
+    panel.style.width = "286px";
+    panel.style.padding = "10px 10px 9px";
+    panel.style.border = "1px solid var(--border-subtle)";
+    panel.style.borderRadius = "10px";
+    panel.style.background = "var(--background-floating)";
+    panel.style.color = "var(--header-primary)";
+    panel.style.boxShadow = "var(--elevation-high, 0 10px 22px rgba(0,0,0,.35))";
+    panel.style.backdropFilter = "saturate(120%) blur(2px)";
+
+    const banner = document.createElement("img");
+    banner.src = assets.banner;
+    banner.alt = "ReCord";
+    banner.style.width = "100%";
+    banner.style.height = "26px";
+    banner.style.objectFit = "contain";
+    banner.style.background = "var(--background-secondary)";
+    banner.style.border = "1px solid var(--border-subtle)";
+    banner.style.borderRadius = "7px";
+    banner.style.marginBottom = "8px";
+
+    const titleRow = document.createElement("div");
+    titleRow.style.display = "flex";
+    titleRow.style.alignItems = "center";
+    titleRow.style.gap = "8px";
+    titleRow.style.marginBottom = "4px";
+
+    const icon = document.createElement("img");
+    icon.src = assets.icon;
+    icon.alt = "ReCord";
+    icon.style.width = "15px";
+    icon.style.height = "15px";
+    icon.style.borderRadius = "4px";
+
+    const title = document.createElement("div");
+    title.textContent = "Token Login";
+    title.style.fontWeight = "700";
+    title.style.fontSize = "13px";
+    title.style.color = "var(--header-primary)";
+
+    titleRow.append(icon, title);
+
+    const hint = document.createElement("div");
+    hint.textContent = "Quick login for switch account";
+    hint.style.color = "var(--text-muted)";
+    hint.style.fontSize = "11px";
+    hint.style.marginBottom = "8px";
+
+    const input = document.createElement("input");
+    input.type = "password";
+    input.placeholder = "Discord token";
+    input.style.width = "100%";
+    input.style.boxSizing = "border-box";
+    input.style.padding = "8px 10px";
+    input.style.border = "1px solid var(--border-subtle)";
+    input.style.borderRadius = "8px";
+    input.style.marginBottom = "7px";
+    input.style.background = "var(--input-background, var(--background-tertiary))";
+    input.style.color = "var(--header-primary)";
+    input.style.fontSize = "12px";
+
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.gap = "8px";
+
+    const loginButton = document.createElement("button");
+    loginButton.textContent = "Login";
+    loginButton.style.flex = "1";
+    loginButton.style.padding = "7px 10px";
+    loginButton.style.border = "1px solid var(--border-subtle)";
+    loginButton.style.borderRadius = "7px";
+    loginButton.style.background = "var(--button-secondary-background)";
+    loginButton.style.color = "var(--header-primary)";
+    loginButton.style.cursor = "pointer";
+    loginButton.style.fontSize = "12px";
+
+    const showButton = document.createElement("button");
+    showButton.textContent = "Show";
+    showButton.style.padding = "7px 10px";
+    showButton.style.border = "1px solid var(--border-subtle)";
+    showButton.style.borderRadius = "7px";
+    showButton.style.background = "var(--button-secondary-background)";
+    showButton.style.color = "var(--header-primary)";
+    showButton.style.cursor = "pointer";
+    showButton.style.fontSize = "12px";
+
+    showButton.onclick = () => {
+        input.type = input.type === "password" ? "text" : "password";
+        showButton.textContent = input.type === "password" ? "Show" : "Hide";
+    };
+
+    const submit = () => {
+        if (submitTokenLogin(input.value)) {
+            hideSwitchAccountsHoverPanel();
+        }
+    };
+
+    loginButton.onclick = submit;
+    input.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            submit();
+        }
+    });
+
+    row.append(loginButton, showButton);
+    panel.append(banner, titleRow, hint, input, row);
+
+    panel.addEventListener("mouseenter", clearSwitchAccountsHideTimeout);
+    panel.addEventListener("mouseleave", scheduleHideSwitchAccountsHoverPanel);
+
+    target.style.position = "relative";
+    target.append(panel);
+    switchAccountsHoverPanel = panel;
+    switchAccountsAnchor = target;
+
+    const rect = panel.getBoundingClientRect();
+    if (rect.right > window.innerWidth - 8) {
+        panel.style.left = "auto";
+        panel.style.right = "calc(100% + 8px)";
+    }
+}
+
+function onDocumentMouseOver(event: MouseEvent) {
+    const target = event.target as HTMLElement | null;
+    const item = target?.closest("[class*='menuItem_']") as HTMLElement | null;
+
+    if (!item || !isSwitchAccountsMenuItem(item)) return;
+    if (switchAccountsAnchor === item && switchAccountsHoverPanel) {
+        clearSwitchAccountsHideTimeout();
+        return;
+    }
+
+    createSwitchAccountsHoverPanel(item);
+}
+
+function onDocumentMouseOut(event: MouseEvent) {
+    if (!switchAccountsAnchor) return;
+
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    if (!switchAccountsAnchor.contains(target) && !switchAccountsHoverPanel?.contains(target)) return;
+
+    const related = event.relatedTarget as Node | null;
+    if (related && (switchAccountsAnchor.contains(related) || switchAccountsHoverPanel?.contains(related))) return;
+
+    scheduleHideSwitchAccountsHoverPanel();
+}
+
+function onDocumentClickHideSwitchAccountsPanel(event: MouseEvent) {
+    const target = event.target as Node | null;
+    if (switchAccountsHoverPanel?.contains(target)) return;
+    if (switchAccountsAnchor?.contains(target)) return;
+    hideSwitchAccountsHoverPanel();
+}
+
+function isDarkTheme(target?: HTMLElement | null) {
+    const scope = target || document.body;
+    const hasDarkScope = !!scope.closest?.(".theme-dark, .theme-darker");
+    return hasDarkScope || document.body.classList.contains("theme-dark") || document.body.classList.contains("theme-darker");
+}
+
+function getBrandingAssets(target?: HTMLElement | null) {
     return {
-        icon: isDarkTheme() ? RECORD_ICON : RECORD_LIGHT_ICON,
-        banner: isDarkTheme() ? RECORD_DARK_BANNER : RECORD_LIGHT_BANNER
+        icon: isDarkTheme(target) ? RECORD_ICON : RECORD_LIGHT_ICON,
+        banner: isDarkTheme(target) ? RECORD_DARK_BANNER : RECORD_LIGHT_BANNER
     };
 }
 
@@ -208,26 +438,91 @@ function injectTokenLogin() {
         show.textContent = input.type === "password" ? "Show" : "Hide";
     };
 
-    btn.onclick = () => {
-        const raw = input.value.trim();
-        if (!raw) {
-            showToast("Please paste a token", Toasts.Type.FAILURE);
-            return;
-        }
-
-        const token = raw.replace(/^"|"$/g, "");
-        localStorage.setItem("token", JSON.stringify(token));
-        showToast("Token set. Reloading...", Toasts.Type.SUCCESS);
-
-        setTimeout(() => {
-            location.href = "/channels/@me";
-            location.reload();
-        }, 250);
-    };
+    btn.onclick = () => submitTokenLogin(input.value, true);
 
     row.append(btn, show);
     card.append(banner, title, hint, input, row);
     document.body.append(card);
+}
+
+function injectManageAccountsTokenLogin() {
+    const modals = Array.from(document.querySelectorAll('[data-mana-component="modal"]')) as HTMLElement[];
+
+    for (const modal of modals) {
+        const heading = modal.querySelector("h1") as HTMLElement | null;
+        const title = heading?.textContent?.toLowerCase().trim() || "";
+        if (title !== "manage accounts") continue;
+
+        if (modal.querySelector("#record-manage-accounts-token-login")) continue;
+
+        const footerStack = modal.querySelector("footer [class*='stack_']") as HTMLElement | null;
+        if (!footerStack) continue;
+
+        const assets = getBrandingAssets(modal);
+
+        const block = document.createElement("div");
+        block.id = "record-manage-accounts-token-login";
+        block.style.width = "100%";
+        block.style.border = "1px solid var(--border-subtle)";
+        block.style.borderRadius = "10px";
+        block.style.padding = "8px";
+        block.style.background = "var(--background-secondary)";
+
+        const banner = document.createElement("img");
+        banner.src = assets.banner;
+        banner.alt = "ReCord";
+        banner.style.width = "100%";
+        banner.style.height = "22px";
+        banner.style.objectFit = "contain";
+        banner.style.background = "var(--background-tertiary)";
+        banner.style.border = "1px solid var(--border-subtle)";
+        banner.style.borderRadius = "7px";
+        banner.style.marginBottom = "7px";
+
+        const row = document.createElement("div");
+        row.style.display = "flex";
+        row.style.gap = "8px";
+        row.style.alignItems = "center";
+
+        const icon = document.createElement("img");
+        icon.src = assets.icon;
+        icon.alt = "icon";
+        icon.style.width = "14px";
+        icon.style.height = "14px";
+        icon.style.borderRadius = "4px";
+
+        const input = document.createElement("input");
+        input.type = "password";
+        input.placeholder = "Token login";
+        input.style.flex = "1";
+        input.style.minWidth = "0";
+        input.style.padding = "7px 9px";
+        input.style.border = "1px solid var(--border-subtle)";
+        input.style.borderRadius = "7px";
+        input.style.background = "var(--background-tertiary)";
+        input.style.color = "var(--header-primary)";
+
+        const login = document.createElement("button");
+        login.textContent = "Login";
+        login.style.padding = "7px 9px";
+        login.style.border = "1px solid var(--border-subtle)";
+        login.style.borderRadius = "7px";
+        login.style.background = "var(--button-secondary-background)";
+        login.style.color = "var(--header-primary)";
+        login.style.cursor = "pointer";
+
+        login.onclick = () => submitTokenLogin(input.value, false);
+        input.addEventListener("keydown", event => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                submitTokenLogin(input.value, false);
+            }
+        });
+
+        row.append(icon, input, login);
+        block.append(banner, row);
+        footerStack.append(block);
+    }
 }
 
 function applyDiscordIconBranding() {
@@ -257,15 +552,22 @@ export default definePlugin({
         applyUncapPatches();
         uncapInterval = window.setInterval(applyUncapPatches, 5000);
 
+        cleanupLegacyInjectedElements();
         applyDiscordIconBranding();
         injectTokenLogin();
+        injectManageAccountsTokenLogin();
         window.addEventListener("hashchange", injectTokenLogin);
         injectInterval = window.setInterval(() => {
+            cleanupLegacyInjectedElements();
             injectTokenLogin();
+            injectManageAccountsTokenLogin();
             applyDiscordIconBranding();
         }, 1200);
 
         document.addEventListener("click", onDocumentClick, true);
+        document.addEventListener("click", onDocumentClickHideSwitchAccountsPanel, true);
+        document.addEventListener("mouseover", onDocumentMouseOver, true);
+        document.addEventListener("mouseout", onDocumentMouseOut, true);
 
         const native = VencordNative?.native as { openExternal?: (url: string) => unknown; } | undefined;
         if (native?.openExternal && !openExternalOriginal) {
@@ -290,6 +592,9 @@ export default definePlugin({
 
         window.removeEventListener("hashchange", injectTokenLogin);
         document.removeEventListener("click", onDocumentClick, true);
+        document.removeEventListener("click", onDocumentClickHideSwitchAccountsPanel, true);
+        document.removeEventListener("mouseover", onDocumentMouseOver, true);
+        document.removeEventListener("mouseout", onDocumentMouseOut, true);
 
         const native = VencordNative?.native as { openExternal?: (url: string) => unknown; } | undefined;
         if (native && openExternalOriginal) {
@@ -298,5 +603,8 @@ export default definePlugin({
         }
 
         document.getElementById("record-token-login")?.remove();
+        document.getElementById("record-manage-accounts-token-login")?.remove();
+        hideSwitchAccountsHoverPanel();
+        cleanupLegacyInjectedElements();
     }
 });

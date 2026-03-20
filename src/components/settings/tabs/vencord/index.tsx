@@ -41,9 +41,9 @@ import { NotificationSection } from "./NotificationSettings";
 import { openReCordConsoleModal } from "./ReCordConsole";
 
 const RECORD_ICON = "vencord://assets/icon.png";
-const RECORD_LIGHT_ICON = "vencord://assets/light-theme-icon.png";
+const RECORD_LIGHT_ICON = RECORD_ICON;
 const RECORD_DARK_BANNER = "vencord://assets/dark-theme-logo.png";
-const RECORD_LIGHT_BANNER = "vencord://assets/light-theme-logo.png";
+const RECORD_LIGHT_BANNER = RECORD_DARK_BANNER;
 
 type KeysOfType<Object, Type> = {
     [K in keyof Object]: Object[K] extends Type ? K : never;

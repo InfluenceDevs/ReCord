@@ -692,66 +692,229 @@ function AdvancedTab() {
     );
 }
 
-// ─── MAIN OPSEC TAB ───────────────────────────────────────────────────────────
 // ─── SCREEN PRIVACY ──────────────────────────────────────────────────────────
 
 let privacyStyleEl: HTMLStyleElement | null = null;
 
-function applyPrivacyCSS(active: boolean) {
-    if (active) {
-        if (!privacyStyleEl) {
-            privacyStyleEl = document.createElement("style");
-            privacyStyleEl.id = "record-screen-privacy";
-            document.head.appendChild(privacyStyleEl);
-        }
-        privacyStyleEl.textContent = [
-            "[class*='timestamp_'] { filter: blur(6px) !important; transition: filter 0.2s !important; user-select: none !important; }",
-            "[class*='timestamp_']:hover { filter: blur(0) !important; user-select: text !important; }",
-        ].join("\n");
-    } else {
+type ScreenPrivacySettings = {
+    enabled: boolean;
+    hideTimestamps: boolean;
+    hideNames: boolean;
+    hideChannelNames: boolean;
+    hideAvatars: boolean;
+    blurPx: number;
+};
+
+function getScreenPrivacySettings(): ScreenPrivacySettings {
+    const s = loadStore();
+    return {
+        enabled: Boolean(s["screen.enabled"]),
+        hideTimestamps: Boolean(s["screen.hideTimestamps"]),
+        hideNames: Boolean(s["screen.hideNames"]),
+        hideChannelNames: Boolean(s["screen.hideChannelNames"]),
+        hideAvatars: Boolean(s["screen.hideAvatars"]),
+        blurPx: Number(s["screen.blurPx"] ?? 8),
+    };
+}
+
+function applyPrivacyCSS(settings: ScreenPrivacySettings) {
+    const shouldApply = settings.enabled && (settings.hideTimestamps || settings.hideNames || settings.hideChannelNames || settings.hideAvatars);
+
+    if (!shouldApply) {
         privacyStyleEl?.remove();
         privacyStyleEl = null;
+        return;
     }
+
+    if (!privacyStyleEl) {
+        privacyStyleEl = document.createElement("style");
+        privacyStyleEl.id = "record-screen-privacy";
+        document.head.appendChild(privacyStyleEl);
+    }
+
+    const blur = Math.max(3, Math.min(16, settings.blurPx));
+    const rules: string[] = [];
+
+    const addBlurRule = (selector: string) => {
+        rules.push(`${selector} { filter: blur(${blur}px) !important; transition: filter .15s ease !important; user-select: none !important; }`);
+        rules.push(`${selector}:hover { filter: blur(0) !important; user-select: text !important; }`);
+    };
+
+    if (settings.hideTimestamps) {
+        addBlurRule("[class*='timestamp']");
+        addBlurRule("time");
+        addBlurRule("[class*='edited_']");
+        addBlurRule("[class*='timeSeparator']");
+    }
+
+    if (settings.hideNames) {
+        addBlurRule("[class*='username']");
+        addBlurRule("[class*='userName']");
+        addBlurRule("[class*='displayName']");
+        addBlurRule("[class*='authorName']");
+    }
+
+    if (settings.hideChannelNames) {
+        addBlurRule("[class*='title']");
+        addBlurRule("[class*='channelName']");
+        addBlurRule("[class*='name_'][data-list-item-id]");
+    }
+
+    if (settings.hideAvatars) {
+        addBlurRule("img[class*='avatar']");
+        addBlurRule("[class*='avatar'] img");
+    }
+
+    privacyStyleEl.textContent = rules.join("\n");
 }
 
 function ScreenPrivacyTab() {
-    const [hideTs, setHideTs] = useSetting<boolean>("screen.hideTimestamps", false);
+    const [enabled, setEnabled] = useSetting<boolean>("screen.enabled", false);
+    const [hideTs, setHideTs] = useSetting<boolean>("screen.hideTimestamps", true);
+    const [hideNames, setHideNames] = useSetting<boolean>("screen.hideNames", false);
+    const [hideChannels, setHideChannels] = useSetting<boolean>("screen.hideChannelNames", false);
+    const [hideAvatars, setHideAvatars] = useSetting<boolean>("screen.hideAvatars", false);
+    const [blurPx, setBlurPx] = useSetting<number>("screen.blurPx", 8);
+
+    const currentSettings = React.useMemo<ScreenPrivacySettings>(() => ({
+        enabled,
+        hideTimestamps: hideTs,
+        hideNames,
+        hideChannelNames: hideChannels,
+        hideAvatars,
+        blurPx,
+    }), [enabled, hideTs, hideNames, hideChannels, hideAvatars, blurPx]);
 
     React.useEffect(() => {
-        applyPrivacyCSS(hideTs);
-    }, [hideTs]);
+        applyPrivacyCSS(currentSettings);
+    }, [currentSettings]);
 
-    const toggle = React.useCallback(() => {
-        const next = !hideTs;
-        setHideTs(next);
-        applyPrivacyCSS(next);
-    }, [hideTs, setHideTs]);
+    const toggleMaster = React.useCallback(() => setEnabled(!enabled), [enabled, setEnabled]);
+
+    const applyNow = React.useCallback(() => {
+        applyPrivacyCSS(currentSettings);
+        Alerts.show({ title: "Screen Privacy", body: "Privacy filters applied to the current UI.", confirmText: "OK" });
+    }, [currentSettings]);
 
     return (
         <div>
             <Forms.FormTitle tag="h5">Screen Privacy</Forms.FormTitle>
             <Forms.FormText className={Margins.bottom16} style={{ color: "var(--text-muted)" }}>
-                Hide sensitive information when streaming or taking screenshots. Hover over items to reveal them.
+                Hide sensitive information while streaming or taking screenshots. Hover any hidden element to reveal it.
             </Forms.FormText>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--border-faint)" }}>
+                <div style={{ flex: 1 }}>
+                    <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>Enable Screen Privacy</Forms.FormTitle>
+                    <Forms.FormText style={{ color: "var(--text-muted)", fontSize: 13 }}>
+                        Master switch for all privacy masking rules.
+                    </Forms.FormText>
+                </div>
+                <Button
+                    size="small"
+                    variant={enabled ? "primary" : "secondary"}
+                    onClick={toggleMaster}
+                    style={{ marginLeft: 16, minWidth: 60 }}
+                >
+                    {enabled ? "ON" : "OFF"}
+                </Button>
+            </div>
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--border-faint)" }}>
                 <div style={{ flex: 1 }}>
                     <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>Hide Timestamps</Forms.FormTitle>
                     <Forms.FormText style={{ color: "var(--text-muted)", fontSize: 13 }}>
-                        Blur all message timestamps so your timezone cannot be inferred from streams or screenshots. Hover over a timestamp to reveal it.
+                        Blur message timestamps and edit markers.
                     </Forms.FormText>
                 </div>
                 <Button
                     size="small"
                     variant={hideTs ? "primary" : "secondary"}
-                    onClick={toggle}
+                    onClick={() => setHideTs(!hideTs)}
                     style={{ marginLeft: 16, minWidth: 60 }}
                 >
                     {hideTs ? "ON" : "OFF"}
                 </Button>
             </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--border-faint)" }}>
+                <div style={{ flex: 1 }}>
+                    <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>Hide User Names</Forms.FormTitle>
+                    <Forms.FormText style={{ color: "var(--text-muted)", fontSize: 13 }}>
+                        Blur usernames and display names in chat and sidebars.
+                    </Forms.FormText>
+                </div>
+                <Button
+                    size="small"
+                    variant={hideNames ? "primary" : "secondary"}
+                    onClick={() => setHideNames(!hideNames)}
+                    style={{ marginLeft: 16, minWidth: 60 }}
+                >
+                    {hideNames ? "ON" : "OFF"}
+                </Button>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--border-faint)" }}>
+                <div style={{ flex: 1 }}>
+                    <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>Hide Channel/Guild Names</Forms.FormTitle>
+                    <Forms.FormText style={{ color: "var(--text-muted)", fontSize: 13 }}>
+                        Blur channel title areas and channel list names.
+                    </Forms.FormText>
+                </div>
+                <Button
+                    size="small"
+                    variant={hideChannels ? "primary" : "secondary"}
+                    onClick={() => setHideChannels(!hideChannels)}
+                    style={{ marginLeft: 16, minWidth: 60 }}
+                >
+                    {hideChannels ? "ON" : "OFF"}
+                </Button>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--border-faint)" }}>
+                <div style={{ flex: 1 }}>
+                    <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>Hide Avatars</Forms.FormTitle>
+                    <Forms.FormText style={{ color: "var(--text-muted)", fontSize: 13 }}>
+                        Blur user avatars and profile pictures.
+                    </Forms.FormText>
+                </div>
+                <Button
+                    size="small"
+                    variant={hideAvatars ? "primary" : "secondary"}
+                    onClick={() => setHideAvatars(!hideAvatars)}
+                    style={{ marginLeft: 16, minWidth: 60 }}
+                >
+                    {hideAvatars ? "ON" : "OFF"}
+                </Button>
+            </div>
+
+            <div style={{ paddingTop: 10 }}>
+                <Forms.FormTitle tag="h5">Blur Intensity</Forms.FormTitle>
+                <Forms.FormText style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 8 }}>
+                    Controls how strongly hidden elements are blurred ({blurPx}px).
+                </Forms.FormText>
+                <input
+                    type="range"
+                    min={3}
+                    max={16}
+                    step={1}
+                    value={blurPx}
+                    onChange={e => setBlurPx(Number(e.currentTarget.value))}
+                    style={{ width: "100%" }}
+                />
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                <Button size="small" variant="secondary" onClick={applyNow}>Apply Now</Button>
+                <Forms.FormText style={{ color: "var(--text-muted)", fontSize: 12, alignSelf: "center" }}>
+                    If something still shows, press Apply Now after opening the target screen.
+                </Forms.FormText>
+            </div>
         </div>
     );
 }
+
+applyPrivacyCSS(getScreenPrivacySettings());
 
 // ─── MAIN OPSEC TAB ───────────────────────────────────────────────────────────
 

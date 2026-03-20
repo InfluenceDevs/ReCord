@@ -5,6 +5,7 @@
  */
 
 import { NavContextMenuPatchCallback } from "@api/ContextMenu";
+import { DeleteIcon, PencilIcon } from "@components/Icons";
 import { updateMessage } from "@api/MessageUpdater";
 import { Devs } from "@utils/constants";
 import { ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalRoot, openModal } from "@utils/modal";
@@ -158,7 +159,8 @@ const patchMsgCtx: NavContextMenuPatchCallback = (children, { message }: { messa
         <Menu.MenuItem
             key="record-edit-local"
             id="record-edit-local"
-            label="✏️ Edit Locally (my view)"
+            label="Edit Locally"
+            icon={PencilIcon}
             action={() => {
                 const overrides = loadMsgOverrides();
                 const currentContent = overrides[key]?.content ?? (message.content as string) ?? "";
@@ -176,7 +178,8 @@ const patchMsgCtx: NavContextMenuPatchCallback = (children, { message }: { messa
             <Menu.MenuItem
                 key="record-clear-local-edit"
                 id="record-clear-local-edit"
-                label="🗑️ Clear Local Edit"
+                label="Clear Local Edit"
+                icon={DeleteIcon}
                 action={() => {
                     const data = loadMsgOverrides();
                     delete data[key];
@@ -200,7 +203,8 @@ const patchUserCtx: NavContextMenuPatchCallback = (children, { user }: { user: U
         <Menu.MenuItem
             key="record-override-name"
             id="record-override-name"
-            label="✏️ Override Display Name (local)"
+            label="Override Display Name"
+            icon={PencilIcon}
             action={() => {
                 openModal(props => (
                     <OverrideNameModal
@@ -215,7 +219,8 @@ const patchUserCtx: NavContextMenuPatchCallback = (children, { user }: { user: U
             <Menu.MenuItem
                 key="record-clear-name-override"
                 id="record-clear-name-override"
-                label="🗑️ Clear Name Override"
+                label="Clear Name Override"
+                icon={DeleteIcon}
                 action={() => {
                     const data = loadRawUserOverrides();
                     delete data[user.id];

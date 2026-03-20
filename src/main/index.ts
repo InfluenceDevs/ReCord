@@ -35,6 +35,9 @@ if (IS_VESKTOP || !IS_VANILLA) {
 
             if (url.endsWith("/")) url = url.slice(0, -1);
 
+            // Some callers use vencord://assets/x while others may use vencord:///assets/x.
+            if (!url.startsWith("/")) url = `/${url}`;
+
             if (url.startsWith("/assets/")) {
                 const assetPath = url.slice("/assets/".length);
                 const safeUrl = ensureSafePath(assetsDir, assetPath);

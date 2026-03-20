@@ -79,7 +79,8 @@ const enum SearchStatus {
     DISABLED,
     NEW,
     USER_PLUGINS,
-    API_PLUGINS
+    API_PLUGINS,
+    RECORD_PLUGINS
 }
 
 function ExcludedPluginsList({ search }: { search: string; }) {
@@ -167,6 +168,18 @@ function PluginSettings() {
     const onSearch = (query: string) => setSearchValue(prev => ({ ...prev, value: query }));
     const onStatusChange = (status: SearchStatus) => setSearchValue(prev => ({ ...prev, status }));
 
+    const isReCordPlugin = (plugin: typeof Plugins[keyof typeof Plugins]) => {
+        const name = plugin.name.toLowerCase();
+        const desc = plugin.description.toLowerCase();
+
+        if (name.includes("record") || name.includes("re-cord")) return true;
+        if (desc.includes("record") || desc.includes("re-cord")) return true;
+        if (plugin.tags?.some(t => t.toLowerCase().includes("record") || t.toLowerCase().includes("re-cord"))) return true;
+        if (plugin.authors?.some(a => a.name.toLowerCase().includes("rloxx") || a.name.toLowerCase().includes("record"))) return true;
+
+        return false;
+    };
+
     const pluginFilter = (plugin: typeof Plugins[keyof typeof Plugins]) => {
         const { status } = searchValue;
         const enabled = isPluginEnabled(plugin.name);
@@ -186,6 +199,9 @@ function PluginSettings() {
                 break;
             case SearchStatus.API_PLUGINS:
                 if (!plugin.name.endsWith("API")) return false;
+                break;
+            case SearchStatus.RECORD_PLUGINS:
+                if (!isReCordPlugin(plugin)) return false;
                 break;
         }
 
@@ -283,6 +299,7 @@ function PluginSettings() {
                                 { label: "Show New", value: SearchStatus.NEW },
                                 hasUserPlugins && { label: "Show UserPlugins", value: SearchStatus.USER_PLUGINS },
                                 { label: "Show API Plugins", value: SearchStatus.API_PLUGINS },
+                                { label: "Show ReCord Plugins", value: SearchStatus.RECORD_PLUGINS },
                             ].filter(isTruthy)}
                             serialize={String}
                             select={onStatusChange}
