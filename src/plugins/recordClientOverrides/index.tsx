@@ -1,17 +1,18 @@
 /*
  * Vencord, a Discord client mod
- * Copyright (c) 2026 Rloxx
+ * Copyright (c) 2026 Influence
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 import { NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { DeleteIcon, PencilIcon } from "@components/Icons";
 import { updateMessage } from "@api/MessageUpdater";
-import { Devs } from "@utils/constants";
 import { ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalRoot, openModal } from "@utils/modal";
 import definePlugin from "@utils/types";
 import type { Message, User } from "@vencord/discord-types";
 import { Button, FluxDispatcher, Forms, Menu, React, TextInput, UserStore } from "@webpack/common";
+
+const Influence = { name: "Influence", id: 0n };
 
 // ─── storage ─────────────────────────────────────────────────────────────────
 
@@ -285,7 +286,7 @@ function unpatchUserStore() {
 export default definePlugin({
     name: "RecordClientOverrides",
     description: "Locally edit messages and override user display names — changes are visible only to you, never sent to Discord.",
-    authors: [Devs.Rloxx],
+    authors: [Influence],
 
     contextMenus: {
         "message": patchMsgCtx,

@@ -1,15 +1,15 @@
 /*
  * Vencord, a Discord client mod
- * Copyright (c) 2026 Rloxx
+ * Copyright (c) 2026 Influence
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 import { definePluginSettings } from "@api/Settings";
-import { Devs } from "@utils/constants";
 import { Logger } from "@utils/Logger";
 import definePlugin, { OptionType } from "@utils/types";
 
 const logger = new Logger("RecordPlatformSpoof");
+const Influence = { name: "Influence", id: 0n };
 
 // ─── Platform profiles ────────────────────────────────────────────────────────
 
@@ -119,7 +119,7 @@ function unpatchSend() {
 export default definePlugin({
     name: "RecordPlatformSpoof",
     description: "Makes Discord think you are on a different platform (mobile iOS/Android or browser). Reconnect to Discord's gateway after changing the setting to apply.",
-    authors: [Devs.Rloxx],
+    authors: [Influence],
     tags: ["platform", "mobile", "spoof", "emulator"],
 
     settings,

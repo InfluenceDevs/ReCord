@@ -1,37 +1,71 @@
 /*
  * Vencord, a Discord client mod
- * Copyright (c) 2026 Rloxx
+ * Copyright (c) 2026 Influence
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { definePluginSettings } from "@api/Settings";
-import { Devs } from "@utils/constants";
 import { Logger } from "@utils/Logger";
 import definePlugin, { OptionType } from "@utils/types";
-import { Alerts, Constants, Menu, PermissionsBits, PermissionStore, RestAPI, showToast, Toasts, UserStore } from "@webpack/common";
+import { Alerts, ChannelStore, Constants, FluxDispatcher, Menu, PermissionsBits, PermissionStore, RestAPI, showToast, Toasts, UserStore } from "@webpack/common";
+import { findLazy } from "@webpack";
 
 const logger = new Logger("RecordPurger");
+const Influence = { name: "Influence", id: 0n };
+
+const HIDDEN_MESSAGES_KEY = "record_hidden_messages";
+
+type HiddenMessages = Record<string, Record<string, true>>;
+type PurgeAction = "delete" | "hide" | "both";
+type PrivateBulkAction = "close-dms" | "leave-groups" | "both";
+
+const ChannelTypes = findLazy(m => m.GROUP_DM === 3 && m.DM === 1) as { DM: number; GROUP_DM: number; };
 
 const settings = definePluginSettings({
     deleteDelay: {
         type: OptionType.SLIDER,
-        description: "Delay between each delete (ms). Lower = faster but more likely to get rate-limited.",
+        description: "Delay between each action (ms). Lower is faster but more likely to hit rate limits.",
         default: 500,
         markers: [200, 350, 500, 750, 1000, 1500],
     },
     skipPinned: {
         type: OptionType.BOOLEAN,
-        description: "Skip pinned messages when purging",
+        description: "Skip pinned messages when deleting/hiding",
         default: true,
     },
 });
 
-// ─── State ────────────────────────────────────────────────────────────────────
+let activeTask: { stop: () => void; } | null = null;
 
-let activePurge: { stop: () => void; } | null = null;
+function loadHiddenMessages(): HiddenMessages {
+    try { return JSON.parse(localStorage.getItem(HIDDEN_MESSAGES_KEY) ?? "{}"); } catch { return {}; }
+}
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+function saveHiddenMessages(data: HiddenMessages) {
+    try { localStorage.setItem(HIDDEN_MESSAGES_KEY, JSON.stringify(data)); } catch { /* noop */ }
+}
+
+function markMessageHidden(channelId: string, messageId: string) {
+    const data = loadHiddenMessages();
+    data[channelId] ??= {};
+    data[channelId][messageId] = true;
+    saveHiddenMessages(data);
+}
+
+function isMessageHidden(channelId: string, messageId: string) {
+    return !!loadHiddenMessages()[channelId]?.[messageId];
+}
+
+function hideMessageLocally(channelId: string, messageId: string) {
+    markMessageHidden(channelId, messageId);
+    FluxDispatcher.dispatch({ type: "MESSAGE_DELETE", channelId, id: messageId, mlDeleted: true });
+}
+
+function applyHiddenToMessage(channelId: string, messageId: string) {
+    if (!isMessageHidden(channelId, messageId)) return;
+    FluxDispatcher.dispatch({ type: "MESSAGE_DELETE", channelId, id: messageId, mlDeleted: true });
+}
 
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -61,31 +95,40 @@ async function deleteOneMessage(channelId: string, messageId: string): Promise<{
             const retryAfter = (e?.body?.retry_after ?? 1) as number;
             return { ok: false, retryAfterMs: Math.ceil(retryAfter * 1000) + 200 };
         }
-        // 403 / 404 — skip silently
         return { ok: true };
     }
 }
 
-// ─── Core purger ──────────────────────────────────────────────────────────────
+async function deleteWithRetry(channelId: string, messageId: string, stopped: () => boolean): Promise<boolean> {
+    let result = await deleteOneMessage(channelId, messageId);
+    while (!stopped() && !result.ok && result.retryAfterMs) {
+        showToast(`Rate limited – waiting ${(result.retryAfterMs / 1000).toFixed(1)}s...`, Toasts.Type.MESSAGE);
+        await sleep(result.retryAfterMs);
+        result = await deleteOneMessage(channelId, messageId);
+    }
+    return !stopped();
+}
 
-async function startPurge(channelId: string, onlyMine: boolean) {
-    if (activePurge) {
-        activePurge.stop();
-        activePurge = null;
+function actionLabel(action: PurgeAction) {
+    if (action === "delete") return "delete";
+    if (action === "hide") return "hide";
+    return "delete + hide";
+}
+
+async function startPurge(channelId: string, onlyMine: boolean, action: PurgeAction) {
+    if (activeTask) {
+        activeTask.stop();
+        activeTask = null;
     }
 
     let stopped = false;
-    activePurge = { stop: () => { stopped = true; } };
+    activeTask = { stop: () => { stopped = true; } };
 
     const myId = UserStore.getCurrentUser()?.id;
-    let deleted = 0;
+    let processed = 0;
     let before: string | undefined;
 
-    const toast = (msg: string, type = Toasts.Type.MESSAGE) => {
-        showToast(msg, type);
-    };
-
-    toast("Purger started – hold on...");
+    showToast(`Starting ${actionLabel(action)} task...`, Toasts.Type.MESSAGE);
 
     try {
         outer: while (!stopped) {
@@ -99,105 +142,180 @@ async function startPurge(channelId: string, onlyMine: boolean) {
                 if (onlyMine && msg.author?.id !== myId) continue;
                 if (settings.store.skipPinned && msg.pinned) continue;
 
-                // Attempt delete with automatic retry on 429
-                let result = await deleteOneMessage(channelId, msg.id);
-                while (!stopped && !result.ok && result.retryAfterMs) {
-                    toast(`Rate limited – waiting ${(result.retryAfterMs / 1000).toFixed(1)}s...`);
-                    await sleep(result.retryAfterMs);
-                    result = await deleteOneMessage(channelId, msg.id);
+                if (action === "delete" || action === "both") {
+                    const ok = await deleteWithRetry(channelId, msg.id, () => stopped);
+                    if (!ok) break outer;
+                }
+
+                if (!stopped && (action === "hide" || action === "both")) {
+                    hideMessageLocally(channelId, msg.id);
                 }
 
                 if (!stopped) {
-                    deleted++;
-                    if (deleted % 10 === 0) toast(`Deleted ${deleted} messages so far...`);
+                    processed++;
+                    if (processed % 10 === 0) {
+                        showToast(`Processed ${processed} messages...`, Toasts.Type.MESSAGE);
+                    }
                     await sleep(settings.store.deleteDelay);
                 }
             }
 
-            // If we got fewer than 100 messages – no more pages
             if (messages.length < 100) break;
-
-            // Small pause between batch fetches
             await sleep(300);
         }
     } catch (err) {
-        logger.error("Purge error:", err);
+        logger.error("Purge task error:", err);
     }
 
-    activePurge = null;
+    activeTask = null;
 
     if (stopped) {
-        toast(`Purge stopped after deleting ${deleted} messages.`, Toasts.Type.MESSAGE);
+        showToast(`Task stopped after ${processed} messages.`, Toasts.Type.MESSAGE);
     } else {
-        toast(`Purge complete! Deleted ${deleted} messages.`, Toasts.Type.SUCCESS);
+        showToast(`Done: ${processed} messages processed.`, Toasts.Type.SUCCESS);
     }
 }
 
-// ─── Context menu helpers ─────────────────────────────────────────────────────
+async function deleteChannelWithRetry(channelId: string, stopped: () => boolean): Promise<boolean> {
+    while (!stopped()) {
+        try {
+            await RestAPI.del({ url: `/channels/${channelId}` });
+            return true;
+        } catch (e: any) {
+            if (e?.status === 429) {
+                const retryAfterMs = Math.ceil(((e?.body?.retry_after ?? 1) as number) * 1000) + 200;
+                await sleep(retryAfterMs);
+                continue;
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
+async function startPrivateBulk(action: PrivateBulkAction) {
+    if (activeTask) {
+        activeTask.stop();
+        activeTask = null;
+    }
+
+    let stopped = false;
+    activeTask = { stop: () => { stopped = true; } };
+
+    const channels = ChannelStore.getSortedPrivateChannels();
+    const selected = channels.filter(c => {
+        if (action === "close-dms") return c.type === ChannelTypes.DM;
+        if (action === "leave-groups") return c.type === ChannelTypes.GROUP_DM;
+        return c.type === ChannelTypes.DM || c.type === ChannelTypes.GROUP_DM;
+    });
+
+    let processed = 0;
+    showToast(`Starting private channel cleanup (${selected.length} channels)...`, Toasts.Type.MESSAGE);
+
+    try {
+        for (const channel of selected) {
+            if (stopped) break;
+            const ok = await deleteChannelWithRetry(channel.id, () => stopped);
+            if (!ok) break;
+            processed++;
+            if (processed % 10 === 0) showToast(`Processed ${processed} channels...`, Toasts.Type.MESSAGE);
+            await sleep(settings.store.deleteDelay);
+        }
+    } catch (err) {
+        logger.error("Private bulk action failed:", err);
+    }
+
+    activeTask = null;
+    showToast(stopped ? `Stopped after ${processed} channels.` : `Done: ${processed} channels processed.`, stopped ? Toasts.Type.MESSAGE : Toasts.Type.SUCCESS);
+}
 
 function canDeleteAll(channel: any): boolean {
     return !!(channel && PermissionStore.can(PermissionsBits.MANAGE_MESSAGES, channel));
 }
 
+function isPrivateChannel(channel: any) {
+    return channel?.type === ChannelTypes.DM || channel?.type === ChannelTypes.GROUP_DM;
+}
+
+function confirmPurge(channel: any, onlyMine: boolean, action: PurgeAction) {
+    const scope = onlyMine ? "your" : "all";
+    Alerts.show({
+        title: "Purge / Hide Messages",
+        body: `Run ${actionLabel(action)} on ${scope} messages in this channel?`,
+        confirmText: "Run",
+        cancelText: "Cancel",
+        confirmColor: "vc-danger",
+        onConfirm: () => startPurge(channel.id, onlyMine, action),
+    });
+}
+
+function confirmPrivateBulk(action: PrivateBulkAction) {
+    const label = action === "close-dms"
+        ? "close all DMs"
+        : action === "leave-groups"
+            ? "leave all group DMs"
+            : "close all DMs and leave all group DMs";
+
+    Alerts.show({
+        title: "Private Channels",
+        body: `Are you sure you want to ${label}?`,
+        confirmText: "Run",
+        cancelText: "Cancel",
+        confirmColor: "vc-danger",
+        onConfirm: () => startPrivateBulk(action),
+    });
+}
+
 function buildMenuItems(channel: any) {
     const items: JSX.Element[] = [];
-    const isRunning = activePurge !== null;
+    const running = activeTask !== null;
+    const privateChannel = isPrivateChannel(channel);
 
-    if (isRunning) {
+    if (running) {
         items.push(
             <Menu.MenuItem
-                key="record-purger-stop"
-                id="record-purger-stop"
-                label="⏹  Stop Purge"
+                key="record-task-stop"
+                id="record-task-stop"
+                label="Stop Active Task"
                 color="danger"
                 action={() => {
-                    activePurge?.stop();
-                    activePurge = null;
-                    showToast("Purge stopped.", Toasts.Type.MESSAGE);
+                    activeTask?.stop();
+                    activeTask = null;
+                    showToast("Task stopped.", Toasts.Type.MESSAGE);
                 }}
             />
         );
+
         return items;
     }
 
     items.push(
-        <Menu.MenuItem
-            key="record-purger-mine"
-            id="record-purger-mine"
-            label="🗑  Purge My Messages"
-            color="danger"
-            action={() => confirmPurge(channel, true)}
-        />
+        <Menu.MenuItem key="record-my-delete" id="record-my-delete" label="Purge My Messages" color="danger" action={() => confirmPurge(channel, true, "delete")} />,
+        <Menu.MenuItem key="record-my-hide" id="record-my-hide" label="Hide My Messages" action={() => confirmPurge(channel, true, "hide")} />,
+        <Menu.MenuItem key="record-my-both" id="record-my-both" label="Purge + Hide My Messages" color="danger" action={() => confirmPurge(channel, true, "both")} />,
     );
 
-    if (canDeleteAll(channel)) {
+    if (canDeleteAll(channel) || privateChannel) {
         items.push(
-            <Menu.MenuItem
-                key="record-purger-all"
-                id="record-purger-all"
-                label="🗑  Purge ALL Messages"
-                color="danger"
-                action={() => confirmPurge(channel, false)}
-            />
+            <Menu.MenuSeparator key="record-sep-all" />,
+            <Menu.MenuItem key="record-all-delete" id="record-all-delete" label="Purge All Messages" color="danger" action={() => confirmPurge(channel, false, "delete")} />,
+            <Menu.MenuItem key="record-all-hide" id="record-all-hide" label="Hide All Messages" action={() => confirmPurge(channel, false, "hide")} />,
+            <Menu.MenuItem key="record-all-both" id="record-all-both" label="Purge + Hide All Messages" color="danger" action={() => confirmPurge(channel, false, "both")} />,
+        );
+    }
+
+    if (privateChannel) {
+        items.push(
+            <Menu.MenuSeparator key="record-sep-private" />,
+            <Menu.MenuItem key="record-close-all-dms" id="record-close-all-dms" label="Close All DMs" color="danger" action={() => confirmPrivateBulk("close-dms")} />,
+            <Menu.MenuItem key="record-leave-all-groups" id="record-leave-all-groups" label="Leave All Group DMs" color="danger" action={() => confirmPrivateBulk("leave-groups")} />,
+            <Menu.MenuItem key="record-close-and-leave" id="record-close-and-leave" label="Close DMs + Leave Groups" color="danger" action={() => confirmPrivateBulk("both")} />,
         );
     }
 
     return items;
 }
-
-function confirmPurge(channel: any, onlyMine: boolean) {
-    const scope = onlyMine ? "your" : "ALL";
-    Alerts.show({
-        title: "Purge Messages",
-        body: `Delete ${scope} messages in this channel? This is irreversible and may take a while.`,
-        confirmText: "Purge",
-        cancelText: "Cancel",
-        confirmColor: "vc-danger",
-        onConfirm: () => startPurge(channel.id, onlyMine),
-    });
-}
-
-// ─── Context menu patches ─────────────────────────────────────────────────────
 
 const patchChannelCtx: NavContextMenuPatchCallback = (children, { channel }) => {
     if (!channel?.id) return;
@@ -205,11 +323,7 @@ const patchChannelCtx: NavContextMenuPatchCallback = (children, { channel }) => 
     if (!items.length) return;
 
     const group = findGroupChildrenByChildId("mark-channel-read", children) ?? children;
-    group.push(
-        <Menu.MenuGroup>
-            {items}
-        </Menu.MenuGroup>
-    );
+    group.push(<Menu.MenuGroup>{items}</Menu.MenuGroup>);
 };
 
 const patchUserCtx: NavContextMenuPatchCallback = (children, { channel }) => {
@@ -217,20 +331,24 @@ const patchUserCtx: NavContextMenuPatchCallback = (children, { channel }) => {
     const items = buildMenuItems(channel);
     if (!items.length) return;
 
-    children.push(
-        <Menu.MenuGroup>
-            {items}
-        </Menu.MenuGroup>
-    );
+    children.push(<Menu.MenuGroup>{items}</Menu.MenuGroup>);
 };
 
-// ─── Plugin ───────────────────────────────────────────────────────────────────
+const onMessagesLoaded = ({ channelId, messages }: { channelId: string; messages?: Array<{ id: string }>; }) => {
+    if (!messages?.length) return;
+    for (const message of messages) applyHiddenToMessage(channelId, message.id);
+};
+
+const onMessageCreate = ({ channelId, message }: { channelId: string; message?: { id: string }; }) => {
+    if (!message?.id) return;
+    applyHiddenToMessage(channelId, message.id);
+};
 
 export default definePlugin({
     name: "RecordPurger",
-    description: "Bulk-delete messages in any channel with automatic rate-limit handling and progress reporting.",
-    authors: [Devs.Rloxx],
-    tags: ["purge", "delete", "messages", "bulk"],
+    description: "Bulk purge/hide messages, close all DMs, and leave all group DMs with rate-limit handling.",
+    authors: [Influence],
+    tags: ["purge", "hide", "messages", "dm", "group"],
 
     settings,
 
@@ -241,10 +359,18 @@ export default definePlugin({
         "user-context": patchUserCtx,
     },
 
+    start() {
+        FluxDispatcher.subscribe("LOAD_MESSAGES_SUCCESS", onMessagesLoaded);
+        FluxDispatcher.subscribe("MESSAGE_CREATE", onMessageCreate);
+    },
+
     stop() {
-        if (activePurge) {
-            activePurge.stop();
-            activePurge = null;
+        if (activeTask) {
+            activeTask.stop();
+            activeTask = null;
         }
+
+        FluxDispatcher.unsubscribe("LOAD_MESSAGES_SUCCESS", onMessagesLoaded);
+        FluxDispatcher.unsubscribe("MESSAGE_CREATE", onMessageCreate);
     },
 });

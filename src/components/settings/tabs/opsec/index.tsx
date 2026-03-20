@@ -1,6 +1,6 @@
 ﻿/*
  * Vencord, a Discord client mod
- * Copyright (c) 2026 Rloxx
+ * Copyright (c) 2026 Influence
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -698,6 +698,7 @@ let privacyStyleEl: HTMLStyleElement | null = null;
 
 type ScreenPrivacySettings = {
     enabled: boolean;
+    mode: "blur" | "hide";
     hideTimestamps: boolean;
     hideNames: boolean;
     hideChannelNames: boolean;
@@ -709,6 +710,7 @@ function getScreenPrivacySettings(): ScreenPrivacySettings {
     const s = loadStore();
     return {
         enabled: Boolean(s["screen.enabled"]),
+        mode: (s["screen.mode"] === "hide" ? "hide" : "blur") as "blur" | "hide",
         hideTimestamps: Boolean(s["screen.hideTimestamps"]),
         hideNames: Boolean(s["screen.hideNames"]),
         hideChannelNames: Boolean(s["screen.hideChannelNames"]),
@@ -735,34 +737,46 @@ function applyPrivacyCSS(settings: ScreenPrivacySettings) {
     const blur = Math.max(3, Math.min(16, settings.blurPx));
     const rules: string[] = [];
 
-    const addBlurRule = (selector: string) => {
+    const addMaskRule = (selector: string, avatarLike = false) => {
+        if (settings.mode === "hide") {
+            if (avatarLike) {
+                rules.push(`${selector} { opacity: 0 !important; transition: opacity .15s ease !important; }`);
+                rules.push(`${selector}:hover { opacity: 1 !important; }`);
+            } else {
+                rules.push(`${selector} { color: transparent !important; text-shadow: none !important; transition: color .15s ease !important; user-select: none !important; }`);
+                rules.push(`${selector}::before, ${selector}::after { color: transparent !important; text-shadow: none !important; }`);
+                rules.push(`${selector}:hover, ${selector}:hover::before, ${selector}:hover::after { color: inherit !important; }`);
+            }
+            return;
+        }
+
         rules.push(`${selector} { filter: blur(${blur}px) !important; transition: filter .15s ease !important; user-select: none !important; }`);
         rules.push(`${selector}:hover { filter: blur(0) !important; user-select: text !important; }`);
     };
 
     if (settings.hideTimestamps) {
-        addBlurRule("[class*='timestamp']");
-        addBlurRule("time");
-        addBlurRule("[class*='edited_']");
-        addBlurRule("[class*='timeSeparator']");
+        addMaskRule("[class*='timestamp']");
+        addMaskRule("time");
+        addMaskRule("[class*='edited_']");
+        addMaskRule("[class*='timeSeparator']");
     }
 
     if (settings.hideNames) {
-        addBlurRule("[class*='username']");
-        addBlurRule("[class*='userName']");
-        addBlurRule("[class*='displayName']");
-        addBlurRule("[class*='authorName']");
+        addMaskRule("[class*='username']");
+        addMaskRule("[class*='userName']");
+        addMaskRule("[class*='displayName']");
+        addMaskRule("[class*='authorName']");
     }
 
     if (settings.hideChannelNames) {
-        addBlurRule("[class*='title']");
-        addBlurRule("[class*='channelName']");
-        addBlurRule("[class*='name_'][data-list-item-id]");
+        addMaskRule("[class*='title']");
+        addMaskRule("[class*='channelName']");
+        addMaskRule("[class*='name_'][data-list-item-id]");
     }
 
     if (settings.hideAvatars) {
-        addBlurRule("img[class*='avatar']");
-        addBlurRule("[class*='avatar'] img");
+        addMaskRule("img[class*='avatar']", true);
+        addMaskRule("[class*='avatar'] img", true);
     }
 
     privacyStyleEl.textContent = rules.join("\n");
@@ -770,6 +784,7 @@ function applyPrivacyCSS(settings: ScreenPrivacySettings) {
 
 function ScreenPrivacyTab() {
     const [enabled, setEnabled] = useSetting<boolean>("screen.enabled", false);
+    const [mode, setMode] = useSetting<"blur" | "hide">("screen.mode", "blur");
     const [hideTs, setHideTs] = useSetting<boolean>("screen.hideTimestamps", true);
     const [hideNames, setHideNames] = useSetting<boolean>("screen.hideNames", false);
     const [hideChannels, setHideChannels] = useSetting<boolean>("screen.hideChannelNames", false);
@@ -778,12 +793,13 @@ function ScreenPrivacyTab() {
 
     const currentSettings = React.useMemo<ScreenPrivacySettings>(() => ({
         enabled,
+        mode,
         hideTimestamps: hideTs,
         hideNames,
         hideChannelNames: hideChannels,
         hideAvatars,
         blurPx,
-    }), [enabled, hideTs, hideNames, hideChannels, hideAvatars, blurPx]);
+    }), [enabled, mode, hideTs, hideNames, hideChannels, hideAvatars, blurPx]);
 
     React.useEffect(() => {
         applyPrivacyCSS(currentSettings);
@@ -822,9 +838,22 @@ function ScreenPrivacyTab() {
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--border-faint)" }}>
                 <div style={{ flex: 1 }}>
+                    <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>Mask Mode</Forms.FormTitle>
+                    <Forms.FormText style={{ color: "var(--text-muted)", fontSize: 13 }}>
+                        Choose whether protected data should be blurred or completely hidden.
+                    </Forms.FormText>
+                </div>
+                <div style={{ display: "flex", gap: 8, marginLeft: 16 }}>
+                    <Button size="small" variant={mode === "blur" ? "primary" : "secondary"} onClick={() => setMode("blur")}>Blur</Button>
+                    <Button size="small" variant={mode === "hide" ? "primary" : "secondary"} onClick={() => setMode("hide")}>Hide</Button>
+                </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--border-faint)" }}>
+                <div style={{ flex: 1 }}>
                     <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>Hide Timestamps</Forms.FormTitle>
                     <Forms.FormText style={{ color: "var(--text-muted)", fontSize: 13 }}>
-                        Blur message timestamps and edit markers.
+                        Protect message timestamps and edit markers.
                     </Forms.FormText>
                 </div>
                 <Button
