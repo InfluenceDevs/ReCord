@@ -1,12 +1,13 @@
 /*
  * Vencord, a Discord client mod
- * Copyright (c) 2026 Rloxx
+ * Copyright (c) 2026 Influence
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { addServerListElement, removeServerListElement, ServerListRenderPosition } from "@api/ServerList";
+import { TextButton } from "@components/Button";
 import { findByProps, findByPropsLazy } from "@webpack";
-import { showToast, Toasts } from "@webpack/common";
-import { Devs } from "@utils/constants";
+import { React, showToast, Toasts, UserStore } from "@webpack/common";
 import { Logger } from "@utils/Logger";
 import definePlugin from "@utils/types";
 
@@ -16,8 +17,11 @@ const RECORD_ICON = "vencord://assets/icon.png";
 const RECORD_LIGHT_ICON = RECORD_ICON;
 const RECORD_DARK_BANNER = "vencord://assets/dark-theme-logo.png";
 const RECORD_LIGHT_BANNER = RECORD_DARK_BANNER;
+const MAX_SWITCH_ACCOUNTS = 10;
 
 const AccountSwitcherStore = findByPropsLazy("canAddAccount", "getAccounts");
+const AccountSwitcherApi = findByPropsLazy("canAddAccount", "switchAccount");
+const Influence = { name: "Influence", id: 0n };
 
 type DownloadEntry = {
     ts: number;
@@ -328,23 +332,81 @@ function onDocumentClick(e: MouseEvent) {
 function applyUncapPatches() {
     try {
         const constants = findByProps("MAX_ACCOUNTS") as Record<string, unknown> | undefined;
-        if (constants && typeof constants.MAX_ACCOUNTS === "number" && (constants.MAX_ACCOUNTS as number) < 100) {
-            constants.MAX_ACCOUNTS = 100;
+        if (constants && typeof constants.MAX_ACCOUNTS === "number" && (constants.MAX_ACCOUNTS as number) < MAX_SWITCH_ACCOUNTS) {
+            constants.MAX_ACCOUNTS = MAX_SWITCH_ACCOUNTS;
         }
 
         const switcher = AccountSwitcherStore as Record<string, unknown> | undefined;
         if (switcher && typeof switcher.canAddAccount === "function") {
-            switcher.canAddAccount = () => true;
+            switcher.canAddAccount = () => {
+                const list = (switcher.getAccounts as any)?.() ?? [];
+                return list.length < MAX_SWITCH_ACCOUNTS;
+            };
         }
 
         const accountApi = findByProps("canAddAccount", "switchAccount") as Record<string, unknown> | undefined;
         if (accountApi && typeof accountApi.canAddAccount === "function") {
-            accountApi.canAddAccount = () => true;
+            accountApi.canAddAccount = () => {
+                const list = (AccountSwitcherStore as any)?.getAccounts?.() ?? [];
+                return list.length < MAX_SWITCH_ACCOUNTS;
+            };
         }
     } catch (err) {
         logger.error("Failed to patch account switching limits", err);
     }
 }
+
+function trySwitchAccount(account: any) {
+    const api = AccountSwitcherApi as any;
+    const candidates = [account?.id, account?.accountId, account?.userId, account?.uid].filter(Boolean);
+
+    for (const key of candidates) {
+        try {
+            api?.switchAccount?.(key);
+            return true;
+        } catch { /* noop */ }
+    }
+
+    return false;
+}
+
+function openAccountCenterPrompt() {
+    const accounts = ((AccountSwitcherStore as any)?.getAccounts?.() ?? []) as any[];
+    if (!accounts.length) {
+        showToast("No connected accounts found in Discord's account switcher.", Toasts.Type.MESSAGE);
+        return;
+    }
+
+    const lines = accounts.slice(0, MAX_SWITCH_ACCOUNTS).map((account, idx) => {
+        const userId = account?.userId ?? account?.id;
+        const user = userId ? UserStore.getUser(userId) : null;
+        const label = user ? `${user.globalName ?? user.username} (${user.id})` : `${account?.name ?? "Account"}`;
+        return `${idx + 1}. ${label}`;
+    });
+
+    const input = prompt(
+        `Account Center\n\nConnected accounts (max ${MAX_SWITCH_ACCOUNTS}):\n${lines.join("\n")}\n\nEnter account number to switch:`
+    );
+    if (!input) return;
+
+    const index = Number(input) - 1;
+    if (!Number.isInteger(index) || index < 0 || index >= accounts.length) {
+        showToast("Invalid account selection.", Toasts.Type.FAILURE);
+        return;
+    }
+
+    if (trySwitchAccount(accounts[index])) {
+        showToast("Switching account...", Toasts.Type.SUCCESS);
+    } else {
+        showToast("Could not switch account from Account Center.", Toasts.Type.FAILURE);
+    }
+}
+
+const AccountCenterButton = () => React.createElement(TextButton, {
+    variant: "secondary",
+    onClick: openAccountCenterPrompt,
+    className: "vc-ranb-button"
+}, "Account Center");
 
 function injectTokenLogin() {
     if (location.pathname !== "/login") return;
@@ -544,30 +606,26 @@ function applyDiscordIconBranding() {
 
 export default definePlugin({
     name: "AuthEnhancer",
-    description: "Adds token login on login screen, removes account switching limits, and tracks download history.",
-    authors: [Devs.Rloxx],
-    tags: ["token", "login", "account", "switcher", "download", "history", "record"],
+    description: "Adds a sidebar Account Center, improves account switching (up to 10), and tracks download history.",
+    authors: [Influence],
+    tags: ["account", "switcher", "download", "history", "record"],
+    dependencies: ["ServerListAPI"],
+
+    renderAccountCenterButton: AccountCenterButton,
 
     start() {
         applyUncapPatches();
         uncapInterval = window.setInterval(applyUncapPatches, 5000);
+        addServerListElement(ServerListRenderPosition.Above, this.renderAccountCenterButton);
 
         cleanupLegacyInjectedElements();
         applyDiscordIconBranding();
-        injectTokenLogin();
-        injectManageAccountsTokenLogin();
-        window.addEventListener("hashchange", injectTokenLogin);
         injectInterval = window.setInterval(() => {
             cleanupLegacyInjectedElements();
-            injectTokenLogin();
-            injectManageAccountsTokenLogin();
             applyDiscordIconBranding();
-        }, 1200);
+        }, 2000);
 
         document.addEventListener("click", onDocumentClick, true);
-        document.addEventListener("click", onDocumentClickHideSwitchAccountsPanel, true);
-        document.addEventListener("mouseover", onDocumentMouseOver, true);
-        document.addEventListener("mouseout", onDocumentMouseOut, true);
 
         const native = VencordNative?.native as { openExternal?: (url: string) => unknown; } | undefined;
         if (native?.openExternal && !openExternalOriginal) {
@@ -590,11 +648,8 @@ export default definePlugin({
             injectInterval = null;
         }
 
-        window.removeEventListener("hashchange", injectTokenLogin);
         document.removeEventListener("click", onDocumentClick, true);
-        document.removeEventListener("click", onDocumentClickHideSwitchAccountsPanel, true);
-        document.removeEventListener("mouseover", onDocumentMouseOver, true);
-        document.removeEventListener("mouseout", onDocumentMouseOut, true);
+        removeServerListElement(ServerListRenderPosition.Above, this.renderAccountCenterButton);
 
         const native = VencordNative?.native as { openExternal?: (url: string) => unknown; } | undefined;
         if (native && openExternalOriginal) {
