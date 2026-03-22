@@ -4,6 +4,9 @@
 !include "nsDialogs.nsh"
 !include "WinMessages.nsh"
 
+!define MIN_WIN_BUILD 10240
+!define WIN11_BUILD 22000
+
 !ifndef PRODUCT_NAME
   !define PRODUCT_NAME "ReCord"
 !endif
@@ -36,7 +39,7 @@ Unicode true
 
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "Welcome to ReCord Setup"
-!define MUI_WELCOMEPAGE_TEXT "A modern installer for ReCord with Install, Repair and Uninstall actions.$\r$\n$\r$\nIt can auto-detect Discord Stable/PTB/Canary and supports custom locations."
+!define MUI_WELCOMEPAGE_TEXT "A polished ReCord installer for Windows 10 and Windows 11.$\r$\n$\r$\nChoose Install, Repair, or Uninstall and target Discord Stable/PTB/Canary automatically, or pick a custom location."
 !define MUI_FINISHPAGE_TITLE "ReCord Setup Complete"
 !define MUI_FINISHPAGE_TEXT "ReCord files were installed successfully. Use the selected action to patch Discord now if enabled."
 
@@ -63,6 +66,9 @@ Var BrowseButton
 
 Var ActionFlag
 Var CustomLocationText
+Var WindowsInfoLabel
+Var OsBuildNumber
+Var IsWin11
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
@@ -106,6 +112,7 @@ SectionEnd
 Function ApplyDarkStyle
   SetCtlColors $LabelTitle "FFFFFF" "1D1F24"
   SetCtlColors $LabelDesc "B9C0CC" "1D1F24"
+  SetCtlColors $WindowsInfoLabel "9CD67A" "1D1F24"
 FunctionEnd
 
 Function ToggleCustomLocationControls
@@ -150,44 +157,51 @@ Function OptionsPageCreate
   ${NSD_CreateLabel} 0 34u 100% 12u "Discord Targets"
   Pop $LabelDesc
 
-  ${NSD_CreateCheckbox} 0 48u 32% 12u "Auto"
+  ${If} $IsWin11 == 1
+    ${NSD_CreateLabel} 0 46u 100% 12u "Detected: Windows 11 (fully supported)"
+  ${Else}
+    ${NSD_CreateLabel} 0 46u 100% 12u "Detected: Windows 10 (fully supported)"
+  ${EndIf}
+  Pop $WindowsInfoLabel
+
+  ${NSD_CreateCheckbox} 0 62u 32% 12u "Auto"
   Pop $BranchAuto
   ${NSD_SetState} $BranchAuto ${BST_CHECKED}
 
-  ${NSD_CreateCheckbox} 34% 48u 32% 12u "Stable"
+  ${NSD_CreateCheckbox} 34% 62u 32% 12u "Stable"
   Pop $BranchStable
   ${If} ${FileExists} "$LOCALAPPDATA\\Discord\\*"
     ${NSD_SetState} $BranchStable ${BST_CHECKED}
   ${EndIf}
 
-  ${NSD_CreateCheckbox} 68% 48u 32% 12u "PTB"
+  ${NSD_CreateCheckbox} 68% 62u 32% 12u "PTB"
   Pop $BranchPtb
   ${If} ${FileExists} "$LOCALAPPDATA\\DiscordPTB\\*"
     ${NSD_SetState} $BranchPtb ${BST_CHECKED}
   ${EndIf}
 
-  ${NSD_CreateCheckbox} 0 62u 32% 12u "Canary"
+  ${NSD_CreateCheckbox} 0 76u 32% 12u "Canary"
   Pop $BranchCanary
   ${If} ${FileExists} "$LOCALAPPDATA\\DiscordCanary\\*"
     ${NSD_SetState} $BranchCanary ${BST_CHECKED}
   ${EndIf}
 
-  ${NSD_CreateCheckbox} 0 78u 100% 12u "Use custom Discord location"
+  ${NSD_CreateCheckbox} 0 92u 100% 12u "Use custom Discord location"
   Pop $UseCustomLocation
   ${NSD_OnClick} $UseCustomLocation ToggleCustomLocationControls
 
-  ${NSD_CreateText} 0 94u 78% 12u "$LOCALAPPDATA\\Discord"
+  ${NSD_CreateText} 0 108u 78% 12u "$LOCALAPPDATA\\Discord"
   Pop $CustomLocation
 
-  ${NSD_CreateButton} 80% 94u 20% 12u "Browse"
+  ${NSD_CreateButton} 80% 108u 20% 12u "Browse"
   Pop $BrowseButton
   ${NSD_OnClick} $BrowseButton BrowseForLocation
 
-  ${NSD_CreateCheckbox} 0 114u 100% 12u "Run selected action now"
+  ${NSD_CreateCheckbox} 0 128u 100% 12u "Run selected action now"
   Pop $RunActionNow
   ${NSD_SetState} $RunActionNow ${BST_CHECKED}
 
-  ${NSD_CreateCheckbox} 0 128u 100% 12u "Open install folder after setup"
+  ${NSD_CreateCheckbox} 0 142u 100% 12u "Open install folder after setup"
   Pop $OpenFolderAfter
 
   Call ToggleCustomLocationControls
@@ -232,6 +246,9 @@ Function .onInstSuccess
     Return
   ${EndIf}
 
+  System::Call 'Kernel32::SetEnvironmentVariable(t, t) i("RECORD_USER_DATA_DIR", "$INSTDIR\\app")'
+  System::Call 'Kernel32::SetEnvironmentVariable(t, t) i("RECORD_DEV_INSTALL", "1")'
+  ; Backward-compat environment names expected by upstream installer binaries.
   System::Call 'Kernel32::SetEnvironmentVariable(t, t) i("VENCORD_USER_DATA_DIR", "$INSTDIR\\app")'
   System::Call 'Kernel32::SetEnvironmentVariable(t, t) i("VENCORD_DEV_INSTALL", "1")'
 
@@ -277,6 +294,21 @@ Function .onInstSuccess
       Call RunActionForCustomLocation
     ${EndIf}
   ${EndIf}
+FunctionEnd
+
+Function .onInit
+  ReadRegStr $OsBuildNumber HKLM "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" "CurrentBuildNumber"
+  ${If} $OsBuildNumber == ""
+    StrCpy $OsBuildNumber "0"
+  ${EndIf}
+
+  IntCmp $OsBuildNumber ${MIN_WIN_BUILD} +3 0 +3
+    MessageBox MB_ICONSTOP "ReCord Setup requires Windows 10 or newer. Current build: $OsBuildNumber"
+    Abort
+
+  StrCpy $IsWin11 0
+  IntCmp $OsBuildNumber ${WIN11_BUILD} 0 +2 +2
+    StrCpy $IsWin11 1
 FunctionEnd
 
 Section "Uninstall"

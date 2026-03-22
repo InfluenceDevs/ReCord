@@ -8,18 +8,42 @@ import { Button } from "@components/Button";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { Margins } from "@utils/margins";
 import { findByPropsLazy } from "@webpack";
-import { Forms, React, Text, UserStore } from "@webpack/common";
+import { Forms, React, Text, UserStore, useStateFromStores } from "@webpack/common";
 
 const AccountSwitcherStore = findByPropsLazy("canAddAccount", "getAccounts");
 const AccountSwitcherApi = findByPropsLazy("canAddAccount", "switchAccount");
 
-function switchToAccount(account: any) {
+function getAccountsSafe() {
+    const getAccounts = (AccountSwitcherStore as any)?.getAccounts;
+    if (typeof getAccounts !== "function") return null;
+
+    try {
+        const next = getAccounts();
+        return Array.isArray(next) ? next : [];
+    } catch {
+        return [];
+    }
+}
+
+async function switchToAccount(account: any) {
     const api = AccountSwitcherApi as any;
     const ids = [account?.id, account?.accountId, account?.userId, account?.uid].filter(Boolean);
+    const methods = ["switchAccount", "switchToAccount", "setActiveAccount"];
 
-    for (const id of ids) {
+    for (const method of methods) {
+        if (typeof api?.[method] !== "function") continue;
+
+        for (const id of ids) {
+            try {
+                await Promise.resolve(api[method](id));
+                return true;
+            } catch {
+                // noop
+            }
+        }
+
         try {
-            api?.switchAccount?.(id);
+            await Promise.resolve(api[method](account));
             return true;
         } catch {
             // noop
@@ -30,29 +54,31 @@ function switchToAccount(account: any) {
 }
 
 function AccountCenterTab() {
-    const [accounts, setAccounts] = React.useState<any[]>([]);
-    const [apiReady, setApiReady] = React.useState(true);
+    const [status, setStatus] = React.useState("");
+    const [isSwitching, setIsSwitching] = React.useState(false);
 
-    const refresh = React.useCallback(() => {
-        const getAccounts = (AccountSwitcherStore as any)?.getAccounts;
-        if (typeof getAccounts !== "function") {
-            setApiReady(false);
-            setAccounts([]);
-            return;
-        }
-
-        setApiReady(true);
-        const next = (getAccounts() ?? []) as any[];
-        setAccounts(next);
-    }, []);
-
-    React.useEffect(() => {
-        refresh();
-        const id = window.setInterval(refresh, 2500);
-        return () => window.clearInterval(id);
-    }, [refresh]);
+    const accounts = useStateFromStores([AccountSwitcherStore as any], () => getAccountsSafe());
+    const apiReady = accounts !== null;
+    const accountList = accounts ?? [];
 
     const currentId = UserStore.getCurrentUser()?.id;
+
+    const refresh = React.useCallback(() => {
+        // Trigger a re-render for stores that do not always emit changes reliably.
+        setStatus(status => status);
+    }, []);
+
+    const onSwitch = React.useCallback(async (account: any) => {
+        setStatus("");
+        setIsSwitching(true);
+
+        const ok = await switchToAccount(account);
+        if (!ok) {
+            setStatus("Could not switch account with current Discord APIs. Try using Discord's native account switcher once, then retry.");
+        }
+
+        setIsSwitching(false);
+    }, []);
 
     return (
         <SettingsTab>
@@ -71,14 +97,20 @@ function AccountCenterTab() {
                 </Text>
             )}
 
-            {accounts.length === 0 && (
+            {!!status && (
+                <Text variant="text-sm/normal" style={{ color: "#ed4245", marginBottom: 10 }}>
+                    {status}
+                </Text>
+            )}
+
+            {accountList.length === 0 && (
                 <Text variant="text-sm/normal" style={{ color: "var(--text-muted)" }}>
                     No connected accounts found. Add accounts from Discord's native account switcher first.
                 </Text>
             )}
 
             <div style={{ display: "grid", gap: 8 }}>
-                {accounts.map((account, idx) => {
+                {accountList.map((account, idx) => {
                     const userId = account?.userId ?? account?.id;
                     const user = userId ? UserStore.getUser(userId) : null;
                     const title = user?.globalName || user?.username || account?.name || `Account ${idx + 1}`;
@@ -112,10 +144,10 @@ function AccountCenterTab() {
 
                             <Button
                                 size="small"
-                                disabled={isCurrent || !apiReady}
-                                onClick={() => switchToAccount(account)}
+                                disabled={isCurrent || !apiReady || isSwitching}
+                                onClick={() => void onSwitch(account)}
                             >
-                                {isCurrent ? "Current" : "Switch"}
+                                {isCurrent ? "Current" : isSwitching ? "Switching..." : "Switch"}
                             </Button>
                         </div>
                     );

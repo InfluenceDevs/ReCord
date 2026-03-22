@@ -126,6 +126,8 @@ try {
         stdio: "inherit",
         env: {
             ...process.env,
+            RECORD_USER_DATA_DIR: BASE_DIR,
+            RECORD_DEV_INSTALL: "1",
             VENCORD_USER_DATA_DIR: BASE_DIR,
             VENCORD_DEV_INSTALL: "1"
         }
