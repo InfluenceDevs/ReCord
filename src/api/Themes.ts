@@ -23,6 +23,9 @@ import { PopoutWindowStore } from "@webpack/common";
 
 import { userStyleRootNode, vencordRootNode } from "./Styles";
 
+// Built-in ReCord default theme — always loaded as the base layer before user themes
+const RECORD_DEFAULT_THEME_URL = "https://cdn.jsdelivr.net/gh/InfluenceDevs/ReCord-Theme@main/ReCordTheme.css";
+
 let style: HTMLStyleElement;
 let themesStyle: HTMLStyleElement;
 
@@ -55,7 +58,7 @@ async function initThemes() {
         ? undefined
         : ThemeStore.theme === "light" ? "light" : "dark";
 
-    const links = themeLinks
+    const links = [RECORD_DEFAULT_THEME_URL, ...themeLinks
         .map(rawLink => {
             const match = /^@(light|dark) (.*)/.exec(rawLink);
             if (!match) return rawLink;
@@ -63,7 +66,7 @@ async function initThemes() {
             const [, mode, link] = match;
             return mode === activeTheme ? link : null;
         })
-        .filter(link => link !== null);
+        .filter(link => link !== null)];
 
     if (IS_WEB) {
         for (const theme of enabledThemes) {
