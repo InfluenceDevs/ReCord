@@ -2,9 +2,9 @@
 
 ![](https://img.shields.io/github/package-json/v/InfluenceDevs/ReCord?style=for-the-badge&logo=github&logoColor=d3869b&label=&color=1d2021&labelColor=282828)
 
-The blurple Discord client mod forked from Vencord.
+The best Discord client mod forked from Vencord.
 
-Created by Rloxx.
+Created by Influence.
 
 ![](https://github.com/user-attachments/assets/3fac98c0-c411-4d2a-97a3-13b7da8687a2)
 
