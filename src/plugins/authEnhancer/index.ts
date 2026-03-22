@@ -4,10 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { addServerListElement, removeServerListElement, ServerListRenderPosition } from "@api/ServerList";
-import { TextButton } from "@components/Button";
 import { findByProps, findByPropsLazy } from "@webpack";
-import { React, showToast, Toasts, UserStore } from "@webpack/common";
+import { showToast, Toasts } from "@webpack/common";
 import { Logger } from "@utils/Logger";
 import definePlugin from "@utils/types";
 
@@ -356,58 +354,6 @@ function applyUncapPatches() {
     }
 }
 
-function trySwitchAccount(account: any) {
-    const api = AccountSwitcherApi as any;
-    const candidates = [account?.id, account?.accountId, account?.userId, account?.uid].filter(Boolean);
-
-    for (const key of candidates) {
-        try {
-            api?.switchAccount?.(key);
-            return true;
-        } catch { /* noop */ }
-    }
-
-    return false;
-}
-
-function openAccountCenterPrompt() {
-    const accounts = ((AccountSwitcherStore as any)?.getAccounts?.() ?? []) as any[];
-    if (!accounts.length) {
-        showToast("No connected accounts found in Discord's account switcher.", Toasts.Type.MESSAGE);
-        return;
-    }
-
-    const lines = accounts.slice(0, MAX_SWITCH_ACCOUNTS).map((account, idx) => {
-        const userId = account?.userId ?? account?.id;
-        const user = userId ? UserStore.getUser(userId) : null;
-        const label = user ? `${user.globalName ?? user.username} (${user.id})` : `${account?.name ?? "Account"}`;
-        return `${idx + 1}. ${label}`;
-    });
-
-    const input = prompt(
-        `Account Center\n\nConnected accounts (max ${MAX_SWITCH_ACCOUNTS}):\n${lines.join("\n")}\n\nEnter account number to switch:`
-    );
-    if (!input) return;
-
-    const index = Number(input) - 1;
-    if (!Number.isInteger(index) || index < 0 || index >= accounts.length) {
-        showToast("Invalid account selection.", Toasts.Type.FAILURE);
-        return;
-    }
-
-    if (trySwitchAccount(accounts[index])) {
-        showToast("Switching account...", Toasts.Type.SUCCESS);
-    } else {
-        showToast("Could not switch account from Account Center.", Toasts.Type.FAILURE);
-    }
-}
-
-const AccountCenterButton = () => React.createElement(TextButton, {
-    variant: "secondary",
-    onClick: openAccountCenterPrompt,
-    className: "vc-ranb-button"
-}, "Account Center");
-
 function injectTokenLogin() {
     if (location.pathname !== "/login") return;
     if (document.getElementById("record-token-login")) return;
@@ -421,9 +367,11 @@ function injectTokenLogin() {
     card.style.zIndex = "10000";
     card.style.background = "var(--background-secondary)";
     card.style.border = "1px solid var(--border-subtle)";
-    card.style.borderRadius = "12px";
-    card.style.padding = "12px";
-    card.style.boxShadow = "0 8px 24px rgba(0,0,0,.35)";
+    card.style.borderRadius = "18px";
+    card.style.padding = "14px";
+    card.style.boxShadow = "0 18px 50px rgba(0,0,0,.38)";
+    card.style.backdropFilter = "blur(10px) saturate(130%)";
+    card.style.backgroundImage = "linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 92%, var(--brand-500) 8%), var(--background-secondary))";
 
     const assets = getBrandingAssets();
 
@@ -431,10 +379,12 @@ function injectTokenLogin() {
     banner.src = assets.banner;
     banner.alt = "ReCord";
     banner.style.width = "100%";
-    banner.style.height = "42px";
-    banner.style.objectFit = "cover";
-    banner.style.borderRadius = "8px";
-    banner.style.marginBottom = "8px";
+    banner.style.height = "46px";
+    banner.style.objectFit = "contain";
+    banner.style.borderRadius = "12px";
+    banner.style.marginBottom = "10px";
+    banner.style.background = "var(--background-tertiary)";
+    banner.style.border = "1px solid var(--border-subtle)";
 
     const title = document.createElement("div");
     title.style.display = "flex";
@@ -442,6 +392,7 @@ function injectTokenLogin() {
     title.style.gap = "8px";
     title.style.fontWeight = "700";
     title.style.marginBottom = "6px";
+    title.style.fontSize = "15px";
 
     const icon = document.createElement("img");
     icon.src = assets.icon;
@@ -458,19 +409,21 @@ function injectTokenLogin() {
     hint.textContent = "Paste a token to log in instantly.";
     hint.style.color = "var(--text-muted)";
     hint.style.fontSize = "12px";
-    hint.style.marginBottom = "8px";
+    hint.style.lineHeight = "1.4";
+    hint.style.marginBottom = "10px";
 
     const input = document.createElement("input");
     input.type = "password";
     input.placeholder = "Discord token";
     input.style.width = "100%";
     input.style.boxSizing = "border-box";
-    input.style.padding = "8px 10px";
+    input.style.padding = "10px 12px";
     input.style.border = "1px solid var(--border-subtle)";
-    input.style.borderRadius = "8px";
-    input.style.marginBottom = "8px";
+    input.style.borderRadius = "10px";
+    input.style.marginBottom = "10px";
     input.style.background = "var(--background-tertiary)";
     input.style.color = "var(--text-normal)";
+    input.style.fontSize = "13px";
 
     const row = document.createElement("div");
     row.style.display = "flex";
@@ -479,18 +432,19 @@ function injectTokenLogin() {
     const btn = document.createElement("button");
     btn.textContent = "Login with Token";
     btn.style.flex = "1";
-    btn.style.padding = "8px 10px";
+    btn.style.padding = "10px 12px";
     btn.style.border = "1px solid var(--border-subtle)";
-    btn.style.borderRadius = "8px";
-    btn.style.background = "var(--button-secondary-background)";
+    btn.style.borderRadius = "10px";
+    btn.style.background = "var(--brand-500)";
     btn.style.color = "var(--text-normal)";
     btn.style.cursor = "pointer";
+    btn.style.fontWeight = "700";
 
     const show = document.createElement("button");
     show.textContent = "Show";
-    show.style.padding = "8px 10px";
+    show.style.padding = "10px 12px";
     show.style.border = "1px solid var(--border-subtle)";
-    show.style.borderRadius = "8px";
+    show.style.borderRadius = "10px";
     show.style.background = "var(--background-tertiary)";
     show.style.color = "var(--text-normal)";
     show.style.cursor = "pointer";
@@ -526,20 +480,21 @@ function injectManageAccountsTokenLogin() {
         block.id = "record-manage-accounts-token-login";
         block.style.width = "100%";
         block.style.border = "1px solid var(--border-subtle)";
-        block.style.borderRadius = "10px";
-        block.style.padding = "8px";
+        block.style.borderRadius = "14px";
+        block.style.padding = "10px";
         block.style.background = "var(--background-secondary)";
+        block.style.backgroundImage = "linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 90%, var(--brand-500) 10%), var(--background-secondary))";
 
         const banner = document.createElement("img");
         banner.src = assets.banner;
         banner.alt = "ReCord";
         banner.style.width = "100%";
-        banner.style.height = "22px";
+        banner.style.height = "24px";
         banner.style.objectFit = "contain";
         banner.style.background = "var(--background-tertiary)";
         banner.style.border = "1px solid var(--border-subtle)";
-        banner.style.borderRadius = "7px";
-        banner.style.marginBottom = "7px";
+        banner.style.borderRadius = "10px";
+        banner.style.marginBottom = "8px";
 
         const row = document.createElement("div");
         row.style.display = "flex";
@@ -558,20 +513,21 @@ function injectManageAccountsTokenLogin() {
         input.placeholder = "Token login";
         input.style.flex = "1";
         input.style.minWidth = "0";
-        input.style.padding = "7px 9px";
+        input.style.padding = "9px 11px";
         input.style.border = "1px solid var(--border-subtle)";
-        input.style.borderRadius = "7px";
+        input.style.borderRadius = "9px";
         input.style.background = "var(--background-tertiary)";
         input.style.color = "var(--header-primary)";
 
         const login = document.createElement("button");
         login.textContent = "Login";
-        login.style.padding = "7px 9px";
+        login.style.padding = "9px 11px";
         login.style.border = "1px solid var(--border-subtle)";
-        login.style.borderRadius = "7px";
-        login.style.background = "var(--button-secondary-background)";
+        login.style.borderRadius = "9px";
+        login.style.background = "var(--brand-500)";
         login.style.color = "var(--header-primary)";
         login.style.cursor = "pointer";
+        login.style.fontWeight = "700";
 
         login.onclick = () => submitTokenLogin(input.value, false);
         input.addEventListener("keydown", event => {
@@ -606,26 +562,30 @@ function applyDiscordIconBranding() {
 
 export default definePlugin({
     name: "AuthEnhancer",
-    description: "Adds a sidebar Account Center, improves account switching (up to 10), and tracks download history.",
+    description: "Improves account switching (up to 10) and tracks download history.",
     authors: [Influence],
     tags: ["account", "switcher", "download", "history", "record"],
-    dependencies: ["ServerListAPI"],
-
-    renderAccountCenterButton: AccountCenterButton,
+    dependencies: [],
 
     start() {
         applyUncapPatches();
         uncapInterval = window.setInterval(applyUncapPatches, 5000);
-        addServerListElement(ServerListRenderPosition.Above, this.renderAccountCenterButton);
 
         cleanupLegacyInjectedElements();
         applyDiscordIconBranding();
+        injectTokenLogin();
+        injectManageAccountsTokenLogin();
         injectInterval = window.setInterval(() => {
             cleanupLegacyInjectedElements();
             applyDiscordIconBranding();
+            injectTokenLogin();
+            injectManageAccountsTokenLogin();
         }, 2000);
 
         document.addEventListener("click", onDocumentClick, true);
+        document.addEventListener("mouseover", onDocumentMouseOver, true);
+        document.addEventListener("mouseout", onDocumentMouseOut, true);
+        document.addEventListener("click", onDocumentClickHideSwitchAccountsPanel, true);
 
         const native = VencordNative?.native as { openExternal?: (url: string) => unknown; } | undefined;
         if (native?.openExternal && !openExternalOriginal) {
@@ -649,7 +609,9 @@ export default definePlugin({
         }
 
         document.removeEventListener("click", onDocumentClick, true);
-        removeServerListElement(ServerListRenderPosition.Above, this.renderAccountCenterButton);
+        document.removeEventListener("mouseover", onDocumentMouseOver, true);
+        document.removeEventListener("mouseout", onDocumentMouseOut, true);
+        document.removeEventListener("click", onDocumentClickHideSwitchAccountsPanel, true);
 
         const native = VencordNative?.native as { openExternal?: (url: string) => unknown; } | undefined;
         if (native && openExternalOriginal) {

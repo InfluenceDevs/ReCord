@@ -71,15 +71,15 @@ function shouldSuppressPing(message: any, rule: GuildRule, myId: string) {
     return false;
 }
 
-async function ackMessage(channelId: string, messageId: string) {
-    await FluxDispatcher.dispatch({
+function ackMessage(channelId: string, messageId: string) {
+    FluxDispatcher.dispatch({
         type: "BULK_ACK",
         context: "APP",
         channels: [{ channelId, messageId, readStateType: 0 }],
     });
 }
 
-const onMessageCreate = async ({ message }: { message?: any; }) => {
+const onMessageCreate = ({ message }: { message?: any; }) => {
     const guildId = message?.guild_id;
     if (!guildId || !message?.channel_id || !message?.id) return;
 
@@ -90,7 +90,7 @@ const onMessageCreate = async ({ message }: { message?: any; }) => {
     if (!shouldSuppressPing(message, rule, myId)) return;
 
     if (rule.autoMarkRead) {
-        await ackMessage(message.channel_id, message.id);
+        ackMessage(message.channel_id, message.id);
     }
 };
 
@@ -98,52 +98,32 @@ const guildCtxPatch: NavContextMenuPatchCallback = (children, { guild }: { guild
     if (!guild?.id) return;
 
     const rule = getRule(guild.id);
-
     const group = findGroupChildrenByChildId("privacy", children) ?? children;
+
     group.push(
         <Menu.MenuItem
-            id="record-ping-shield"
-            label="Ping Shield"
-        >
-            <Menu.MenuRadioItem
-                id="record-ping-shield-off"
-                group="record-ping-mode"
-                label="Off"
-                checked={rule.mode === "off"}
-                action={() => setRule(guild.id, { mode: "off" })}
-            />
-            <Menu.MenuRadioItem
-                id="record-ping-shield-everyone"
-                group="record-ping-mode"
-                label="Disable @everyone / @here / role pings"
-                checked={rule.mode === "everyone-only"}
-                action={() => setRule(guild.id, { mode: "everyone-only" })}
-            />
-            <Menu.MenuRadioItem
-                id="record-ping-shield-all"
-                group="record-ping-mode"
-                label="Disable all pings"
-                checked={rule.mode === "all"}
-                action={() => setRule(guild.id, { mode: "all" })}
-            />
-
-            <Menu.MenuSeparator />
-
-            <Menu.MenuCheckboxItem
-                id="record-ping-shield-allow-direct"
-                label="Allow direct @mentions"
-                checked={rule.allowDirectMentions}
-                disabled={rule.mode !== "all"}
-                action={() => setRule(guild.id, { allowDirectMentions: !rule.allowDirectMentions })}
-            />
-
-            <Menu.MenuCheckboxItem
-                id="record-ping-shield-auto-read"
-                label="Auto-mark pinged messages as read"
-                checked={rule.autoMarkRead}
-                action={() => setRule(guild.id, { autoMarkRead: !rule.autoMarkRead })}
-            />
-        </Menu.MenuItem>
+            id={`record-ping-shield-mode-${guild.id}`}
+            label={`Ping Shield Mode: ${rule.mode === "everyone-only" ? "Everyone/Role" : rule.mode === "all" ? "All" : "Off"}`}
+            action={() => {
+                const nextMode: GuildPingMode = rule.mode === "off"
+                    ? "everyone-only"
+                    : rule.mode === "everyone-only"
+                        ? "all"
+                        : "off";
+                setRule(guild.id, { mode: nextMode });
+            }}
+        />,
+        <Menu.MenuItem
+            id={`record-ping-shield-direct-${guild.id}`}
+            label={`Direct @mentions: ${rule.allowDirectMentions ? "Allowed" : "Blocked"}`}
+            disabled={rule.mode !== "all"}
+            action={() => setRule(guild.id, { allowDirectMentions: !getRule(guild.id).allowDirectMentions })}
+        />,
+        <Menu.MenuItem
+            id={`record-ping-shield-read-${guild.id}`}
+            label={`Auto-mark as read: ${rule.autoMarkRead ? "On" : "Off"}`}
+            action={() => setRule(guild.id, { autoMarkRead: !getRule(guild.id).autoMarkRead })}
+        />
     );
 };
 

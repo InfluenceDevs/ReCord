@@ -42,8 +42,6 @@ import { openReCordConsoleModal } from "./ReCordConsole";
 
 const RECORD_ICON = "vencord://assets/icon.png";
 const RECORD_LIGHT_ICON = RECORD_ICON;
-const RECORD_DARK_BANNER = "vencord://assets/dark-theme-logo.png";
-const RECORD_LIGHT_BANNER = RECORD_DARK_BANNER;
 
 type KeysOfType<Object, Type> = {
     [K in keyof Object]: Object[K] extends Type ? K : never;
@@ -145,7 +143,7 @@ function ReCordSettings() {
                 navigator.clipboard.writeText(token);
                 Alerts.show({
                     title: "Token Copied",
-                    body: "Your Discord token has been copied to the clipboard. Keep it secret — anyone with your token has full access to your account.",
+                    body: "Your Discord token has been copied to the clipboard. Keep it secret - anyone with your token has full access to your account.",
                     confirmText: "Got it"
                 });
             } else {
@@ -158,126 +156,115 @@ function ReCordSettings() {
 
     return (
         <SettingsTab>
-            {isPluginDev(user?.id) && (
-                <section className={Margins.bottom16}>
-                    <Forms.FormTitle tag="h5">Contributions</Forms.FormTitle>
-                    <Forms.FormText className={Margins.bottom8}>
-                        Since you've contributed to ReCord, you have a contributor badge.
-                    </Forms.FormText>
-                    <Button size="small" variant="secondary" onClick={() => openContributorModal(user)}>
-                        See what you've contributed to
-                    </Button>
-                </section>
-            )}
-
-            <section>
-                <Forms.FormTitle tag="h5">Quick Actions</Forms.FormTitle>
-                <QuickActionCard>
-                    <QuickAction Icon={LogIcon} text="Notification Log" action={openNotificationLogModal} />
-                    <QuickAction Icon={LogIcon} text="ReCord Console" action={openReCordConsoleModal} />
-                    <QuickAction Icon={PaintbrushIcon} text="Edit QuickCSS" action={() => VencordNative.quickCss.openEditor()} />
-                    <QuickAction
-                        Icon={SafetyIcon}
-                        text="Copy Token"
-                        action={copyToken}
-                    />
-                    {!IS_WEB && (
-                        <>
-                            <QuickAction Icon={RestartIcon} text="Relaunch Discord" action={relaunch} />
-                            <QuickAction Icon={FolderIcon} text="Open Settings Folder" action={() => VencordNative.settings.openFolder()} />
-                            <QuickAction Icon={FolderIcon} text="Open UserPlugins Folder" action={() => VencordNative.settings.openUserPluginsFolder()} />
-                            <QuickAction
-                                Icon={FolderIcon}
-                                text="Open BD Plugins Folder"
-                                action={() => (VencordNative.pluginHelpers as any).BetterDiscordCompat?.openPluginsDir?.()}
-                            />
-                        </>
-                    )}
-                    <QuickAction
-                        Icon={GithubIcon}
-                        text="View Source Code"
-                        action={() => VencordNative.native.openExternal("https://github.com/" + gitRemote)}
-                    />
-                </QuickActionCard>
-            </section>
-
-            {showQuickTabs && (
-                <section className={Margins.top16}>
-                    <Forms.FormTitle tag="h5">Quick Tabs</Forms.FormTitle>
-                    <Forms.FormText className={Margins.bottom8}>
-                        Jump to frequently used settings tabs instantly.
-                    </Forms.FormText>
-                    <div className="vc-record-quick-tabs">
-                        <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(PluginsTab)}>Plugins</Button>
-                        <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(ThemesTab)}>Themes</Button>
-                        <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(BackupAndRestoreTab)}>Backup</Button>
-                        {!!UpdaterTab && <Button size="small" variant="secondary" onClick={openUpdaterTab}>Updater</Button>}
+            <section className="vc-record-layout">
+                <header className="vc-record-header">
+                    <div className="vc-record-header-main">
+                        <img src={currentIcon} alt="ReCord Icon" className="vc-record-logo" />
+                        <div>
+                            <Forms.FormTitle tag="h2">ReCord Control Center</Forms.FormTitle>
+                            <Forms.FormText className="vc-record-muted">
+                                One place for account controls, behavior toggles, and fast actions.
+                            </Forms.FormText>
+                        </div>
                     </div>
+                    <div className="vc-record-badges">
+                        <span className="vc-record-badge">Creator: Influence</span>
+                        {user && (
+                            <span className="vc-record-badge vc-record-badge-soft">
+                                Signed in: {user.username}{user.discriminator !== "0" ? `#${user.discriminator}` : ""}
+                            </span>
+                        )}
+                    </div>
+                </header>
+
+                {showQuickTabs && (
+                    <section className="vc-record-panel vc-record-nav-panel">
+                        <Forms.FormTitle tag="h5">Quick Tabs</Forms.FormTitle>
+                        <div className="vc-record-quick-tabs">
+                            <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(PluginsTab)}>Plugins</Button>
+                            <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(ThemesTab)}>Themes</Button>
+                            <Button size="small" variant="secondary" onClick={() => openSettingsTabModal(BackupAndRestoreTab)}>Backup</Button>
+                            {!!UpdaterTab && <Button size="small" variant="secondary" onClick={openUpdaterTab}>Updater</Button>}
+                        </div>
+                    </section>
+                )}
+
+                <div className="vc-record-grid">
+                    <section className="vc-record-panel vc-record-panel-wide">
+                        <Forms.FormTitle tag="h5">Quick Actions</Forms.FormTitle>
+                        <QuickActionCard>
+                            <QuickAction Icon={LogIcon} text="Notification Log" action={openNotificationLogModal} />
+                            <QuickAction Icon={LogIcon} text="ReCord Console" action={openReCordConsoleModal} />
+                            <QuickAction Icon={PaintbrushIcon} text="Edit QuickCSS" action={() => VencordNative.quickCss.openEditor()} />
+                            <QuickAction Icon={SafetyIcon} text="Copy Token" action={copyToken} />
+                            {!IS_WEB && (
+                                <>
+                                    <QuickAction Icon={RestartIcon} text="Relaunch Discord" action={relaunch} />
+                                    <QuickAction Icon={FolderIcon} text="Open Settings Folder" action={() => VencordNative.settings.openFolder()} />
+                                    <QuickAction Icon={FolderIcon} text="Open UserPlugins Folder" action={() => VencordNative.settings.openUserPluginsFolder()} />
+                                    <QuickAction
+                                        Icon={FolderIcon}
+                                        text="Open BD Plugins Folder"
+                                        action={() => (VencordNative.pluginHelpers as any).BetterDiscordCompat?.openPluginsDir?.()}
+                                    />
+                                </>
+                            )}
+                            <QuickAction Icon={GithubIcon} text="View Source Code" action={() => VencordNative.native.openExternal("https://github.com/" + gitRemote)} />
+                        </QuickActionCard>
+                    </section>
+
+                    <section className="vc-record-panel">
+                        <Forms.FormTitle tag="h5">Account</Forms.FormTitle>
+                        <Forms.FormText className="vc-record-muted" style={{ marginBottom: 10 }}>
+                            Your token grants full access to your account. Never share it.
+                        </Forms.FormText>
+                        <Button size="small" variant="secondary" onClick={copyToken}>
+                            <CopyIcon width={14} height={14} style={{ marginRight: 6 }} /> Copy Token
+                        </Button>
+                    </section>
+
+                    <section className="vc-record-panel">
+                        <Forms.FormTitle tag="h5">About ReCord</Forms.FormTitle>
+                        <Forms.FormText>
+                            ReCord is a Discord client mod forked from Vencord with BetterDiscord compatibility, OPSEC tools, and utility plugins.
+                        </Forms.FormText>
+                        <Forms.FormText className={Margins.top8}>
+                            Built and maintained by Influence.
+                        </Forms.FormText>
+                    </section>
+                </div>
+
+                <section className="vc-record-panel">
+                    <Forms.FormTitle tag="h5">Client Settings</Forms.FormTitle>
+                    <Forms.FormText className="vc-record-muted" style={{ marginBottom: 12 }}>
+                        Layout and behavior controls. You can move this section from{" "}
+                        <a onClick={() => openPluginModal(Vencord.Plugins.plugins.Settings)}>Settings plugin options</a>.
+                    </Forms.FormText>
+                    <Switches />
+                    <FormSwitch
+                        title="Enable Quick Tabs"
+                        description="Show fast navigation tabs in ReCord Settings"
+                        value={settings.plugins.Settings.enableQuickNavigationTabs ?? true}
+                        onChange={v => settings.plugins.Settings.enableQuickNavigationTabs = v}
+                    />
                 </section>
-            )}
+
+                {isPluginDev(user?.id) && (
+                    <section className="vc-record-panel">
+                        <Forms.FormTitle tag="h5">Contributions</Forms.FormTitle>
+                        <Forms.FormText className={Margins.bottom8}>
+                            You have a contributor badge for ReCord.
+                        </Forms.FormText>
+                        <Button size="small" variant="secondary" onClick={() => openContributorModal(user)}>
+                            See your contributions
+                        </Button>
+                    </section>
+                )}
+
+                {needsVibrancySettings && <VibrancySettings />}
+            </section>
 
             <Divider className={Margins.top16} />
-
-            <section className={Margins.top16}>
-                <Forms.FormTitle tag="h5">Settings</Forms.FormTitle>
-                <Forms.FormText className={Margins.bottom20} style={{ color: "var(--text-muted)" }}>
-                    You can change the position of this section in the{" "}
-                    <a onClick={() => openPluginModal(Vencord.Plugins.plugins.Settings)}>
-                        Settings plugin options
-                    </a>.
-                </Forms.FormText>
-
-                <Switches />
-
-                <FormSwitch
-                    title="Enable Quick Tabs"
-                    description="Show fast navigation tabs in ReCord Settings"
-                    value={settings.plugins.Settings.enableQuickNavigationTabs ?? true}
-                    onChange={v => settings.plugins.Settings.enableQuickNavigationTabs = v}
-                />
-            </section>
-
-            <section className={Margins.top16}>
-                <Forms.FormTitle tag="h5">Account</Forms.FormTitle>
-                {user && (
-                    <Forms.FormText className={Margins.bottom8}>
-                        Logged in as <strong>{user.username}</strong>{user.discriminator !== "0" ? `#${user.discriminator}` : ""}.
-                    </Forms.FormText>
-                )}
-                <Forms.FormText className={Margins.bottom8} style={{ color: "var(--text-muted)" }}>
-                    Your token grants full access to your Discord account. Never share it.
-                </Forms.FormText>
-                <Button size="small" variant="secondary" onClick={copyToken}>
-                    <CopyIcon width={14} height={14} style={{ marginRight: 6 }} /> Copy Token
-                </Button>
-            </section>
-
-            <section className={Margins.top16}>
-                <Forms.FormTitle tag="h5">About ReCord</Forms.FormTitle>
-                <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
-                    <img
-                        src={currentIcon}
-                        alt="ReCord Icon"
-                        width={20}
-                        height={20}
-                        style={{ borderRadius: 5, objectFit: "cover" }}
-                    />
-                    <img
-                        src={isDark ? RECORD_DARK_BANNER : RECORD_LIGHT_BANNER}
-                        alt="ReCord Banner"
-                        style={{ height: 34, width: "100%", objectFit: "cover", borderRadius: 8, border: "1px solid var(--border-subtle)" }}
-                    />
-                </div>
-                <Forms.FormText>
-                    ReCord is a custom Discord client mod forked from Vencord, featuring BetterDiscord plugin compatibility, OPSEC tools, and custom theming.
-                </Forms.FormText>
-                <Forms.FormText className={Margins.top8}>
-                    Created by Rloxx.
-                </Forms.FormText>
-            </section>
-
-            {needsVibrancySettings && <VibrancySettings />}
-
             <NotificationSection />
         </SettingsTab>
     );

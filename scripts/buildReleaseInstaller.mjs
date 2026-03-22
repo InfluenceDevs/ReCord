@@ -183,10 +183,20 @@ async function main() {
 
     rmSync(BUNDLE_DIR, { recursive: true, force: true });
     mkdirSync(BUNDLE_DIR, { recursive: true });
+    mkdirSync(RELEASE_DIR, { recursive: true });
 
     copyAppPayload();
     await downloadInstaller(join(RELEASE_DIR, "tmp"));
     makeInstallScripts();
+
+    // Copy standalone one-liner install scripts to release dir for direct download
+    const installerDir = join(ROOT, "installer");
+    for (const script of ["install.ps1", "install.sh"]) {
+        const src = join(installerDir, script);
+        if (existsSync(src)) {
+            cpSync(src, join(RELEASE_DIR, script), { force: true });
+        }
+    }
 
     const cfg = getInstallerConfig();
     const zipPath = join(RELEASE_DIR, cfg.artifactName);

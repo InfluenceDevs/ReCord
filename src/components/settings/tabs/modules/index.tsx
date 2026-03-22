@@ -4,9 +4,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { Button } from "@components/Button";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { Margins } from "@utils/margins";
-import { Alerts, Button, Forms, React, Select } from "@webpack/common";
+import { Alerts, Forms, React, Text } from "@webpack/common";
 
 const STORE_KEY = "record_modules_settings";
 
@@ -39,11 +40,11 @@ function saveState(state: ModulesState) {
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
 }
 
-const OPTIONS = [
-    { label: "Discord Default", value: "discord-default", default: true },
+const OPTIONS: Array<{ label: string; value: ModuleMode; }> = [
+    { label: "Discord Default", value: "discord-default" },
     { label: "Custom Low Latency", value: "custom-low-latency" },
     { label: "Custom Compatibility", value: "custom-compat" }
-] as const;
+];
 
 function Row({
     title,
@@ -60,13 +61,18 @@ function Row({
         <div style={{ marginBottom: 16 }}>
             <Forms.FormTitle tag="h5">{title}</Forms.FormTitle>
             <Forms.FormText style={{ color: "var(--text-muted)", marginBottom: 8 }}>{description}</Forms.FormText>
-            <Select
-                options={OPTIONS as any}
-                serialize={String}
-                select={v => onChange(v as ModuleMode)}
-                isSelected={v => v === value}
-                closeOnSelect={true}
-            />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {OPTIONS.map(option => (
+                    <Button
+                        key={option.value}
+                        size="small"
+                        variant={value === option.value ? "primary" : "secondary"}
+                        onClick={() => onChange(option.value)}
+                    >
+                        {option.label}
+                    </Button>
+                ))}
+            </div>
         </div>
     );
 }
@@ -159,6 +165,10 @@ function ModulesTab() {
                 <Button size="small" onClick={apply}>Apply Module Profile</Button>
                 <Button size="small" onClick={reset}>Reset to Discord Default</Button>
             </div>
+
+            <Text variant="text-sm/normal" style={{ color: "var(--text-muted)", marginBottom: 16 }}>
+                Selected: voice={state.voice}, audio={state.audioProcessing}, transport={state.transport}, video={state.video}
+            </Text>
 
             <div style={{ height: 1, background: "var(--border-subtle)", marginBottom: 16 }} />
 

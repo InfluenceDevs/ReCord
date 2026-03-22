@@ -1,7 +1,17 @@
-name: Build Release Installer
+name: Release
 
 on:
     workflow_dispatch:
+        inputs:
+            version:
+                description: "Release version tag (e.g. v1.14.5). Leave empty to use package.json version."
+                required: false
+                default: ""
+            prerelease:
+                description: "Mark as pre-release"
+                required: false
+                default: "false"
+                type: boolean
     push:
         tags:
             - v*
@@ -10,19 +20,74 @@ env:
     FORCE_COLOR: true
 
 jobs:
-    build-installer:
+    build-windows:
+        name: Windows Installer
         runs-on: windows-latest
+        outputs:
+            version: ${{ steps.get_version.outputs.version }}
 
         steps:
             - uses: actions/checkout@v4
 
             - uses: pnpm/action-setup@v3
 
-            - name: Use Node.js 20
-              uses: actions/setup-node@v4
+            - uses: actions/setup-node@v4
               with:
                   node-version: 20
-                  cache: "pnpm"
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Get version
+              id: get_version
+              shell: pwsh
+              run: |
+                  if ("${{ inputs.version }}" -ne "") {
+                    $v = "${{ inputs.version }}"
+                  } elseif ("${{ github.ref_name }}" -like 'v*') {
+                    $v = "${{ github.ref_name }}"
+                  } else {
+                    $v = "v" + (Get-Content package.json | ConvertFrom-Json).version
+                  }
+                  echo "version=$v" >> $env:GITHUB_OUTPUT
+
+            - name: Build standalone desktop payload
+              run: pnpm build --standalone
+
+            - name: Build release installer bundle
+              run: node scripts/buildReleaseInstaller.mjs
+
+            - name: Install NSIS
+              run: choco install nsis --version 3.11 -y
+
+            - name: Build NSIS setup installer
+              run: node scripts/buildWindowsSetupInstaller.mjs
+
+            - name: Upload Windows artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: record-windows
+                  path: |
+                      dist/release/ReCordSetup.exe
+                      dist/release/ReCord-Windows-Installer.zip
+                      dist/release/release-manifest.json
+                      dist/release/install.ps1
+                      dist/release/install.sh
+
+    build-macos:
+        name: macOS Installer
+        runs-on: macos-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: pnpm/action-setup@v3
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: pnpm
 
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
@@ -33,33 +98,98 @@ jobs:
             - name: Build release installer bundle
               run: node scripts/buildReleaseInstaller.mjs
 
-            - name: Install NSIS
-              run: choco install nsis -y
-
-            - name: Build NSIS setup installer
-              run: node scripts/buildWindowsSetupInstaller.mjs
-
-            - name: Upload installer artifacts
+            - name: Upload macOS artifacts
               uses: actions/upload-artifact@v4
               with:
-                  name: record-release-installer
-                  path: |
-                      dist/release/ReCordSetup.exe
-                      dist/release/*.zip
-                      dist/release/release-manifest.json
+                  name: record-macos
+                  path: dist/release/ReCord-macOS-Installer.zip
 
-            - name: Create GitHub release if missing
-              if: startsWith(github.ref, 'refs/tags/')
-              run: |
-                  gh release view "${{ github.ref_name }}" 2>$null
-                  if ($LASTEXITCODE -ne 0) {
-                    gh release create "${{ github.ref_name }}" --generate-notes
-                  }
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    build-linux:
+        name: Linux Installer
+        runs-on: ubuntu-latest
 
-            - name: Upload installer bundle to release
-              if: startsWith(github.ref, 'refs/tags/')
-              run: gh release upload "${{ github.ref_name }}" dist/release/ReCordSetup.exe dist/release/*.zip dist/release/release-manifest.json --clobber
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: pnpm/action-setup@v3
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Build standalone desktop payload
+              run: pnpm build --standalone
+
+            - name: Build release installer bundle
+              run: node scripts/buildReleaseInstaller.mjs
+
+            - name: Upload Linux artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: record-linux
+                  path: dist/release/ReCord-Linux-Installer.zip
+
+    publish-release:
+        name: Publish GitHub Release
+        needs: [build-windows, build-macos, build-linux]
+        runs-on: ubuntu-latest
+        if: github.repository == 'InfluenceDevs/ReCord'
+
+        steps:
+            - name: Download all artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  path: release-artifacts
+                  merge-multiple: true
+
+            - name: List artifacts
+              run: find release-artifacts -type f | sort
+
+            - name: Create or update GitHub release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: ${{ needs.build-windows.outputs.version }}
+                  name: ReCord ${{ needs.build-windows.outputs.version }}
+                  prerelease: ${{ inputs.prerelease == 'true' }}
+                  generate_release_notes: true
+                  body: |
+                      ## ReCord ${{ needs.build-windows.outputs.version }}
+
+                      ### Installation
+
+                      | Platform | Download |
+                      |----------|----------|
+                      | **Windows** | `ReCordSetup.exe` (recommended) or `ReCord-Windows-Installer.zip` |
+                      | **macOS** | `ReCord-macOS-Installer.zip` |
+                      | **Linux** | `ReCord-Linux-Installer.zip` |
+
+                      #### One-line install (PowerShell)
+                      ```powershell
+                      irm https://github.com/InfluenceDevs/ReCord/releases/latest/download/install.ps1 | iex
+                      ```
+
+                      #### One-line install (macOS/Linux)
+                      ```bash
+                      curl -fsSL https://github.com/InfluenceDevs/ReCord/releases/latest/download/install.sh | sh
+                      ```
+
+                      #### Manual install
+                      1. Download and run `ReCordSetup.exe`
+                      2. Run **Install ReCord** from the Start menu or desktop shortcut
+
+                      ---
+                      *ReCord is based on [Vencord](https://github.com/Vendicated/Vencord). Built by Influence.*
+                  files: |
+                      release-artifacts/ReCordSetup.exe
+                      release-artifacts/ReCord-Windows-Installer.zip
+                      release-artifacts/ReCord-macOS-Installer.zip
+                      release-artifacts/ReCord-Linux-Installer.zip
+                      release-artifacts/release-manifest.json
+                      release-artifacts/install.ps1
+                      release-artifacts/install.sh
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

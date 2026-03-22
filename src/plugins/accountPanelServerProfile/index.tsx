@@ -24,6 +24,18 @@ const UserProfile = findComponentByCodeLazy(".POPOUT,user");
 let openAlternatePopout = false;
 let accountPanelRef: React.RefObject<HTMLDivElement | null> = { current: null };
 
+function openAccountPanelContextMenu(event: React.UIEvent) {
+    ContextMenuApi.openContextMenu(event, AccountPanelContextMenu);
+}
+
+function triggerAccountPanelClick() {
+    const root = accountPanelRef.current;
+    if (!root) return;
+
+    const clickable = root.querySelector<HTMLElement>("button,[role='button'],[tabindex]") ?? root.firstElementChild as HTMLElement | null;
+    clickable?.click();
+}
+
 const AccountPanelContextMenu = ErrorBoundary.wrap(() => {
     const { prioritizeServerProfile } = settings.use(["prioritizeServerProfile"]);
 
@@ -36,9 +48,9 @@ const AccountPanelContextMenu = ErrorBoundary.wrap(() => {
                 id="vc-ap-view-alternate-popout"
                 label={prioritizeServerProfile ? "View Account Profile" : "View Server Profile"}
                 disabled={getCurrentChannel()?.getGuildId() == null}
-                action={e => {
+                action={() => {
                     openAlternatePopout = true;
-                    accountPanelRef.current?.click();
+                    triggerAccountPanelClick();
                 }}
             />
             <Menu.MenuCheckboxItem
@@ -67,6 +79,13 @@ export default definePlugin({
 
     patches: [
         {
+            find: ".DISPLAY_NAME_STYLES_COACHMARK),",
+            replacement: {
+                match: /(?<=\i\.jsxs?\)\()(\i),{(?=[^}]*?userTag:\i,occluded:)/,
+                replace: "$self.AccountPanelWrapper,{VencordOriginal:$1,"
+            }
+        },
+        {
             find: ".WIDGETS_RTC_UPSELL_COACHMARK)",
             group: true,
             replacement: [
@@ -77,14 +96,21 @@ export default definePlugin({
                 {
                     match: /\.AVATAR,children:.+?onRequestClose:\(\)=>\{/,
                     replace: "$&$self.onPopoutClose();"
-                },
-                {
-                    match: /ref:(\i),style:\i(?=.{0,250}#{intl::USER_PROFILE_ACCOUNT_POPOUT_BUTTON_A11Y_LABEL})/,
-                    replace: "$&,onContextMenu:($self.grabRef($1),$self.openAccountPanelContextMenu)"
                 }
             ]
         }
     ],
+
+    AccountPanelWrapper({ VencordOriginal, ...props }) {
+        return (
+            <div
+                ref={node => accountPanelRef.current = node}
+                onContextMenu={openAccountPanelContextMenu}
+            >
+                <VencordOriginal {...props} />
+            </div>
+        );
+    },
 
     get accountPanelRef() {
         return accountPanelRef;
@@ -96,7 +122,7 @@ export default definePlugin({
     },
 
     openAccountPanelContextMenu(event: React.UIEvent) {
-        ContextMenuApi.openContextMenu(event, AccountPanelContextMenu);
+        openAccountPanelContextMenu(event);
     },
 
     onPopoutClose() {

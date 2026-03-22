@@ -15,7 +15,6 @@ const logger = new Logger("RecordPurger");
 const Influence = { name: "Influence", id: 0n };
 
 const HIDDEN_MESSAGES_KEY = "record_hidden_messages";
-const PURGE_MODE_KEY = "record_purger_mode";
 
 type HiddenMessages = Record<string, Record<string, true>>;
 type PurgeAction = "delete" | "hide" | "both";
@@ -41,15 +40,6 @@ let activeTask: { stop: () => void; } | null = null;
 
 function loadHiddenMessages(): HiddenMessages {
     try { return JSON.parse(localStorage.getItem(HIDDEN_MESSAGES_KEY) ?? "{}"); } catch { return {}; }
-}
-
-function getPurgeMode(): PurgeAction {
-    const mode = localStorage.getItem(PURGE_MODE_KEY);
-    return mode === "delete" || mode === "hide" || mode === "both" ? mode : "both";
-}
-
-function setPurgeMode(mode: PurgeAction) {
-    localStorage.setItem(PURGE_MODE_KEY, mode);
 }
 
 function saveHiddenMessages(data: HiddenMessages) {
@@ -281,7 +271,6 @@ function buildMenuItems(channel: any) {
     const items: JSX.Element[] = [];
     const running = activeTask !== null;
     const privateChannel = isPrivateChannel(channel);
-    const mode = getPurgeMode();
 
     if (running) {
         items.push(
@@ -301,20 +290,23 @@ function buildMenuItems(channel: any) {
         return items;
     }
 
-    items.push(
-        <Menu.MenuItem key="record-mode" id="record-mode" label={`Mode: ${actionLabel(mode)}`}>
-            <Menu.MenuRadioItem id="record-mode-delete" group="record-purge-mode" label="Delete" checked={mode === "delete"} action={() => setPurgeMode("delete")} />
-            <Menu.MenuRadioItem id="record-mode-hide" group="record-purge-mode" label="Hide" checked={mode === "hide"} action={() => setPurgeMode("hide")} />
-            <Menu.MenuRadioItem id="record-mode-both" group="record-purge-mode" label="Delete + Hide" checked={mode === "both"} action={() => setPurgeMode("both")} />
-        </Menu.MenuItem>,
-        <Menu.MenuItem key="record-run-my" id="record-run-my" label="Run On My Messages" color="danger" action={() => confirmPurge(channel, true, getPurgeMode())} />,
-    );
+    const addScopeItems = (label: string, onlyMine: boolean, requireManageMessages: boolean) => {
+        if (requireManageMessages && !(canDeleteAll(channel) || privateChannel)) return;
 
-    if (canDeleteAll(channel) || privateChannel) {
         items.push(
-            <Menu.MenuItem key="record-run-all" id="record-run-all" label="Run On All Messages" color="danger" action={() => confirmPurge(channel, false, getPurgeMode())} />,
+            <Menu.MenuItem key={`record-${label}-delete`} id={`record-${label}-delete`} label={`Purge ${label} (Delete)`} color="danger" action={() => confirmPurge(channel, onlyMine, "delete")} />,
+            <Menu.MenuItem key={`record-${label}-hide`} id={`record-${label}-hide`} label={`Hide ${label}`} color="danger" action={() => confirmPurge(channel, onlyMine, "hide")} />,
+            <Menu.MenuItem key={`record-${label}-both`} id={`record-${label}-both`} label={`Purge ${label} (Delete + Hide)`} color="danger" action={() => confirmPurge(channel, onlyMine, "both")} />,
         );
-    }
+    };
+
+    items.push(
+        <Menu.MenuSeparator key="record-sep-my" />,
+    );
+    addScopeItems("My Messages", true, false);
+
+    items.push(<Menu.MenuSeparator key="record-sep-all" />);
+    addScopeItems("All Messages", false, true);
 
     if (privateChannel) {
         items.push(
@@ -338,8 +330,9 @@ const patchChannelCtx: NavContextMenuPatchCallback = (children, { channel }) => 
 };
 
 const patchUserCtx: NavContextMenuPatchCallback = (children, { channel }) => {
-    if (!channel?.id) return;
-    const items = buildMenuItems(channel);
+    const resolvedChannel = channel;
+    if (!resolvedChannel?.id) return;
+    const items = buildMenuItems(resolvedChannel);
     if (!items.length) return;
 
     children.push(<Menu.MenuGroup>{items}</Menu.MenuGroup>);

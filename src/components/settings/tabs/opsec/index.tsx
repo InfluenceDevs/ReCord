@@ -72,16 +72,46 @@ function NetworkTab() {
     const checkIp = React.useCallback(async () => {
         setIpLoading(true);
         setIpError(null);
+
+        const providers: Array<{ url: string; parse: (data: any) => string | null; }> = [
+            { url: "https://api.ipify.org?format=json", parse: data => data?.ip ?? null },
+            { url: "https://ifconfig.co/json", parse: data => data?.ip ?? null },
+            { url: "https://api.myip.com", parse: data => data?.ip ?? null },
+        ];
+
         try {
-            const r = await fetch("https://api.ipify.org?format=json", { cache: "no-store" });
-            const data = await r.json();
-            setIp(data.ip ?? "Unknown");
+            let resolved: string | null = null;
+
+            for (const provider of providers) {
+                try {
+                    const response = await fetch(provider.url, { cache: "no-store" });
+                    if (!response.ok) continue;
+                    const data = await response.json();
+                    const parsed = provider.parse(data);
+                    if (parsed) {
+                        resolved = parsed;
+                        break;
+                    }
+                } catch {
+                    // try next provider
+                }
+            }
+
+            if (!resolved) {
+                throw new Error("all IP providers failed");
+            }
+
+            setIp(resolved);
         } catch (e: any) {
             setIpError("Could not fetch IP: " + e.message);
         } finally {
             setIpLoading(false);
         }
     }, []);
+
+    React.useEffect(() => {
+        checkIp();
+    }, [checkIp]);
 
     const applyProxy = React.useCallback(async () => {
         if (!proxyHost || !proxyPort) {

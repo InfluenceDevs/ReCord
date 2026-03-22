@@ -17,8 +17,8 @@
 */
 
 import { definePluginSettings } from "@api/Settings";
-import { BackupRestoreIcon, CloudIcon, MainSettingsIcon, NotesIcon, PaintbrushIcon, PatchHelperIcon, PlaceholderIcon, PluginsIcon, SafetyIcon, UpdaterIcon, VesktopSettingsIcon } from "@components/Icons";
-import { BackupAndRestoreTab, CloudTab, ConsoleTab, DownloadsTab, ModulesTab, OpsecTab, PatchHelperTab, PerformanceTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
+import { BackupRestoreIcon, CloudIcon, CogWheel, LogIcon, MainSettingsIcon, NotesIcon, PaintbrushIcon, PatchHelperIcon, PlaceholderIcon, PluginsIcon, SafetyIcon, UpdaterIcon, VesktopSettingsIcon } from "@components/Icons";
+import { AccountCenterTab, BackupAndRestoreTab, CloudTab, ConsoleTab, DownloadsTab, GhostChatsTab, ModulesTab, OpsecTab, PatchHelperTab, PerformanceTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
 import { Devs } from "@utils/constants";
 import { isTruthy } from "@utils/guards";
 import definePlugin, { IconProps, OptionType } from "@utils/types";
@@ -106,6 +106,8 @@ const settingsSectionMap: [string, string][] = [
     ["ReCordBackupAndRestore", "vencord_backup_restore_panel"],
     ["ReCordPatchHelper", "vencord_patch_helper_panel"],
     ["ReCordConsole", "vencord_console_panel"],
+    ["ReCordAccountCenter", "vencord_account_center_panel"],
+    ["ReCordGhostChats", "vencord_ghost_chats_panel"],
     ["ReCordOpsec", "vencord_opsec_panel"],
     ["ReCordPerformance", "vencord_performance_panel"],
     ["ReCordModules", "vencord_modules_panel"],
@@ -248,6 +250,20 @@ export default definePlugin({
                 panelTitle: "ReCord Console",
                 Component: ConsoleTab,
                 Icon: NotesIcon
+            }),
+            buildEntry({
+                key: "vencord_account_center",
+                title: "Account Center",
+                panelTitle: "Account Center",
+                Component: AccountCenterTab,
+                Icon: CogWheel
+            }),
+            buildEntry({
+                key: "vencord_ghost_chats",
+                title: "Ghost Chats",
+                panelTitle: "Ghost Chats",
+                Component: GhostChatsTab,
+                Icon: LogIcon
             }),
             buildEntry({
                 key: "vencord_opsec",
