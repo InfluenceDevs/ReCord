@@ -1,330 +1,238 @@
 /*
  * Vencord, a Discord client mod
- * Copyright (c) 2026 Rloxx
+ * Copyright (c) 2026 Influence
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { Settings, useSettings } from "@api/Settings";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { Margins } from "@utils/margins";
 import { Button, Forms, React, TextInput } from "@webpack/common";
 
-const STORE_KEY = "record_perf_settings";
-
-function readStore(): Record<string, any> {
-    try {
-        return JSON.parse(localStorage.getItem(STORE_KEY) ?? "{}");
-    } catch {
-        return {};
-    }
-}
-
-function writeStore(value: Record<string, any>) {
-    localStorage.setItem(STORE_KEY, JSON.stringify(value));
-}
-
-function useStored<T>(key: string, defaultValue: T): [T, (next: T) => void] {
-    const [value, setValue] = React.useState<T>(() => {
-        const store = readStore();
-        return key in store ? store[key] : defaultValue;
-    });
-
-    const update = React.useCallback((next: T) => {
-        setValue(next);
-        const store = readStore();
-        store[key] = next;
-        writeStore(store);
-    }, [key]);
-
-    return [value, update];
-}
-
-function perfNowSafe() {
-    return performance?.now?.() ?? Date.now();
-}
-
-function StatCard({ title, value, hint }: { title: string; value: string; hint?: string; }) {
+function ToggleRow({
+    title,
+    description,
+    value,
+    onToggle,
+    onLabel = "Enabled",
+    offLabel = "Disabled"
+}: {
+    title: string;
+    description: string;
+    value: boolean;
+    onToggle: () => void;
+    onLabel?: string;
+    offLabel?: string;
+}) {
     return (
-        <div style={{
-            border: "1px solid var(--border-subtle)",
-            borderRadius: 12,
-            padding: "12px 14px",
-            background: "var(--background-secondary)",
-            boxShadow: "0 1px 0 rgba(255,255,255,0.02) inset"
-        }}>
-            <Forms.FormText style={{ color: "var(--text-muted)", fontSize: 12 }}>{title}</Forms.FormText>
-            <div style={{ fontSize: 19, fontWeight: 700, marginTop: 2, marginBottom: 2 }}>{value}</div>
-            {hint && <Forms.FormText style={{ color: "var(--text-muted)", fontSize: 11 }}>{hint}</Forms.FormText>}
+        <div
+            style={{
+                border: "1px solid var(--border-subtle)",
+                borderRadius: 12,
+                background: "var(--background-secondary)",
+                padding: 12,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12
+            }}
+        >
+            <div style={{ minWidth: 0 }}>
+                <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>{title}</Forms.FormTitle>
+                <Forms.FormText style={{ color: "var(--text-muted)" }}>{description}</Forms.FormText>
+            </div>
+
+            <Button size="small" onClick={onToggle}>
+                {value ? onLabel : offLabel}
+            </Button>
         </div>
     );
 }
 
-function ActionCard({ title, description, children }: React.PropsWithChildren<{ title: string; description: string; }>) {
-    return (
-        <section style={{
-            border: "1px solid var(--border-subtle)",
-            borderRadius: 12,
-            background: "var(--background-secondary)",
-            padding: 14
-        }}>
-            <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>{title}</Forms.FormTitle>
-            <Forms.FormText style={{ color: "var(--text-muted)", marginBottom: 10 }}>{description}</Forms.FormText>
-            {children}
-        </section>
-    );
+function applyLowPowerPreset() {
+    Settings.performance.enabled = true;
+    Settings.performance.disableAnimations = true;
+    Settings.performance.reduceBackdropBlur = true;
+    Settings.performance.disableVisualFlair = true;
+    Settings.performance.hideTypingIndicators = true;
+    Settings.performance.hideActivityCards = false;
+    Settings.performance.compactChannelList = true;
+    Settings.performance.compactMemberList = true;
+    Settings.performance.pauseHiddenMedia = true;
+    Settings.performance.limitBackgroundFps = true;
+    Settings.performance.backgroundFps = 8;
 }
 
-function Toggle({ value, onToggle, onLabel = "Enabled", offLabel = "Disabled" }: { value: boolean; onToggle: () => void; onLabel?: string; offLabel?: string; }) {
-    return (
-        <Button size="small" onClick={onToggle}>
-            {value ? onLabel : offLabel}
-        </Button>
-    );
+function applyBalancedPreset() {
+    Settings.performance.enabled = true;
+    Settings.performance.disableAnimations = false;
+    Settings.performance.reduceBackdropBlur = true;
+    Settings.performance.disableVisualFlair = true;
+    Settings.performance.hideTypingIndicators = false;
+    Settings.performance.hideActivityCards = false;
+    Settings.performance.compactChannelList = false;
+    Settings.performance.compactMemberList = false;
+    Settings.performance.pauseHiddenMedia = true;
+    Settings.performance.limitBackgroundFps = true;
+    Settings.performance.backgroundFps = 12;
+}
+
+function disablePreset() {
+    Settings.performance.enabled = false;
 }
 
 function PerformanceTab() {
-    const [showFpsOverlay, setShowFpsOverlay] = useStored("showFpsOverlay", false);
-    const [disableAnimations, setDisableAnimations] = useStored("disableAnimations", false);
-    const [reduceBlur, setReduceBlur] = useStored("reduceBlur", false);
-    const [limitBackgroundFps, setLimitBackgroundFps] = useStored("limitBackgroundFps", false);
-    const [resourceSampleSize, setResourceSampleSize] = useStored("resourceSampleSize", 100);
-    const [pingUrl, setPingUrl] = useStored("pingUrl", "https://discord.com/api/v9/experiments");
+    useSettings(["performance.*"]);
+    const perf = Settings.performance;
 
-    const [fps, setFps] = React.useState(0);
-    const [memoryText, setMemoryText] = React.useState("Unavailable");
-    const [webglInfo, setWebglInfo] = React.useState("Unavailable");
-    const [resourceStats, setResourceStats] = React.useState("No sample yet");
-    const [pingResult, setPingResult] = React.useState("Not tested");
-    const [benchResult, setBenchResult] = React.useState("Not run");
-    const [gcAvailable, setGcAvailable] = React.useState(false);
+    const activeCount = [
+        perf.disableAnimations,
+        perf.reduceBackdropBlur,
+        perf.disableVisualFlair,
+        perf.hideTypingIndicators,
+        perf.hideActivityCards,
+        perf.compactChannelList,
+        perf.compactMemberList,
+        perf.pauseHiddenMedia,
+        perf.limitBackgroundFps
+    ].filter(Boolean).length;
 
-    const fpsRef = React.useRef({ frames: 0, last: perfNowSafe() });
-
-    React.useEffect(() => {
-        if (!showFpsOverlay) return;
-
-        let raf = 0;
-        const tick = () => {
-            const now = perfNowSafe();
-            const state = fpsRef.current;
-            state.frames += 1;
-
-            if (now - state.last >= 1000) {
-                setFps(Math.round((state.frames * 1000) / (now - state.last)));
-                state.frames = 0;
-                state.last = now;
-            }
-
-            raf = requestAnimationFrame(tick);
-        };
-
-        raf = requestAnimationFrame(tick);
-        return () => cancelAnimationFrame(raf);
-    }, [showFpsOverlay]);
-
-    React.useEffect(() => {
-        const mem = (performance as any)?.memory;
-        if (!mem) {
-            setMemoryText("Unavailable");
-            return;
-        }
-
-        const usedMb = (mem.usedJSHeapSize / 1024 / 1024).toFixed(1);
-        const totalMb = (mem.totalJSHeapSize / 1024 / 1024).toFixed(1);
-        const limitMb = (mem.jsHeapSizeLimit / 1024 / 1024).toFixed(1);
-        setMemoryText(`${usedMb}MB / ${totalMb}MB (limit ${limitMb}MB)`);
-    }, [showFpsOverlay, disableAnimations, reduceBlur, limitBackgroundFps]);
-
-    React.useEffect(() => {
-        try {
-            const canvas = document.createElement("canvas");
-            const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-            if (!gl) {
-                setWebglInfo("WebGL unavailable");
-                return;
-            }
-
-            const ext = (gl as any).getExtension("WEBGL_debug_renderer_info");
-            if (!ext) {
-                setWebglInfo("Renderer hidden");
-                return;
-            }
-
-            const vendor = (gl as any).getParameter(ext.UNMASKED_VENDOR_WEBGL);
-            const renderer = (gl as any).getParameter(ext.UNMASKED_RENDERER_WEBGL);
-            setWebglInfo(`${vendor} / ${renderer}`);
-        } catch {
-            setWebglInfo("Query failed");
-        }
-    }, []);
-
-    React.useEffect(() => {
-        const id = "record-performance-style";
-        const existing = document.getElementById(id) as HTMLStyleElement | null;
-        const style = existing ?? (() => {
-            const el = document.createElement("style");
-            el.id = id;
-            document.head.appendChild(el);
-            return el;
-        })();
-
-        const css: string[] = [];
-        if (disableAnimations) {
-            css.push("*, *::before, *::after { animation: none !important; transition: none !important; }");
-        }
-        if (reduceBlur) {
-            css.push("* { backdrop-filter: none !important; }");
-        }
-        style.textContent = css.join("\n");
-
-        return () => {
-            if (!disableAnimations && !reduceBlur) style.remove();
-        };
-    }, [disableAnimations, reduceBlur]);
-
-    React.useEffect(() => {
-        if (!limitBackgroundFps) return;
-
-        const originalRaf = window.requestAnimationFrame.bind(window);
-        const wrapped = (cb: FrameRequestCallback) => {
-            if (!document.hasFocus()) {
-                return window.setTimeout(() => cb(perfNowSafe()), 125) as unknown as number;
-            }
-            return originalRaf(cb);
-        };
-
-        (window as any).__recordPerfRaf = originalRaf;
-        window.requestAnimationFrame = wrapped as typeof requestAnimationFrame;
-
-        return () => {
-            if ((window as any).__recordPerfRaf) {
-                window.requestAnimationFrame = (window as any).__recordPerfRaf;
-                delete (window as any).__recordPerfRaf;
-            }
-        };
-    }, [limitBackgroundFps]);
-
-    const runResourceSample = React.useCallback(() => {
-        const entries = performance.getEntriesByType("resource") as PerformanceResourceTiming[];
-        if (!entries.length) {
-            setResourceStats("No resource entries");
-            return;
-        }
-
-        const sample = entries.slice(Math.max(0, entries.length - resourceSampleSize));
-        const totalMs = sample.reduce((acc, e) => acc + (e.duration || 0), 0);
-        const avg = totalMs / sample.length;
-        const max = Math.max(...sample.map(e => e.duration || 0));
-        setResourceStats(`${sample.length} entries | avg ${avg.toFixed(1)}ms | max ${max.toFixed(1)}ms`);
-    }, [resourceSampleSize]);
-
-    const runPing = React.useCallback(async () => {
-        const start = perfNowSafe();
-        try {
-            await fetch(pingUrl, { cache: "no-store" });
-            setPingResult(`${(perfNowSafe() - start).toFixed(1)}ms`);
-        } catch (err: any) {
-            setPingResult(`Error: ${err?.message ?? "request failed"}`);
-        }
-    }, [pingUrl]);
-
-    const runBench = React.useCallback(() => {
-        const count = 1_500_000;
-        const start = perfNowSafe();
-        let acc = 0;
-        for (let i = 0; i < count; i++) {
-            acc += Math.sqrt(i) * Math.sin(i % 360);
-        }
-        setBenchResult(`${(perfNowSafe() - start).toFixed(1)}ms (${acc.toFixed(1)})`);
-    }, []);
-
-    const runGcHint = React.useCallback(() => {
-        try {
-            (window as any).gc?.();
-            setGcAvailable(true);
-        } catch {
-            setGcAvailable(false);
-        }
-    }, []);
-
-    const hardwareInfo = `${navigator.hardwareConcurrency ?? "?"} threads · ${((navigator as any).deviceMemory ?? "?")}GB memory hint`;
+    const estimatedMode = !perf.enabled
+        ? "Default"
+        : activeCount >= 7
+            ? "Aggressive Savings"
+            : activeCount >= 4
+                ? "Balanced Savings"
+                : "Light Savings";
 
     return (
         <SettingsTab>
-            <div style={{
-                border: "1px solid var(--border-subtle)",
-                borderRadius: 14,
-                background: "linear-gradient(145deg, var(--background-secondary), var(--background-tertiary))",
-                padding: 16,
-                marginBottom: 16
-            }}>
-                <Forms.FormTitle tag="h2" style={{ marginBottom: 4 }}>Performance Dashboard</Forms.FormTitle>
+            <div
+                style={{
+                    border: "1px solid var(--border-subtle)",
+                    borderRadius: 14,
+                    padding: 16,
+                    background: "linear-gradient(145deg,var(--background-secondary),var(--background-tertiary))",
+                    marginBottom: 14
+                }}
+            >
+                <Forms.FormTitle tag="h2" style={{ marginBottom: 4 }}>Performance Control Center</Forms.FormTitle>
+                <Forms.FormText style={{ color: "var(--text-muted)", marginBottom: 8 }}>
+                    Apply renderer-focused optimizations to reduce CPU/GPU load, memory churn, and background usage.
+                </Forms.FormText>
                 <Forms.FormText style={{ color: "var(--text-muted)" }}>
-                    Real-time diagnostics and optimization controls for renderer responsiveness, memory, and network performance.
+                    Current profile: <b>{estimatedMode}</b> · Active optimizations: <b>{activeCount}</b>
                 </Forms.FormText>
             </div>
 
-            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", marginBottom: 16 }}>
-                <StatCard title="FPS" value={showFpsOverlay ? String(fps) : "OFF"} hint="Enable FPS overlay below" />
-                <StatCard title="Heap" value={memoryText} hint="Chromium memory API" />
-                <StatCard title="GPU" value={webglInfo} hint="WebGL renderer info" />
-                <StatCard title="Hardware" value={hardwareInfo} hint="Browser-reported capability" />
-                <StatCard title="Ping" value={pingResult} hint="Custom endpoint latency" />
-                <StatCard title="Bench" value={benchResult} hint="CPU micro benchmark" />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                <Button size="small" onClick={applyBalancedPreset}>Apply Balanced Preset</Button>
+                <Button size="small" onClick={applyLowPowerPreset}>Apply Aggressive Preset</Button>
+                <Button size="small" onClick={disablePreset}>Disable All Tweaks</Button>
             </div>
 
-            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
-                <ActionCard
-                    title="Visual Load"
-                    description="Reduce expensive visual effects and transition overhead."
-                >
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <Toggle value={disableAnimations} onToggle={() => setDisableAnimations(!disableAnimations)} onLabel="Animations OFF" offLabel="Disable Animations" />
-                        <Toggle value={reduceBlur} onToggle={() => setReduceBlur(!reduceBlur)} onLabel="Blur Reduction ON" offLabel="Reduce Blur" />
-                    </div>
-                </ActionCard>
+            <ToggleRow
+                title="Performance Mode Master"
+                description="Global switch for all ReCord performance optimizations."
+                value={perf.enabled}
+                onToggle={() => (Settings.performance.enabled = !perf.enabled)}
+                onLabel="Performance Mode ON"
+                offLabel="Performance Mode OFF"
+            />
 
-                <ActionCard
-                    title="Frame Scheduling"
-                    description="Control frame behavior when Discord is not focused."
-                >
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <Toggle value={showFpsOverlay} onToggle={() => setShowFpsOverlay(!showFpsOverlay)} onLabel="FPS Overlay ON" offLabel="Enable FPS Overlay" />
-                        <Toggle value={limitBackgroundFps} onToggle={() => setLimitBackgroundFps(!limitBackgroundFps)} onLabel="Limiter ON (8 FPS)" offLabel="Background FPS Limiter" />
-                    </div>
-                </ActionCard>
+            <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                <ToggleRow
+                    title="Disable Animations"
+                    description="Removes transitions and animations that add frame-time overhead."
+                    value={perf.disableAnimations}
+                    onToggle={() => (Settings.performance.disableAnimations = !perf.disableAnimations)}
+                />
 
-                <ActionCard
-                    title="Network Probe"
-                    description="Ping any endpoint and profile resource timing."
-                >
-                    <div style={{ display: "grid", gap: 8 }}>
-                        <TextInput value={pingUrl} onChange={v => setPingUrl(v)} placeholder="Ping URL" />
-                        <div style={{ display: "flex", gap: 8 }}>
-                            <Button size="small" onClick={runPing}>Ping</Button>
-                            <Button size="small" onClick={runResourceSample}>Resource Sample</Button>
-                        </div>
-                        <TextInput
-                            value={String(resourceSampleSize)}
-                            onChange={v => setResourceSampleSize(Math.max(10, Number(v) || 100))}
-                            placeholder="Resource sample size"
-                        />
-                        <Forms.FormText style={{ color: "var(--text-muted)", fontSize: 12 }}>{resourceStats}</Forms.FormText>
-                    </div>
-                </ActionCard>
+                <ToggleRow
+                    title="Reduce Backdrop Blur"
+                    description="Disables costly blur/filter effects to lower GPU utilization."
+                    value={perf.reduceBackdropBlur}
+                    onToggle={() => (Settings.performance.reduceBackdropBlur = !perf.reduceBackdropBlur)}
+                />
 
-                <ActionCard
-                    title="Runtime Bench"
-                    description="Measure CPU throughput and trigger GC if available."
+                <ToggleRow
+                    title="Disable Visual Flair"
+                    description="Hides decorative profile/effect layers and expensive UI glows."
+                    value={perf.disableVisualFlair}
+                    onToggle={() => (Settings.performance.disableVisualFlair = !perf.disableVisualFlair)}
+                />
+
+                <ToggleRow
+                    title="Hide Typing Indicators"
+                    description="Reduces tiny but frequent animation churn in busy channels."
+                    value={perf.hideTypingIndicators}
+                    onToggle={() => (Settings.performance.hideTypingIndicators = !perf.hideTypingIndicators)}
+                />
+
+                <ToggleRow
+                    title="Hide Activity Cards"
+                    description="Removes rich activity surfaces that can increase repaint work."
+                    value={perf.hideActivityCards}
+                    onToggle={() => (Settings.performance.hideActivityCards = !perf.hideActivityCards)}
+                />
+
+                <ToggleRow
+                    title="Compact Channel List"
+                    description="Tighter channel rows reduce rendering area and scroll work."
+                    value={perf.compactChannelList}
+                    onToggle={() => (Settings.performance.compactChannelList = !perf.compactChannelList)}
+                />
+
+                <ToggleRow
+                    title="Compact Member List"
+                    description="Tighter member rows reduce list rendering cost in large guilds."
+                    value={perf.compactMemberList}
+                    onToggle={() => (Settings.performance.compactMemberList = !perf.compactMemberList)}
+                />
+
+                <ToggleRow
+                    title="Pause Hidden Media"
+                    description="Pauses autoplay/muted videos while Discord is hidden."
+                    value={perf.pauseHiddenMedia}
+                    onToggle={() => (Settings.performance.pauseHiddenMedia = !perf.pauseHiddenMedia)}
+                />
+
+                <ToggleRow
+                    title="Limit Background FPS"
+                    description="Throttles animation frames when Discord is unfocused/minimized."
+                    value={perf.limitBackgroundFps}
+                    onToggle={() => (Settings.performance.limitBackgroundFps = !perf.limitBackgroundFps)}
+                    onLabel="Limiter ON"
+                    offLabel="Limiter OFF"
+                />
+
+                <div
+                    style={{
+                        border: "1px solid var(--border-subtle)",
+                        borderRadius: 12,
+                        background: "var(--background-secondary)",
+                        padding: 12
+                    }}
                 >
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <Button size="small" onClick={runBench}>Run CPU Bench</Button>
-                        <Button size="small" onClick={runGcHint}>Try GC</Button>
-                    </div>
-                    <Forms.FormText className={Margins.top8} style={{ color: gcAvailable ? "var(--text-positive)" : "var(--text-muted)" }}>
-                        {gcAvailable ? "GC hint sent (runtime exposes gc)." : "GC API unavailable."}
+                    <Forms.FormTitle tag="h5">Background FPS Target</Forms.FormTitle>
+                    <Forms.FormText className={Margins.bottom8} style={{ color: "var(--text-muted)" }}>
+                        Used by background limiter. Lower values consume less CPU but reduce background smoothness.
                     </Forms.FormText>
-                </ActionCard>
+                    <TextInput
+                        value={String(perf.backgroundFps)}
+                        onChange={v => {
+                            const parsed = Number(v);
+                            if (!Number.isFinite(parsed)) return;
+                            Settings.performance.backgroundFps = Math.max(1, Math.min(30, Math.floor(parsed)));
+                        }}
+                        placeholder="1 - 30"
+                    />
+                </div>
             </div>
+
+            <Forms.FormText className={Margins.top16} style={{ color: "var(--text-muted)" }}>
+                Tip: Start with Balanced preset. If CPU/GPU usage is still high on large servers, switch to Aggressive.
+            </Forms.FormText>
         </SettingsTab>
     );
 }

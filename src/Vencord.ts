@@ -39,6 +39,7 @@ import { SettingsRouter } from "@webpack/common";
 
 import { get as dsGet } from "./api/DataStore";
 import { NotificationData, showNotification } from "./api/Notifications";
+import { initPerformanceMode } from "./api/Performance";
 import { initPluginManager, PMLogger, startAllPlugins } from "./api/PluginManager";
 import { PlainSettings, Settings, SettingsStore } from "./api/Settings";
 import { getCloudSettings, putCloudSettings, shouldCloudSync } from "./api/SettingsSync/cloudSync";
@@ -180,6 +181,7 @@ async function init() {
 
 initPluginManager();
 initStyles();
+initPerformanceMode();
 startAllPlugins(StartAt.Init);
 init();
 

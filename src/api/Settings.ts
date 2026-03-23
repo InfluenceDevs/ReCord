@@ -89,6 +89,20 @@ export interface Settings {
         settingsSync: boolean;
         settingsSyncVersion: number;
     };
+
+    performance: {
+        enabled: boolean;
+        disableAnimations: boolean;
+        reduceBackdropBlur: boolean;
+        disableVisualFlair: boolean;
+        hideTypingIndicators: boolean;
+        hideActivityCards: boolean;
+        compactChannelList: boolean;
+        compactMemberList: boolean;
+        pauseHiddenMedia: boolean;
+        limitBackgroundFps: boolean;
+        backgroundFps: number;
+    };
 }
 
 const DefaultSettings: Settings = {
@@ -124,6 +138,20 @@ const DefaultSettings: Settings = {
         url: "https://api.vencord.dev/",
         settingsSync: false,
         settingsSyncVersion: 0
+    },
+
+    performance: {
+        enabled: false,
+        disableAnimations: false,
+        reduceBackdropBlur: false,
+        disableVisualFlair: false,
+        hideTypingIndicators: false,
+        hideActivityCards: false,
+        compactChannelList: false,
+        compactMemberList: false,
+        pauseHiddenMedia: true,
+        limitBackgroundFps: false,
+        backgroundFps: 8
     }
 };
 
