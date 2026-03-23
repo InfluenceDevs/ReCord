@@ -25,6 +25,8 @@ import { promisify } from "util";
 import { serializeErrors } from "./common";
 
 const VENCORD_SRC_DIR = join(__dirname, "..");
+const RECORD_ORIGIN_URL = "https://github.com/InfluenceDevs/ReCord.git";
+const VENCORD_ORIGIN_RE = /(?:github\.com[/:](?:Vendicated|Vencord)\/Vencord(?:\.git)?)/i;
 
 const execFile = promisify(cpExecFile);
 
@@ -39,7 +41,16 @@ function git(...args: string[]) {
     else return execFile("git", args, opts);
 }
 
+async function migrateLegacyOriginIfNeeded() {
+    const current = (await git("remote", "get-url", "origin")).stdout.trim();
+    if (!VENCORD_ORIGIN_RE.test(current)) return;
+
+    await git("remote", "set-url", "origin", RECORD_ORIGIN_URL);
+}
+
 async function getRepo() {
+    await migrateLegacyOriginIfNeeded();
+
     const res = await git("remote", "get-url", "origin");
     return res.stdout.trim()
         .replace(/git@(.+):/, "https://$1/")
@@ -47,6 +58,7 @@ async function getRepo() {
 }
 
 async function calculateGitChanges() {
+    await migrateLegacyOriginIfNeeded();
     await git("fetch");
 
     const branch = (await git("branch", "--show-current")).stdout.trim();
@@ -67,6 +79,7 @@ async function calculateGitChanges() {
 }
 
 async function pull() {
+    await migrateLegacyOriginIfNeeded();
     const res = await git("pull");
     return res.stdout.includes("Fast-forward");
 }

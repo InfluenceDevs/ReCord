@@ -9,7 +9,12 @@ import { fileURLToPath } from "url";
 
 import zipper from "zip-local";
 
-const BASE_URL = "https://github.com/Vencord/Installer/releases/latest/download/";
+const INSTALLER_BASE_URLS = [
+    process.env.RECORD_INSTALLER_BASE_URL,
+    process.env.VENCORD_INSTALLER_BASE_URL,
+    "https://github.com/InfluenceDevs/Installer/releases/latest/download/",
+    "https://github.com/Vencord/Installer/releases/latest/download/"
+].filter(Boolean);
 const INSTALLER_PATH_DARWIN = "VencordInstaller.app/Contents/MacOS/VencordInstaller";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -54,14 +59,26 @@ async function downloadInstaller(tempDir) {
     mkdirSync(tempDir, { recursive: true });
     const sourcePath = join(tempDir, cfg.downloadName);
     const targetPath = join(BUNDLE_DIR, cfg.outputName);
-    const res = await fetch(BASE_URL + cfg.downloadName, {
-        headers: {
-            "User-Agent": "ReCord Release Builder (https://github.com/InfluenceDevs/ReCord)"
-        }
-    });
+    let res = null;
 
-    if (!res.ok) {
-        throw new Error(`Failed to download installer: ${res.status} ${res.statusText}`);
+    for (const baseUrl of INSTALLER_BASE_URLS) {
+        const candidate = await fetch(baseUrl + cfg.downloadName, {
+            headers: {
+                "User-Agent": "ReCord Release Builder (https://github.com/InfluenceDevs/ReCord)"
+            }
+        });
+
+        if (!candidate.ok) {
+            if (candidate.status === 404) continue;
+            throw new Error(`Failed to download installer from ${baseUrl}: ${candidate.status} ${candidate.statusText}`);
+        }
+
+        res = candidate;
+        break;
+    }
+
+    if (!res) {
+        throw new Error(`Failed to download installer binary ${cfg.downloadName} from any configured source.`);
     }
 
     if (process.platform === "darwin") {

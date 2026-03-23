@@ -28,7 +28,14 @@ import gitRemote from "~git-remote";
 
 import { serializeErrors, VENCORD_FILES } from "./common";
 
-const API_BASE = `https://api.github.com/repos/${gitRemote}`;
+const RECORD_REMOTE = "InfluenceDevs/ReCord";
+const VENCORD_REMOTES = new Set([
+    "Vendicated/Vencord",
+    "Vencord/Vencord"
+]);
+
+const resolvedRemote = VENCORD_REMOTES.has(gitRemote) ? RECORD_REMOTE : gitRemote;
+const API_BASE = `https://api.github.com/repos/${resolvedRemote}`;
 let PendingUpdates = [] as [string, string][];
 
 async function githubGet<T = any>(endpoint: string) {
@@ -86,7 +93,7 @@ async function applyUpdates() {
     return true;
 }
 
-ipcMain.handle(IpcEvents.GET_REPO, serializeErrors(() => `https://github.com/${gitRemote}`));
+ipcMain.handle(IpcEvents.GET_REPO, serializeErrors(() => `https://github.com/${resolvedRemote}`));
 ipcMain.handle(IpcEvents.GET_UPDATES, serializeErrors(calculateGitChanges));
 ipcMain.handle(IpcEvents.UPDATE, serializeErrors(fetchUpdates));
 ipcMain.handle(IpcEvents.BUILD, serializeErrors(applyUpdates));
