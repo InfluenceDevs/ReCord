@@ -1,21 +1,63 @@
 .vc-settings-tab-bar {
-    margin-top: 20px;
-    margin-bottom: 10px;
+    margin-top: 18px;
+    margin-bottom: 14px;
     border-bottom: 1px solid var(--border-subtle);
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    backdrop-filter: blur(8px);
+    background: color-mix(in srgb, var(--background-base-low) 88%, transparent);
 }
 
 .vc-settings-tab {
-    padding: 4px 0;
+    --vc-panel-radius: 14px;
+    --vc-panel-border: 1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent);
+    padding: 8px 0 16px;
+    animation: vc-settings-enter 220ms ease;
 }
 
 .vc-settings-tab h5 {
     letter-spacing: 0.02em;
 }
 
+.vc-settings-tab h2,
+.vc-settings-tab h3,
+.vc-settings-tab h4,
+.vc-settings-tab h5 {
+    font-weight: 700;
+}
+
+.vc-settings-tab section {
+    border: var(--vc-panel-border);
+    border-radius: var(--vc-panel-radius);
+    padding: 14px;
+    background: linear-gradient(165deg, color-mix(in srgb, var(--background-secondary) 94%, transparent), color-mix(in srgb, var(--background-tertiary) 88%, transparent));
+    box-shadow: 0 10px 26px color-mix(in srgb, var(--background-floating) 24%, transparent);
+}
+
+.vc-settings-tab section + section {
+    margin-top: 12px;
+}
+
 .vc-settings-tab-bar-item {
-    margin-right: 32px;
-    padding-bottom: 16px;
+    margin-right: 20px;
+    padding: 0 2px 14px;
     margin-bottom: -2px;
+    transition: color 140ms ease, transform 140ms ease;
+}
+
+.vc-settings-tab-bar-item:hover {
+    transform: translateY(-1px);
+}
+
+.vc-settings-tab button {
+    border-radius: 10px !important;
+}
+
+.vc-settings-tab input,
+.vc-settings-tab textarea,
+.vc-settings-tab [role="textbox"] {
+    border-radius: 10px !important;
 }
 
 .vc-settings-donate {
@@ -70,9 +112,34 @@
 }
 
 .vc-settings-modal {
-    padding: 1.5em !important;
+    padding: 1.25em !important;
+    border-radius: 16px;
+    border: var(--vc-panel-border);
+    box-shadow: 0 18px 42px color-mix(in srgb, var(--background-floating) 34%, transparent);
 }
 
 .vc-settings-modal-close {
     float: right;
+}
+
+@keyframes vc-settings-enter {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 800px) {
+    .vc-settings-tab section {
+        padding: 12px;
+    }
+
+    .vc-settings-tab-bar-item {
+        margin-right: 14px;
+    }
 }

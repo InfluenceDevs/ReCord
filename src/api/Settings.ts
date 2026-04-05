@@ -95,13 +95,25 @@ export interface Settings {
         disableAnimations: boolean;
         reduceBackdropBlur: boolean;
         disableVisualFlair: boolean;
+        disableShadows: boolean;
+        disableGradients: boolean;
+        disableHoverAnimations: boolean;
         hideTypingIndicators: boolean;
         hideActivityCards: boolean;
+        hideProfilePanels: boolean;
+        hideGuildBoostEffects: boolean;
+        hideStickersAndGifPreviews: boolean;
         compactChannelList: boolean;
         compactMemberList: boolean;
+        compactChatDensity: boolean;
+        preferStaticAvatars: boolean;
         pauseHiddenMedia: boolean;
+        pauseHiddenAudio: boolean;
+        keepOnlyVisibleVideos: boolean;
         limitBackgroundFps: boolean;
         backgroundFps: number;
+        diagnosticsEnabled: boolean;
+        diagnosticsOverlay: boolean;
     };
 }
 
@@ -141,17 +153,29 @@ const DefaultSettings: Settings = {
     },
 
     performance: {
-        enabled: false,
-        disableAnimations: false,
-        reduceBackdropBlur: false,
-        disableVisualFlair: false,
-        hideTypingIndicators: false,
-        hideActivityCards: false,
-        compactChannelList: false,
-        compactMemberList: false,
+        enabled: true,
+        disableAnimations: true,
+        reduceBackdropBlur: true,
+        disableVisualFlair: true,
+        disableShadows: true,
+        disableGradients: true,
+        disableHoverAnimations: true,
+        hideTypingIndicators: true,
+        hideActivityCards: true,
+        hideProfilePanels: true,
+        hideGuildBoostEffects: true,
+        hideStickersAndGifPreviews: true,
+        compactChannelList: true,
+        compactMemberList: true,
+        compactChatDensity: true,
+        preferStaticAvatars: true,
         pauseHiddenMedia: true,
-        limitBackgroundFps: false,
-        backgroundFps: 8
+        pauseHiddenAudio: true,
+        keepOnlyVisibleVideos: true,
+        limitBackgroundFps: true,
+        backgroundFps: 8,
+        diagnosticsEnabled: true,
+        diagnosticsOverlay: false
     }
 };
 
@@ -219,6 +243,24 @@ export const PlainSettings = settings;
  * This recursively proxies objects. If you need the object non proxied, use {@link PlainSettings}
  */
 export const Settings = SettingsStore.store;
+
+export function resetPerformanceSettings() {
+    const fresh = structuredClone(DefaultSettings.performance);
+    Object.assign(SettingsStore.plain.performance, fresh);
+    SettingsStore.markAsChanged();
+}
+
+export function resetAllSettings() {
+    const fresh = structuredClone(DefaultSettings);
+    const current = SettingsStore.plain as Record<string, unknown>;
+
+    for (const key of Object.keys(current)) {
+        delete current[key];
+    }
+
+    Object.assign(SettingsStore.plain, fresh);
+    SettingsStore.markAsChanged();
+}
 
 /**
  * Settings hook for React components. Returns a smart settings
