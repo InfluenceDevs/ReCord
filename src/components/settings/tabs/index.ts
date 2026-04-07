@@ -24,3 +24,4 @@ export { default as OpsecTab } from "./opsec";
 export { default as PerformanceTab } from "./performance";
 export { default as ModulesTab } from "./modules";
 export { default as DownloadsTab } from "./downloads";
+export { default as MultiRpcTab } from "./multiRpc";

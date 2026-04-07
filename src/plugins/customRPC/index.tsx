@@ -80,9 +80,64 @@ export const settings = definePluginSettings({
     buttonTwoURL?: string;
     partySize?: number;
     partyMaxSize?: number;
+    multiRpcEnabled?: boolean;
+    multiRpcProfiles?: string;
+    multiRpcIntervalSec?: number;
 }>();
 
-async function createActivity(): Promise<Activity | undefined> {
+type RpcProfile = Partial<{
+    appID: string;
+    appName: string;
+    details: string;
+    detailsURL: string;
+    state: string;
+    stateURL: string;
+    type: ActivityType;
+    streamLink: string;
+    timestampMode: TimestampMode;
+    startTime: number;
+    endTime: number;
+    imageBig: string;
+    imageBigURL: string;
+    imageBigTooltip: string;
+    imageSmall: string;
+    imageSmallURL: string;
+    imageSmallTooltip: string;
+    buttonOneText: string;
+    buttonOneURL: string;
+    buttonTwoText: string;
+    buttonTwoURL: string;
+    partySize: number;
+    partyMaxSize: number;
+}>;
+
+let multiRpcTimer: ReturnType<typeof setInterval> | null = null;
+let profileCursor = 0;
+
+function parseProfiles(): RpcProfile[] {
+    try {
+        const parsed = JSON.parse(settings.store.multiRpcProfiles || "[]");
+        if (!Array.isArray(parsed)) return [];
+        return parsed.filter(Boolean);
+    } catch {
+        return [];
+    }
+}
+
+function resolveProfileSource(): RpcProfile | undefined {
+    if (!settings.store.multiRpcEnabled) return;
+
+    const profiles = parseProfiles();
+    if (!profiles.length) return;
+
+    const current = profiles[profileCursor % profiles.length];
+    profileCursor = (profileCursor + 1) % profiles.length;
+    return current;
+}
+
+async function createActivity(profile?: RpcProfile): Promise<Activity | undefined> {
+    const source = profile ? { ...settings.store, ...profile } : settings.store;
+
     const {
         appID,
         appName,
@@ -107,7 +162,7 @@ async function createActivity(): Promise<Activity | undefined> {
         partyMaxSize,
         partySize,
         timestampMode
-    } = settings.store;
+    } = source;
 
     if (!appName) return;
 
@@ -201,13 +256,29 @@ async function createActivity(): Promise<Activity | undefined> {
 }
 
 export async function setRpc(disable?: boolean) {
-    const activity: Activity | undefined = await createActivity();
+    const profile = resolveProfileSource();
+    const activity: Activity | undefined = await createActivity(profile);
 
     FluxDispatcher.dispatch({
         type: "LOCAL_ACTIVITY_UPDATE",
         activity: !disable ? activity : null,
         socketId: "CustomRPC",
     });
+}
+
+export function refreshMultiRpcScheduler() {
+    if (multiRpcTimer) {
+        clearInterval(multiRpcTimer);
+        multiRpcTimer = null;
+    }
+
+    if (!settings.store.multiRpcEnabled) return;
+
+    const profiles = parseProfiles();
+    if (profiles.length < 2) return;
+
+    const intervalSec = Math.max(5, Number(settings.store.multiRpcIntervalSec) || 30);
+    multiRpcTimer = setInterval(() => void setRpc(), intervalSec * 1000);
 }
 
 export default definePlugin({
@@ -219,8 +290,18 @@ export default definePlugin({
     requiresRestart: false,
     settings,
 
-    start: setRpc,
-    stop: () => setRpc(true),
+    start() {
+        profileCursor = 0;
+        void setRpc();
+        refreshMultiRpcScheduler();
+    },
+    stop() {
+        if (multiRpcTimer) {
+            clearInterval(multiRpcTimer);
+            multiRpcTimer = null;
+        }
+        void setRpc(true);
+    },
 
     // Discord hides buttons on your own Rich Presence for some reason. This patch disables that behaviour
     patches: [
@@ -234,7 +315,7 @@ export default definePlugin({
     ],
 
     settingsAboutComponent: () => {
-        const [activity] = useAwaiter(createActivity, { fallbackValue: undefined, deps: Object.values(settings.store) });
+        const [activity] = useAwaiter(() => createActivity(), { fallbackValue: undefined, deps: Object.values(settings.store) });
         const gameActivityEnabled = ShowCurrentGame.useSetting();
         const { profileThemeStyle } = useProfileThemeStyle({});
 

@@ -17,8 +17,9 @@
 */
 
 import { definePluginSettings } from "@api/Settings";
+import { isPluginEnabled } from "@api/PluginManager";
 import { BackupRestoreIcon, CloudIcon, CogWheel, LogIcon, MainSettingsIcon, NotesIcon, PaintbrushIcon, PatchHelperIcon, PlaceholderIcon, PluginsIcon, SafetyIcon, UpdaterIcon, VesktopSettingsIcon } from "@components/Icons";
-import { AccountCenterTab, BackupAndRestoreTab, CloudTab, ConsoleTab, DownloadsTab, GhostChatsTab, ModulesTab, OpsecTab, PatchHelperTab, PerformanceTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
+import { AccountCenterTab, BackupAndRestoreTab, CloudTab, ConsoleTab, DownloadsTab, GhostChatsTab, ModulesTab, MultiRpcTab, OpsecTab, PatchHelperTab, PerformanceTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
 import { Devs } from "@utils/constants";
 import { isTruthy } from "@utils/guards";
 import definePlugin, { IconProps, OptionType } from "@utils/types";
@@ -111,7 +112,8 @@ const settingsSectionMap: [string, string][] = [
     ["ReCordOpsec", "vencord_opsec_panel"],
     ["ReCordPerformance", "vencord_performance_panel"],
     ["ReCordModules", "vencord_modules_panel"],
-    ["ReCordDownloads", "vencord_downloads_panel"]
+    ["ReCordDownloads", "vencord_downloads_panel"],
+    ["ReCordMultiRPC", "vencord_multi_rpc_panel"]
 ];
 
 export default definePlugin({
@@ -292,6 +294,13 @@ export default definePlugin({
                 panelTitle: "Download History",
                 Component: DownloadsTab,
                 Icon: CloudIcon
+            }),
+            isPluginEnabled("CustomRPC") && buildEntry({
+                key: "vencord_multi_rpc",
+                title: "Multi RPC",
+                panelTitle: "Multi RPC",
+                Component: MultiRpcTab,
+                Icon: NotesIcon
             }),
             IS_DEV && PatchHelperTab && buildEntry({
                 key: "vencord_patch_helper",

@@ -12,8 +12,7 @@ import zipper from "zip-local";
 const INSTALLER_BASE_URLS = [
     process.env.RECORD_INSTALLER_BASE_URL,
     process.env.VENCORD_INSTALLER_BASE_URL,
-    "https://github.com/InfluenceDevs/Installer/releases/latest/download/",
-    "https://github.com/Vencord/Installer/releases/latest/download/"
+    "https://github.com/InfluenceDevs/Installer/releases/latest/download/"
 ].filter(Boolean);
 const INSTALLER_PATH_DARWIN = "VencordInstaller.app/Contents/MacOS/VencordInstaller";
 

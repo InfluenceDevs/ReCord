@@ -8,8 +8,8 @@ import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/Co
 import { definePluginSettings } from "@api/Settings";
 import { Logger } from "@utils/Logger";
 import definePlugin, { OptionType } from "@utils/types";
-import { Alerts, ChannelStore, Constants, FluxDispatcher, Menu, PermissionsBits, PermissionStore, RestAPI, showToast, Toasts, UserStore } from "@webpack/common";
 import { findLazy } from "@webpack";
+import { Alerts, ChannelStore, Constants, FluxDispatcher, Menu, PermissionsBits, PermissionStore, React, RestAPI, showToast, Toasts, UserStore } from "@webpack/common";
 
 const logger = new Logger("RecordPurger");
 const Influence = { name: "Influence", id: 0n };
@@ -19,6 +19,7 @@ const HIDDEN_MESSAGES_KEY = "record_hidden_messages";
 type HiddenMessages = Record<string, Record<string, true>>;
 type PurgeAction = "delete" | "hide" | "both";
 type PrivateBulkAction = "close-dms" | "leave-groups" | "both";
+type DmFilterMode = "allowlist" | "denylist";
 
 const ChannelTypes = findLazy(m => m.GROUP_DM === 3 && m.DM === 1) as { DM: number; GROUP_DM: number; };
 
@@ -33,6 +34,34 @@ const settings = definePluginSettings({
         type: OptionType.BOOLEAN,
         description: "Skip pinned messages when deleting/hiding",
         default: true,
+    },
+    enablePurgeAllOpenDms: {
+        type: OptionType.BOOLEAN,
+        description: "Enable menu action to purge messages across all open DMs.",
+        default: true,
+    },
+    includeGroupDmsInPurge: {
+        type: OptionType.BOOLEAN,
+        description: "Include group DMs in the purge-all-open-DMs action.",
+        default: false,
+    },
+    dmFilterMode: {
+        type: OptionType.SELECT,
+        description: "How DM filter lists are applied for purge-all-open-DMs.",
+        options: [
+            { label: "Allowlist (only listed)", value: "allowlist", default: true },
+            { label: "Denylist (exclude listed)", value: "denylist" },
+        ] as { label: string; value: DmFilterMode; default?: boolean; }[],
+    },
+    dmWhitelist: {
+        type: OptionType.STRING,
+        description: "Comma-separated DM channel IDs or user IDs to include.",
+        default: "",
+    },
+    dmBlacklist: {
+        type: OptionType.STRING,
+        description: "Comma-separated DM channel IDs or user IDs to exclude.",
+        default: "",
     },
 });
 
@@ -115,6 +144,82 @@ function actionLabel(action: PurgeAction) {
     return "delete + hide";
 }
 
+function parseFilterList(raw: string) {
+    return new Set(
+        raw
+            .split(",")
+            .map(s => s.trim())
+            .filter(Boolean)
+    );
+}
+
+function getChannelRecipientIds(channel: any): string[] {
+    const ids = channel?.rawRecipients?.map?.((r: any) => r?.id)
+        ?? channel?.recipients
+        ?? [];
+    return Array.isArray(ids) ? ids.filter(Boolean) : [];
+}
+
+function shouldIncludePrivateChannel(channel: any) {
+    const mode = settings.store.dmFilterMode as DmFilterMode;
+    const allow = parseFilterList(settings.store.dmWhitelist);
+    const deny = parseFilterList(settings.store.dmBlacklist);
+
+    const channelId = channel?.id;
+    const recipientIds = getChannelRecipientIds(channel);
+    const matches = (set: Set<string>) => {
+        if (!set.size) return false;
+        if (channelId && set.has(channelId)) return true;
+        return recipientIds.some(id => set.has(id));
+    };
+
+    if (mode === "allowlist") {
+        if (!allow.size) return true;
+        return matches(allow);
+    }
+
+    if (!deny.size) return true;
+    return !matches(deny);
+}
+
+async function processChannelMessages(channelId: string, onlyMine: boolean, action: PurgeAction, stopped: () => boolean, stats: { processed: number; }) {
+    const myId = UserStore.getCurrentUser()?.id;
+    let before: string | undefined;
+
+    outer: while (!stopped()) {
+        const messages = await fetchMessages(channelId, before);
+        if (!messages.length) break;
+
+        before = messages[messages.length - 1].id;
+
+        for (const msg of messages) {
+            if (stopped()) break outer;
+            if (onlyMine && msg.author?.id !== myId) continue;
+            if (settings.store.skipPinned && msg.pinned) continue;
+
+            if (action === "delete" || action === "both") {
+                const ok = await deleteWithRetry(channelId, msg.id, stopped);
+                if (!ok) break outer;
+            }
+
+            if (!stopped() && (action === "hide" || action === "both")) {
+                hideMessageLocally(channelId, msg.id);
+            }
+
+            if (!stopped()) {
+                stats.processed++;
+                if (stats.processed % 10 === 0) {
+                    showToast(`Processed ${stats.processed} messages...`, Toasts.Type.MESSAGE);
+                }
+                await sleep(settings.store.deleteDelay);
+            }
+        }
+
+        if (messages.length < 100) break;
+        await sleep(300);
+    }
+}
+
 async function startPurge(channelId: string, onlyMine: boolean, action: PurgeAction) {
     if (activeTask) {
         activeTask.stop();
@@ -124,45 +229,12 @@ async function startPurge(channelId: string, onlyMine: boolean, action: PurgeAct
     let stopped = false;
     activeTask = { stop: () => { stopped = true; } };
 
-    const myId = UserStore.getCurrentUser()?.id;
-    let processed = 0;
-    let before: string | undefined;
+    const stats = { processed: 0 };
 
     showToast(`Starting ${actionLabel(action)} task...`, Toasts.Type.MESSAGE);
 
     try {
-        outer: while (!stopped) {
-            const messages = await fetchMessages(channelId, before);
-            if (!messages.length) break;
-
-            before = messages[messages.length - 1].id;
-
-            for (const msg of messages) {
-                if (stopped) break outer;
-                if (onlyMine && msg.author?.id !== myId) continue;
-                if (settings.store.skipPinned && msg.pinned) continue;
-
-                if (action === "delete" || action === "both") {
-                    const ok = await deleteWithRetry(channelId, msg.id, () => stopped);
-                    if (!ok) break outer;
-                }
-
-                if (!stopped && (action === "hide" || action === "both")) {
-                    hideMessageLocally(channelId, msg.id);
-                }
-
-                if (!stopped) {
-                    processed++;
-                    if (processed % 10 === 0) {
-                        showToast(`Processed ${processed} messages...`, Toasts.Type.MESSAGE);
-                    }
-                    await sleep(settings.store.deleteDelay);
-                }
-            }
-
-            if (messages.length < 100) break;
-            await sleep(300);
-        }
+        await processChannelMessages(channelId, onlyMine, action, () => stopped, stats);
     } catch (err) {
         logger.error("Purge task error:", err);
     }
@@ -170,9 +242,47 @@ async function startPurge(channelId: string, onlyMine: boolean, action: PurgeAct
     activeTask = null;
 
     if (stopped) {
-        showToast(`Task stopped after ${processed} messages.`, Toasts.Type.MESSAGE);
+        showToast(`Task stopped after ${stats.processed} messages.`, Toasts.Type.MESSAGE);
     } else {
-        showToast(`Done: ${processed} messages processed.`, Toasts.Type.SUCCESS);
+        showToast(`Done: ${stats.processed} messages processed.`, Toasts.Type.SUCCESS);
+    }
+}
+
+async function startPurgeAllOpenDms(onlyMine: boolean, action: PurgeAction) {
+    if (activeTask) {
+        activeTask.stop();
+        activeTask = null;
+    }
+
+    let stopped = false;
+    activeTask = { stop: () => { stopped = true; } };
+
+    const channels = ChannelStore.getSortedPrivateChannels();
+    const selected = channels.filter(c => {
+        if (c.type === ChannelTypes.DM) return true;
+        if (settings.store.includeGroupDmsInPurge && c.type === ChannelTypes.GROUP_DM) return true;
+        return false;
+    }).filter(shouldIncludePrivateChannel);
+
+    const stats = { processed: 0 };
+    showToast(`Starting purge across ${selected.length} private channels...`, Toasts.Type.MESSAGE);
+
+    try {
+        for (const channel of selected) {
+            if (stopped) break;
+            await processChannelMessages(channel.id, onlyMine, action, () => stopped, stats);
+            await sleep(200);
+        }
+    } catch (err) {
+        logger.error("Purge all open DMs failed:", err);
+    }
+
+    activeTask = null;
+
+    if (stopped) {
+        showToast(`Task stopped after ${stats.processed} messages.`, Toasts.Type.MESSAGE);
+    } else {
+        showToast(`Done: ${stats.processed} messages processed across private channels.`, Toasts.Type.SUCCESS);
     }
 }
 
@@ -267,8 +377,19 @@ function confirmPrivateBulk(action: PrivateBulkAction) {
     });
 }
 
+function confirmPurgeAllOpenDms() {
+    Alerts.show({
+        title: "Purge All Open DMs",
+        body: "Delete and locally hide your messages across all open DMs that pass whitelist/blacklist filters?",
+        confirmText: "Run",
+        cancelText: "Cancel",
+        confirmColor: "vc-danger",
+        onConfirm: () => startPurgeAllOpenDms(true, "both")
+    });
+}
+
 function buildMenuItems(channel: any) {
-    const items: JSX.Element[] = [];
+    const items: React.ReactNode[] = [];
     const running = activeTask !== null;
     const privateChannel = isPrivateChannel(channel);
 
@@ -311,6 +432,7 @@ function buildMenuItems(channel: any) {
     if (privateChannel) {
         items.push(
             <Menu.MenuSeparator key="record-sep-private" />,
+            settings.store.enablePurgeAllOpenDms && <Menu.MenuItem key="record-purge-all-open-dms" id="record-purge-all-open-dms" label="Purge All Open DMs (My Messages)" color="danger" action={confirmPurgeAllOpenDms} />,
             <Menu.MenuItem key="record-close-all-dms" id="record-close-all-dms" label="Close All DMs" color="danger" action={() => confirmPrivateBulk("close-dms")} />,
             <Menu.MenuItem key="record-leave-all-groups" id="record-leave-all-groups" label="Leave All Group DMs" color="danger" action={() => confirmPrivateBulk("leave-groups")} />,
             <Menu.MenuItem key="record-close-and-leave" id="record-close-and-leave" label="Close DMs + Leave Groups" color="danger" action={() => confirmPrivateBulk("both")} />,

@@ -15,7 +15,7 @@ import { classNameFactory } from "@utils/css";
 import { ActivityType } from "@vencord/discord-types/enums";
 import { Select, Text, TextInput, useState } from "@webpack/common";
 
-import CustomRPCPlugin, { setRpc, settings, TimestampMode } from ".";
+import CustomRPCPlugin, { refreshMultiRpcScheduler, setRpc, settings, TimestampMode } from ".";
 
 const cl = classNameFactory("vc-customRPC-settings-");
 
@@ -52,6 +52,7 @@ function isAppIdValid(value: string) {
 const updateRPC = debounce(() => {
     setRpc(true);
     if (isPluginEnabled(CustomRPCPlugin.name)) setRpc();
+    refreshMultiRpcScheduler();
 });
 
 function isStreamLinkDisabled() {
@@ -287,6 +288,46 @@ export function RPCSettings() {
                     disabled: s.timestampMode !== TimestampMode.CUSTOM,
                 },
             ]} />
+
+            <Divider />
+
+            <SelectSetting
+                settingsKey="multiRpcEnabled"
+                label="Enable Multiple RPC Rotation"
+                options={[
+                    { label: "Disabled", value: false, default: true },
+                    { label: "Enabled", value: true }
+                ]}
+            />
+
+            <PairSetting data={[
+                {
+                    settingsKey: "multiRpcIntervalSec",
+                    label: "Rotation Interval (seconds)",
+                    transform: parseNumber,
+                    isValid: value => value >= 5 ? true : "Must be at least 5 seconds.",
+                    disabled: !s.multiRpcEnabled,
+                },
+                {
+                    settingsKey: "multiRpcProfiles",
+                    label: "Profiles JSON (array)",
+                    isValid: value => {
+                        if (!value) return true;
+                        try {
+                            const parsed = JSON.parse(value);
+                            if (!Array.isArray(parsed)) return "Must be a JSON array.";
+                            return true;
+                        } catch {
+                            return "Invalid JSON.";
+                        }
+                    },
+                    disabled: !s.multiRpcEnabled,
+                },
+            ]} />
+
+            <Text variant="text-sm/normal">
+                {"Example: [{\"appName\":\"Coding\",\"details\":\"Fixing bugs\"},{\"appName\":\"Gaming\",\"state\":\"In Match\"}]"}
+            </Text>
         </div>
     );
 }
