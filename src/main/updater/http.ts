@@ -38,6 +38,26 @@ const resolvedRemote = VENCORD_REMOTES.has(gitRemote) ? RECORD_REMOTE : gitRemot
 const API_BASE = `https://api.github.com/repos/${resolvedRemote}`;
 let PendingUpdates = [] as [string, string][];
 
+function parseSemver(version: string) {
+    const match = version.trim().match(/^v?(\d+)\.(\d+)\.(\d+)$/i);
+    if (!match) return null;
+
+    return [Number(match[1]), Number(match[2]), Number(match[3])] as const;
+}
+
+function compareSemver(a: string, b: string) {
+    const va = parseSemver(a);
+    const vb = parseSemver(b);
+    if (!va || !vb) return 0;
+
+    for (let i = 0; i < 3; i++) {
+        if (va[i] > vb[i]) return 1;
+        if (va[i] < vb[i]) return -1;
+    }
+
+    return 0;
+}
+
 async function githubGet<T = any>(endpoint: string) {
     return fetchJson<T>(API_BASE + endpoint, {
         headers: {
@@ -50,12 +70,19 @@ async function githubGet<T = any>(endpoint: string) {
 }
 
 async function calculateGitChanges() {
+    const latestRelease = await githubGet("/releases/latest");
+    const latestTag = latestRelease.tag_name as string;
+
+    if (compareSemver(VERSION, latestTag) >= 0) return [];
+
+    const comparison = await githubGet(`/compare/${gitHash}...${latestTag}`);
+
+    if (comparison.status !== "behind") return [];
+
     const isOutdated = await fetchUpdates();
     if (!isOutdated) return [];
 
-    const data = await githubGet(`/compare/${gitHash}...HEAD`);
-
-    return data.commits.map((c: any) => ({
+    return comparison.commits.map((c: any) => ({
         // github api only sends the long sha
         hash: c.sha.slice(0, 7),
         author: c.author.login,
@@ -65,12 +92,18 @@ async function calculateGitChanges() {
 
 async function fetchUpdates() {
     const data = await githubGet("/releases/latest");
+    const latestTag = data.tag_name as string;
 
-    // Compare against the commit the release tag points to (target_commitish).
-    // ReCord releases are tagged as "v1.x.y" so parsing the name for a hash doesn't work.
-    const releaseHash = (data.target_commitish as string).slice(0, 7);
-    if (releaseHash === gitHash)
+    if (compareSemver(VERSION, latestTag) >= 0)
         return false;
+
+    const comparison = await githubGet(`/compare/${gitHash}...${latestTag}`);
+    // Do not update when local is already equal/newer or on a diverged commit.
+    // This prevents repeatedly offering older release assets.
+    if (comparison.status !== "behind")
+        return false;
+
+    PendingUpdates = [];
 
     data.assets.forEach(({ name, browser_download_url }) => {
         if (VENCORD_FILES.some(s => name.startsWith(s))) {
