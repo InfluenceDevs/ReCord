@@ -16,8 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { definePluginSettings } from "@api/Settings";
 import { isPluginEnabled } from "@api/PluginManager";
+import { definePluginSettings } from "@api/Settings";
 import { BackupRestoreIcon, CloudIcon, CogWheel, LogIcon, MainSettingsIcon, NotesIcon, PaintbrushIcon, PatchHelperIcon, PlaceholderIcon, PluginsIcon, SafetyIcon, UpdaterIcon, VesktopSettingsIcon } from "@components/Icons";
 import { AccountCenterTab, BackupAndRestoreTab, CloudTab, ConsoleTab, DownloadsTab, GhostChatsTab, ModulesTab, MultiRpcTab, OpsecTab, PatchHelperTab, PerformanceTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
 import { Devs } from "@utils/constants";

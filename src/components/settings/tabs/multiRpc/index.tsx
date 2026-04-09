@@ -6,9 +6,8 @@
 
 import { isPluginEnabled } from "@api/PluginManager";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
-import { Forms } from "@webpack/common";
-
 import { RPCSettings } from "@plugins/customRPC/RpcSettings";
+import { Forms } from "@webpack/common";
 
 function MultiRpcTab() {
     const enabled = isPluginEnabled("CustomRPC");

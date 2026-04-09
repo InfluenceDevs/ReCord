@@ -8,20 +8,19 @@ import { Button } from "@components/Button";
 import { Divider } from "@components/Divider";
 import { FormSwitch } from "@components/FormSwitch";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
-import { Margins } from "@utils/margins";
-import { Forms, Parser, React, Text } from "@webpack/common";
-
 import { settings } from "@plugins/ghostDMLogger";
 import {
     clearGhostConversations,
     deleteGhostConversation,
     getAllGhostConversations,
+    GHOST_DM_UPDATE_EVENT,
     GhostConversationArchive,
     GhostMessageSnapshot,
-    GHOST_DM_UPDATE_EVENT,
     setConversationPaused,
     syncPrivateChannelState,
 } from "@plugins/ghostDMLogger/storage";
+import { Margins } from "@utils/margins";
+import { Forms, Parser, React, Text } from "@webpack/common";
 
 function formatTimestamp(timestamp?: number) {
     if (!timestamp) return "Never";

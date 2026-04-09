@@ -8,7 +8,7 @@ import { definePluginSettings } from "@api/Settings";
 import definePlugin, { OptionType } from "@utils/types";
 import { ChannelType } from "@vencord/discord-types/enums";
 import { findByPropsLazy, findStoreLazy } from "@webpack";
-import { ChannelStore, MessageStore, React, SelectedChannelStore } from "@webpack/common";
+import { ChannelStore, MessageStore, SelectedChannelStore } from "@webpack/common";
 
 import { captureMessages, ensureConversationSnapshot, ensureConversationSnapshotById, getAllGhostConversations, GhostConversationArchive, markConversationGhost, restoreConversationActive, syncPrivateChannelState } from "./storage";
 

@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { findByProps, findByPropsLazy } from "@webpack";
-import { showToast, Toasts } from "@webpack/common";
 import { Logger } from "@utils/Logger";
 import definePlugin from "@utils/types";
+import { findByProps, findByPropsLazy } from "@webpack";
+import { showToast, Toasts } from "@webpack/common";
 
 const logger = new Logger("AuthEnhancer");
 const DOWNLOAD_HISTORY_KEY = "record_download_history";

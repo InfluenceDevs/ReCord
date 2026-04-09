@@ -144,8 +144,8 @@ function createColorPreviewSpan(token: string, color: string) {
 }
 
 function replaceColorCodesInTextNode(node: Text) {
-    const parentElement = node.parentElement;
-    const text = node.nodeValue;
+    const { parentElement } = node;
+    const { nodeValue: text } = node;
 
     COLOR_CODE_REGEX.lastIndex = 0;
     if (!parentElement || !text || !COLOR_CODE_REGEX.test(text)) return;
@@ -377,7 +377,7 @@ function ColorInspectorModal({ src, onClose, transitionState }: { src: string; o
         };
     }, [src]);
 
-    const analysis = state.analysis;
+    const { analysis } = state;
 
     return (
         <ModalRoot transitionState={transitionState} size={ModalSize.SMALL}>
@@ -450,7 +450,7 @@ function MediaMetadataModal({ src, onClose, transitionState }: { src: string; on
         };
     }, [src]);
 
-    const analysis = state.analysis;
+    const { analysis } = state;
     const duration = formatDuration(analysis?.duration);
 
     return (

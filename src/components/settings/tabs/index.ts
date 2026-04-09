@@ -6,22 +6,22 @@
 
 import "./styles.css";
 
+export { default as AccountCenterTab } from "./accountCenter";
 export * from "./BaseTab";
+export { default as ConsoleTab } from "./console";
+export { default as DownloadsTab } from "./downloads";
+export { default as GhostChatsTab } from "./ghostChats";
+export { default as ModulesTab } from "./modules";
+export { default as MultiRpcTab } from "./multiRpc";
+export { default as OpsecTab } from "./opsec";
 export { default as PatchHelperTab } from "./patchHelper";
+export { default as PerformanceTab } from "./performance";
 export { default as PluginsTab } from "./plugins";
 export { openContributorModal } from "./plugins/ContributorModal";
 export { openPluginModal } from "./plugins/PluginModal";
-export { default as AccountCenterTab } from "./accountCenter";
 export { default as BackupAndRestoreTab } from "./sync/BackupAndRestoreTab";
 export { default as CloudTab } from "./sync/CloudTab";
 export { default as ThemesTab } from "./themes";
 export { default as UpdaterTab } from "./updater";
 export { default as ReCordTab } from "./vencord";
 export { default as VencordTab } from "./vencord";
-export { default as ConsoleTab } from "./console";
-export { default as GhostChatsTab } from "./ghostChats";
-export { default as OpsecTab } from "./opsec";
-export { default as PerformanceTab } from "./performance";
-export { default as ModulesTab } from "./modules";
-export { default as DownloadsTab } from "./downloads";
-export { default as MultiRpcTab } from "./multiRpc";

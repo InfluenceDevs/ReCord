@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { Button } from "@components/Button";
+import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { Margins } from "@utils/margins";
 import { Forms, React, Text } from "@webpack/common";
 
