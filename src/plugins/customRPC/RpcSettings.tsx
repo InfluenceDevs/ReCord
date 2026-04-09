@@ -87,7 +87,7 @@ function isImageKeyValid(value: string) {
     return true;
 }
 
-function PairSetting<T>(props: { data: [TextOption<T>, TextOption<T>]; }) {
+function PairSetting<TLeft, TRight>(props: { data: [TextOption<TLeft>, TextOption<TRight>]; }) {
     const [left, right] = props.data;
 
     return (
@@ -311,7 +311,7 @@ export function RPCSettings() {
                 {
                     settingsKey: "multiRpcProfiles",
                     label: "Profiles JSON (array)",
-                    isValid: value => {
+                    isValid: (value: string) => {
                         if (!value) return true;
                         try {
                             const parsed = JSON.parse(value);

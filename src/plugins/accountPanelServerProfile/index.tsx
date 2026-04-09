@@ -104,7 +104,9 @@ export default definePlugin({
     AccountPanelWrapper({ VencordOriginal, ...props }) {
         return (
             <div
-                ref={node => accountPanelRef.current = node}
+                ref={node => {
+                    accountPanelRef.current = node;
+                }}
                 onContextMenu={openAccountPanelContextMenu}
             >
                 <VencordOriginal {...props} />

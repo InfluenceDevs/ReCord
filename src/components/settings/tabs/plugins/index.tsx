@@ -27,6 +27,7 @@ import ErrorBoundary from "@components/ErrorBoundary";
 import { HeadingTertiary } from "@components/Heading";
 import { FolderIcon, RestartIcon } from "@components/Icons";
 import { Paragraph } from "@components/Paragraph";
+import { Button } from "@components/Button";
 import { QuickAction, QuickActionCard } from "@components/settings/QuickAction";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { ChangeList } from "@utils/ChangeList";
@@ -36,7 +37,7 @@ import { Logger } from "@utils/Logger";
 import { Margins } from "@utils/margins";
 import { classes } from "@utils/misc";
 import { useAwaiter, useCleanupEffect } from "@utils/react";
-import { Alerts, Button, lodash, Parser, React, Select, TextInput, Tooltip, useMemo, useState } from "@webpack/common";
+import { Alerts, lodash, Parser, React, Select, TextInput, Tooltip, useMemo, useState } from "@webpack/common";
 import { JSX } from "react";
 
 import Plugins, { ExcludedPlugins, PluginMeta } from "~plugins";

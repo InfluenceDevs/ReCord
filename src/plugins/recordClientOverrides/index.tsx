@@ -5,12 +5,13 @@
  */
 
 import { NavContextMenuPatchCallback } from "@api/ContextMenu";
-import { DeleteIcon, PencilIcon } from "@components/Icons";
 import { updateMessage } from "@api/MessageUpdater";
+import { Button } from "@components/Button";
+import { DeleteIcon, PencilIcon } from "@components/Icons";
 import { ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalRoot, openModal } from "@utils/modal";
 import definePlugin from "@utils/types";
 import type { Message, User } from "@vencord/discord-types";
-import { Button, FluxDispatcher, Forms, Menu, React, TextInput, UserStore } from "@webpack/common";
+import { FluxDispatcher, Forms, Menu, React, TextInput, UserStore } from "@webpack/common";
 
 const Influence = { name: "Influence", id: 0n };
 
@@ -64,7 +65,7 @@ function EditMessageModal({ channelId, messageId, currentContent, onClose, trans
     }, [channelId, messageId, value, onClose]);
 
     return (
-        <ModalRoot onClose={onClose} transitionState={transitionState}>
+        <ModalRoot transitionState={transitionState}>
             <ModalHeader>
                 <Forms.FormTitle tag="h4">Edit Message (local view only)</Forms.FormTitle>
                 <ModalCloseButton onClick={onClose} />
@@ -121,7 +122,7 @@ function OverrideNameModal({ userId, currentName, onClose, transitionState }: {
     }, [userId, value, onClose]);
 
     return (
-        <ModalRoot onClose={onClose} transitionState={transitionState}>
+        <ModalRoot transitionState={transitionState}>
             <ModalHeader>
                 <Forms.FormTitle tag="h4">Override Display Name (local only)</Forms.FormTitle>
                 <ModalCloseButton onClick={onClose} />

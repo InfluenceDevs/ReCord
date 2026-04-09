@@ -5,10 +5,11 @@
  */
 
 import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
+import { Button } from "@components/Button";
 import { copyToClipboard } from "@utils/clipboard";
 import { ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalRoot, ModalSize, openModal } from "@utils/modal";
 import definePlugin from "@utils/types";
-import { Button, Forms, Menu, React } from "@webpack/common";
+import { Forms, Menu, React } from "@webpack/common";
 
 const Influence = { name: "Influence", id: 0n };
 
@@ -379,7 +380,7 @@ function ColorInspectorModal({ src, onClose, transitionState }: { src: string; o
     const analysis = state.analysis;
 
     return (
-        <ModalRoot onClose={onClose} transitionState={transitionState} size={ModalSize.SMALL}>
+        <ModalRoot transitionState={transitionState} size={ModalSize.SMALL}>
             <ModalHeader>
                 <Forms.FormTitle tag="h4">Image Color Codes</Forms.FormTitle>
                 <ModalCloseButton onClick={onClose} />
@@ -453,7 +454,7 @@ function MediaMetadataModal({ src, onClose, transitionState }: { src: string; on
     const duration = formatDuration(analysis?.duration);
 
     return (
-        <ModalRoot onClose={onClose} transitionState={transitionState} size={ModalSize.SMALL}>
+        <ModalRoot transitionState={transitionState} size={ModalSize.SMALL}>
             <ModalHeader>
                 <Forms.FormTitle tag="h4">Media Metadata</Forms.FormTitle>
                 <ModalCloseButton onClick={onClose} />

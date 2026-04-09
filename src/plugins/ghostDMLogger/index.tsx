@@ -126,7 +126,7 @@ async function snapshotConversationForId(channelId: string, reason?: string) {
     if (snapshot) {
         if (reason) {
             const ghost: GhostConversationArchive = {
-                ...snapshot,
+                ...(snapshot as GhostConversationArchive),
                 state: "ghost",
                 archivedAt: Date.now(),
                 lossReason: reason,

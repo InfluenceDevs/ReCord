@@ -65,7 +65,7 @@ export const settings = definePluginSettings({
 
 // ─── WebSocket intercept ──────────────────────────────────────────────────────
 
-let origSend: ((data: string | ArrayBufferLike | Blob | ArrayBufferView) => void) | null = null;
+let origSend: typeof WebSocket.prototype.send | null = null;
 
 function patchSend() {
     if (origSend !== null) return; // already patched
@@ -77,10 +77,10 @@ function patchSend() {
                 const parsed = JSON.parse(data) as any;
                 // op 2 = IDENTIFY
                 if (parsed?.op === 2 && parsed?.d?.properties) {
-                    const platform = settings.store.platform;
+                    const platform = String(settings.store.platform ?? "desktop");
 
                     if (platform !== "desktop") {
-                        const profile = PROFILES[platform];
+                        const profile = PROFILES[platform as keyof typeof PROFILES];
                         if (profile) {
                             const props = parsed.d.properties as Record<string, string>;
 

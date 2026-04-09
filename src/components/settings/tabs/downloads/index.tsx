@@ -5,8 +5,9 @@
  */
 
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
+import { Button } from "@components/Button";
 import { Margins } from "@utils/margins";
-import { Button, Forms, React, Text } from "@webpack/common";
+import { Forms, React, Text } from "@webpack/common";
 
 const HISTORY_KEY = "record_download_history";
 

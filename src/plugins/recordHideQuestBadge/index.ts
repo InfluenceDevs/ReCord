@@ -9,7 +9,7 @@ import { UserProfileStore, UserStore } from "@webpack/common";
 
 const Influence = { name: "Influence", id: 0n };
 
-let originalGetUserProfile: ((userId: string) => any) | null = null;
+let originalGetUserProfile: ((...args: any[]) => any) | null = null;
 
 function isQuestBadge(badge: any) {
     const haystack = [badge?.id, badge?.description, badge?.tooltip, badge?.link, badge?.icon, badge?.iconSrc]

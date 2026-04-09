@@ -252,7 +252,7 @@ export function resetPerformanceSettings() {
 
 export function resetAllSettings() {
     const fresh = structuredClone(DefaultSettings);
-    const current = SettingsStore.plain as Record<string, unknown>;
+    const current = SettingsStore.plain as unknown as Record<string, unknown>;
 
     for (const key of Object.keys(current)) {
         delete current[key];
