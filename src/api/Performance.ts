@@ -77,7 +77,13 @@ function applyCssTweaks() {
     }
 
     if (cfg.disableGradients) {
-        css.push("*,*::before,*::after{background-image:none!important;}");
+        // Exclude badge, icon, avatar, emoji and decoration elements — they rely on background-image to render
+        css.push(
+            "*:not([class*=badge]):not([class*=icon]):not([class*=avatar]):not([class*=emoji]):not([class*=decoration])," +
+            "*:not([class*=badge]):not([class*=icon]):not([class*=avatar]):not([class*=emoji]):not([class*=decoration])::before," +
+            "*:not([class*=badge]):not([class*=icon]):not([class*=avatar]):not([class*=emoji]):not([class*=decoration])::after" +
+            "{background-image:none!important;}"
+        );
     }
 
     if (cfg.disableHoverAnimations) {
@@ -173,6 +179,10 @@ function pauseMediaIfHidden() {
     for (const media of document.querySelectorAll("video,audio")) {
         const element = media as HTMLMediaElement;
         const isVideo = element instanceof HTMLVideoElement;
+
+        // Skip live WebRTC streams (srcObject = MediaStream from voice/video calls)
+        // Pausing these causes Discord to crash or lose the audio connection
+        if (element.srcObject !== null) continue;
 
         const shouldPauseHiddenVideo = cfg.pauseHiddenMedia && document.hidden && isVideo;
         const shouldPauseHiddenAudio = cfg.pauseHiddenAudio && document.hidden && !isVideo;

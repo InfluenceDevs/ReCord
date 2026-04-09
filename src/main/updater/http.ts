@@ -66,8 +66,10 @@ async function calculateGitChanges() {
 async function fetchUpdates() {
     const data = await githubGet("/releases/latest");
 
-    const hash = data.name.slice(data.name.lastIndexOf(" ") + 1);
-    if (hash === gitHash)
+    // Compare against the commit the release tag points to (target_commitish).
+    // ReCord releases are tagged as "v1.x.y" so parsing the name for a hash doesn't work.
+    const releaseHash = (data.target_commitish as string).slice(0, 7);
+    if (releaseHash === gitHash)
         return false;
 
     data.assets.forEach(({ name, browser_download_url }) => {
