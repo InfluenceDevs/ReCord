@@ -24,18 +24,11 @@ import { writeFile } from "fs/promises";
 import { join } from "path";
 
 import gitHash from "~git-hash";
-import gitRemote from "~git-remote";
 
 import { serializeErrors, VENCORD_FILES } from "./common";
 
 const RECORD_REMOTE = "InfluenceDevs/ReCord";
-const VENCORD_REMOTES = new Set([
-    "Vendicated/Vencord",
-    "Vencord/Vencord"
-]);
-
-const resolvedRemote = VENCORD_REMOTES.has(gitRemote) ? RECORD_REMOTE : gitRemote;
-const API_BASE = `https://api.github.com/repos/${resolvedRemote}`;
+const API_BASE = `https://api.github.com/repos/${RECORD_REMOTE}`;
 let PendingUpdates = [] as [string, string][];
 
 function parseSemver(version: string) {
@@ -75,14 +68,21 @@ async function calculateGitChanges() {
 
     if (compareSemver(VERSION, latestTag) >= 0) return [];
 
-    const comparison = await githubGet(`/compare/${gitHash}...${latestTag}`);
+    if (!gitHash) return [];
 
-    if (comparison.status !== "behind") return [];
+    let comparison: any;
+    try {
+        comparison = await githubGet(`/compare/${gitHash}...${latestTag}`);
+    } catch {
+        return [];
+    }
+
+    if (comparison?.status !== "behind") return [];
 
     const isOutdated = await fetchUpdates();
     if (!isOutdated) return [];
 
-    return comparison.commits.map((c: any) => ({
+    return (comparison.commits ?? []).map((c: any) => ({
         // github api only sends the long sha
         hash: c.sha.slice(0, 7),
         author: c.author.login,
@@ -97,11 +97,17 @@ async function fetchUpdates() {
     if (compareSemver(VERSION, latestTag) >= 0)
         return false;
 
-    const comparison = await githubGet(`/compare/${gitHash}...${latestTag}`);
-    // Do not update when local is already equal/newer or on a diverged commit.
-    // This prevents repeatedly offering older release assets.
-    if (comparison.status !== "behind")
-        return false;
+    if (gitHash) {
+        try {
+            const comparison = await githubGet(`/compare/${gitHash}...${latestTag}`);
+            // Do not update when local is already equal/newer or on a diverged commit.
+            // This prevents repeatedly offering older release assets.
+            if (comparison?.status && comparison.status !== "behind")
+                return false;
+        } catch {
+            // If compare fails (e.g. shallow/bundled builds), rely on semver result above.
+        }
+    }
 
     PendingUpdates = [];
 
@@ -111,7 +117,7 @@ async function fetchUpdates() {
         }
     });
 
-    return true;
+    return PendingUpdates.length > 0;
 }
 
 async function applyUpdates() {
@@ -128,7 +134,7 @@ async function applyUpdates() {
     return true;
 }
 
-ipcMain.handle(IpcEvents.GET_REPO, serializeErrors(() => `https://github.com/${resolvedRemote}`));
+ipcMain.handle(IpcEvents.GET_REPO, serializeErrors(() => `https://github.com/${RECORD_REMOTE}`));
 ipcMain.handle(IpcEvents.GET_UPDATES, serializeErrors(calculateGitChanges));
 ipcMain.handle(IpcEvents.UPDATE, serializeErrors(fetchUpdates));
 ipcMain.handle(IpcEvents.BUILD, serializeErrors(applyUpdates));

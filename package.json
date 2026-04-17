@@ -25,7 +25,7 @@
         "watchWeb": "pnpm buildWeb --watch",
         "generatePluginJson": "tsx scripts/generatePluginList.ts",
         "generateTypes": "tspc --emitDeclarationOnly --declaration --outDir packages/vencord-types --allowJs false",
-        "inject": "node scripts/runInstaller.mjs -- --install",
+        "inject": "corepack pnpm buildStandalone && node scripts/runInstaller.mjs -- --install",
         "uninject": "node scripts/runInstaller.mjs -- --uninstall",
         "buildReleaseInstaller": "node scripts/buildReleaseInstaller.mjs",
         "buildWindowsSetupInstaller": "node scripts/buildWindowsSetupInstaller.mjs",

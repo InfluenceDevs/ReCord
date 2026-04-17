@@ -39,7 +39,7 @@ Unicode true
 
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "Welcome to ReCord Setup"
-!define MUI_WELCOMEPAGE_TEXT "A polished ReCord installer for Windows 10 and Windows 11.$\r$\n$\r$\nChoose Install, Repair, or Uninstall and target Discord Stable/PTB/Canary automatically, or pick a custom location."
+!define MUI_WELCOMEPAGE_TEXT "A modern ReCord installer for Windows 10 and Windows 11.$\r$\n$\r$\nPick an action, choose Discord targets, and patch in one flow."
 !define MUI_FINISHPAGE_TITLE "ReCord Setup Complete"
 !define MUI_FINISHPAGE_TEXT "ReCord files were installed successfully. Use the selected action to patch Discord now if enabled."
 
@@ -113,6 +113,9 @@ Function ApplyDarkStyle
   SetCtlColors $LabelTitle "FFFFFF" "1D1F24"
   SetCtlColors $LabelDesc "B9C0CC" "1D1F24"
   SetCtlColors $WindowsInfoLabel "9CD67A" "1D1F24"
+  SetCtlColors $OpInstall "EAF2FF" "2C5DAA"
+  SetCtlColors $OpRepair "D7DFEA" "1D1F24"
+  SetCtlColors $OpUninstall "D7DFEA" "1D1F24"
 FunctionEnd
 
 Function ToggleCustomLocationControls
@@ -144,64 +147,67 @@ Function OptionsPageCreate
   ${NSD_CreateLabel} 0 0u 100% 12u "Patch Action"
   Pop $LabelTitle
 
-  ${NSD_CreateRadioButton} 0 14u 33% 12u "Install"
+  ${NSD_CreateLabel} 0 12u 100% 10u "Choose an Action"
+  Pop $LabelDesc
+
+  ${NSD_CreateRadioButton} 0 24u 100% 14u "Install ReCord"
   Pop $OpInstall
   ${NSD_SetState} $OpInstall ${BST_CHECKED}
 
-  ${NSD_CreateRadioButton} 34% 14u 33% 12u "Repair"
+  ${NSD_CreateRadioButton} 0 41u 100% 14u "Repair ReCord"
   Pop $OpRepair
 
-  ${NSD_CreateRadioButton} 68% 14u 33% 12u "Uninstall"
+  ${NSD_CreateRadioButton} 0 58u 100% 14u "Uninstall ReCord Patch"
   Pop $OpUninstall
 
-  ${NSD_CreateLabel} 0 34u 100% 12u "Discord Targets"
-  Pop $LabelDesc
-
-  ${If} $IsWin11 == 1
-    ${NSD_CreateLabel} 0 46u 100% 12u "Detected: Windows 11 (fully supported)"
-  ${Else}
-    ${NSD_CreateLabel} 0 46u 100% 12u "Detected: Windows 10 (fully supported)"
-  ${EndIf}
+  ${NSD_CreateLabel} 0 78u 100% 12u "Discord Targets"
   Pop $WindowsInfoLabel
 
-  ${NSD_CreateCheckbox} 0 62u 32% 12u "Auto"
+  ${If} $IsWin11 == 1
+    ${NSD_CreateLabel} 0 92u 100% 12u "Detected: Windows 11 (fully supported)"
+  ${Else}
+    ${NSD_CreateLabel} 0 92u 100% 12u "Detected: Windows 10 (fully supported)"
+  ${EndIf}
+  Pop $LabelTitle
+
+  ${NSD_CreateCheckbox} 0 108u 32% 12u "Auto"
   Pop $BranchAuto
   ${NSD_SetState} $BranchAuto ${BST_CHECKED}
 
-  ${NSD_CreateCheckbox} 34% 62u 32% 12u "Stable"
+  ${NSD_CreateCheckbox} 34% 108u 32% 12u "Stable"
   Pop $BranchStable
   ${If} ${FileExists} "$LOCALAPPDATA\\Discord\\*"
     ${NSD_SetState} $BranchStable ${BST_CHECKED}
   ${EndIf}
 
-  ${NSD_CreateCheckbox} 68% 62u 32% 12u "PTB"
+  ${NSD_CreateCheckbox} 68% 108u 32% 12u "PTB"
   Pop $BranchPtb
   ${If} ${FileExists} "$LOCALAPPDATA\\DiscordPTB\\*"
     ${NSD_SetState} $BranchPtb ${BST_CHECKED}
   ${EndIf}
 
-  ${NSD_CreateCheckbox} 0 76u 32% 12u "Canary"
+  ${NSD_CreateCheckbox} 0 122u 32% 12u "Canary"
   Pop $BranchCanary
   ${If} ${FileExists} "$LOCALAPPDATA\\DiscordCanary\\*"
     ${NSD_SetState} $BranchCanary ${BST_CHECKED}
   ${EndIf}
 
-  ${NSD_CreateCheckbox} 0 92u 100% 12u "Use custom Discord location"
+  ${NSD_CreateCheckbox} 0 138u 100% 12u "Use custom Discord location"
   Pop $UseCustomLocation
   ${NSD_OnClick} $UseCustomLocation ToggleCustomLocationControls
 
-  ${NSD_CreateText} 0 108u 78% 12u "$LOCALAPPDATA\\Discord"
+  ${NSD_CreateText} 0 154u 78% 12u "$LOCALAPPDATA\\Discord"
   Pop $CustomLocation
 
-  ${NSD_CreateButton} 80% 108u 20% 12u "Browse"
+  ${NSD_CreateButton} 80% 154u 20% 12u "Browse"
   Pop $BrowseButton
   ${NSD_OnClick} $BrowseButton BrowseForLocation
 
-  ${NSD_CreateCheckbox} 0 128u 100% 12u "Run selected action now"
+  ${NSD_CreateCheckbox} 0 174u 100% 12u "Run selected action now"
   Pop $RunActionNow
   ${NSD_SetState} $RunActionNow ${BST_CHECKED}
 
-  ${NSD_CreateCheckbox} 0 142u 100% 12u "Open install folder after setup"
+  ${NSD_CreateCheckbox} 0 188u 100% 12u "Open install folder after setup"
   Pop $OpenFolderAfter
 
   Call ToggleCustomLocationControls

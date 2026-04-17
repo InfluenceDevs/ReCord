@@ -1,19 +1,33 @@
 .vc-settings-tab-bar {
     margin-top: 18px;
     margin-bottom: 14px;
-    border-bottom: 1px solid var(--border-subtle);
+    border: 1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent);
+    border-radius: 18px;
+    padding: 10px 16px 0;
     position: sticky;
     top: 0;
-    z-index: 3;
-    backdrop-filter: blur(8px);
-    background: color-mix(in srgb, var(--background-base-low) 88%, transparent);
+    z-index: 4;
+    backdrop-filter: blur(14px);
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 92%, transparent), color-mix(in srgb, var(--background-tertiary) 88%, transparent)),
+        radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--brand-500) 10%, transparent), transparent 55%);
+    box-shadow: 0 16px 36px color-mix(in srgb, var(--background-floating) 22%, transparent);
 }
 
 .vc-settings-tab {
     --vc-panel-radius: 14px;
     --vc-panel-border: 1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent);
-    padding: 8px 0 16px;
+
+    display: grid;
+    gap: 16px;
+    width: min(1120px, 100%);
+    margin: 0 auto;
+    padding: 8px 0 28px;
     animation: vc-settings-enter 220ms ease;
+}
+
+.vc-settings-tab > * {
+    margin: 0;
 }
 
 .vc-settings-tab h5 {
@@ -27,27 +41,124 @@
     font-weight: 700;
 }
 
+.vc-settings-tab h2 {
+    font-size: clamp(26px, 3vw, 34px);
+    letter-spacing: -0.03em;
+}
+
+.vc-settings-tab h3 {
+    font-size: 20px;
+    letter-spacing: -0.02em;
+}
+
+.vc-settings-tab p,
+.vc-settings-tab .vc-settings-muted {
+    color: var(--text-muted);
+}
+
 .vc-settings-tab section {
     border: var(--vc-panel-border);
     border-radius: var(--vc-panel-radius);
-    padding: 14px;
-    background: linear-gradient(165deg, color-mix(in srgb, var(--background-secondary) 94%, transparent), color-mix(in srgb, var(--background-tertiary) 88%, transparent));
-    box-shadow: 0 10px 26px color-mix(in srgb, var(--background-floating) 24%, transparent);
+    padding: 18px;
+    background:
+        linear-gradient(165deg, color-mix(in srgb, var(--background-secondary) 96%, transparent), color-mix(in srgb, var(--background-tertiary) 90%, transparent)),
+        radial-gradient(140% 120% at 0% 0%, color-mix(in srgb, var(--brand-500) 7%, transparent), transparent 58%);
+    box-shadow: 0 14px 34px color-mix(in srgb, var(--background-floating) 24%, transparent);
 }
 
 .vc-settings-tab section + section {
     margin-top: 12px;
 }
 
+.vc-settings-hero {
+    border: var(--vc-panel-border);
+    border-radius: 24px;
+    padding: 24px;
+    background:
+        radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--brand-500) 16%, transparent), transparent 55%),
+        radial-gradient(110% 130% at 100% 0%, color-mix(in srgb, var(--green-360) 14%, transparent), transparent 52%),
+        linear-gradient(160deg, color-mix(in srgb, var(--background-secondary) 95%, transparent), color-mix(in srgb, var(--background-tertiary) 88%, transparent));
+    box-shadow: 0 20px 42px color-mix(in srgb, var(--background-floating) 26%, transparent);
+}
+
+.vc-settings-hero p {
+    max-width: 860px;
+}
+
+.vc-settings-pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.vc-settings-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    padding: 0 12px;
+    border: 1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--background-secondary) 84%, transparent);
+    color: var(--header-primary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.vc-settings-pill strong {
+    color: var(--text-brand);
+}
+
+.vc-settings-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.vc-settings-stat-card,
+.vc-settings-card {
+    border: var(--vc-panel-border);
+    border-radius: 18px;
+    padding: 16px 18px;
+    background:
+        linear-gradient(165deg, color-mix(in srgb, var(--background-secondary) 95%, transparent), color-mix(in srgb, var(--background-tertiary) 89%, transparent));
+    box-shadow: 0 14px 30px color-mix(in srgb, var(--background-floating) 18%, transparent);
+}
+
+.vc-settings-stat-card h4,
+.vc-settings-stat-card h5,
+.vc-settings-card h4,
+.vc-settings-card h5 {
+    margin: 0 0 6px;
+}
+
+.vc-settings-stat-value {
+    display: block;
+    margin-top: 8px;
+    color: var(--header-primary);
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+}
+
+.vc-settings-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 .vc-settings-tab-bar-item {
     margin-right: 20px;
-    padding: 0 2px 14px;
-    margin-bottom: -2px;
-    transition: color 140ms ease, transform 140ms ease;
+    padding: 0 8px 14px;
+    margin-bottom: -1px;
+    border-bottom: 2px solid transparent;
+    transition: color 140ms ease, transform 140ms ease, border-color 140ms ease;
 }
 
 .vc-settings-tab-bar-item:hover {
     transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--brand-500) 40%, transparent);
 }
 
 .vc-settings-tab button {
@@ -134,7 +245,12 @@
     }
 }
 
-@media (max-width: 800px) {
+@media (width <= 800px) {
+    .vc-settings-tab {
+        gap: 12px;
+    }
+
+    .vc-settings-hero,
     .vc-settings-tab section {
         padding: 12px;
     }

@@ -12,6 +12,7 @@ export { default as ConsoleTab } from "./console";
 export { default as DownloadsTab } from "./downloads";
 export { default as GhostChatsTab } from "./ghostChats";
 export { default as ModulesTab } from "./modules";
+export { default as CustomRpcTab } from "./multiRpc";
 export { default as MultiRpcTab } from "./multiRpc";
 export { default as OpsecTab } from "./opsec";
 export { default as PatchHelperTab } from "./patchHelper";

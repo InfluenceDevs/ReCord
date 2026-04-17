@@ -7,13 +7,14 @@
 import "./settings.css";
 
 import { isPluginEnabled } from "@api/PluginManager";
+import { Button } from "@components/Button";
 import { Divider } from "@components/Divider";
 import { Heading } from "@components/Heading";
 import { resolveError } from "@components/settings/tabs/plugins/components/Common";
 import { debounce } from "@shared/debounce";
 import { classNameFactory } from "@utils/css";
 import { ActivityType } from "@vencord/discord-types/enums";
-import { Select, Text, TextInput, useState } from "@webpack/common";
+import { React, Select, Text, TextInput } from "@webpack/common";
 
 import CustomRPCPlugin, { refreshMultiRpcScheduler, setRpc, settings, TimestampMode } from ".";
 
@@ -22,19 +23,75 @@ const cl = classNameFactory("vc-customRPC-settings-");
 type SettingsKey = keyof typeof settings.store;
 
 interface TextOption<T> {
-    settingsKey: SettingsKey;
+    settingsKey?: SettingsKey;
     label: string;
     disabled?: boolean;
     transform?: (value: string) => T;
     isValid?: (value: T) => true | string;
 }
 
+interface EditorOption<T> extends TextOption<T> {
+    value: T | string | number | undefined;
+    onValueChange: (value: T) => void;
+}
+
 interface SelectOption<T> {
-    settingsKey: SettingsKey;
     label: string;
     disabled?: boolean;
     options: { label: string; value: T; default?: boolean; }[];
 }
+
+type RpcProfile = Partial<{
+    appID: string;
+    appName: string;
+    details: string;
+    detailsURL: string;
+    state: string;
+    stateURL: string;
+    type: ActivityType;
+    streamLink: string;
+    timestampMode: TimestampMode;
+    startTime: number;
+    endTime: number;
+    imageBig: string;
+    imageBigURL: string;
+    imageBigTooltip: string;
+    imageSmall: string;
+    imageSmallURL: string;
+    imageSmallTooltip: string;
+    buttonOneText: string;
+    buttonOneURL: string;
+    buttonTwoText: string;
+    buttonTwoURL: string;
+    partySize: number;
+    partyMaxSize: number;
+}>;
+
+const profileKeys: (keyof RpcProfile)[] = [
+    "appID",
+    "appName",
+    "details",
+    "detailsURL",
+    "state",
+    "stateURL",
+    "type",
+    "streamLink",
+    "timestampMode",
+    "startTime",
+    "endTime",
+    "imageBig",
+    "imageBigURL",
+    "imageBigTooltip",
+    "imageSmall",
+    "imageSmallURL",
+    "imageSmallTooltip",
+    "buttonOneText",
+    "buttonOneURL",
+    "buttonTwoText",
+    "buttonTwoURL",
+    "partySize",
+    "partyMaxSize"
+];
 
 const makeValidator = (maxLength: number, isRequired = false) => (value: string) => {
     if (isRequired && !value) return "This field is required.";
@@ -55,12 +112,8 @@ const updateRPC = debounce(() => {
     refreshMultiRpcScheduler();
 });
 
-function isStreamLinkDisabled() {
-    return settings.store.type !== ActivityType.STREAMING;
-}
-
 function isStreamLinkValid(value: string) {
-    if (!isStreamLinkDisabled() && !/https?:\/\/(www\.)?(twitch\.tv|youtube\.com)\/\w+/.test(value)) return "Streaming link must be a valid URL.";
+    if (value && !/https?:\/\/(www\.)?(twitch\.tv|youtube\.com)\/\w+/.test(value)) return "Streaming link must be a valid URL.";
     if (value && value.length > 512) return "Streaming link must be not longer than 512 characters.";
     return true;
 }
@@ -87,7 +140,45 @@ function isImageKeyValid(value: string) {
     return true;
 }
 
-function PairSetting<TLeft, TRight>(props: { data: [TextOption<TLeft>, TextOption<TRight>]; }) {
+function parseProfiles(rawProfiles?: string): RpcProfile[] {
+    try {
+        const parsed = JSON.parse(rawProfiles || "[]");
+        return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveProfiles(profiles: RpcProfile[]) {
+    settings.store.multiRpcProfiles = JSON.stringify(profiles);
+    updateRPC();
+}
+
+function buildBlankProfile(): RpcProfile {
+    return {
+        appName: "",
+        type: ActivityType.PLAYING,
+        timestampMode: TimestampMode.NONE
+    };
+}
+
+function getActivityTypeLabel(type?: ActivityType) {
+    switch (type) {
+        case ActivityType.STREAMING:
+            return "STREAMING";
+        case ActivityType.LISTENING:
+            return "LISTENING";
+        case ActivityType.WATCHING:
+            return "WATCHING";
+        case ActivityType.COMPETING:
+            return "COMPETING";
+        case ActivityType.PLAYING:
+        default:
+            return "PLAYING";
+    }
+}
+
+function PairSetting<TLeft, TRight>(props: { data: [EditorOption<TLeft>, EditorOption<TRight>]; }) {
     const [left, right] = props.data;
 
     return (
@@ -98,21 +189,24 @@ function PairSetting<TLeft, TRight>(props: { data: [TextOption<TLeft>, TextOptio
     );
 }
 
-function SingleSetting<T>({ settingsKey, label, disabled, isValid, transform }: TextOption<T>) {
-    const [state, setState] = useState(settings.store[settingsKey] ?? "");
-    const [error, setError] = useState<string | null>(null);
+function SingleSetting<T>({ value, label, disabled, isValid, transform, onValueChange }: EditorOption<T>) {
+    const [state, setState] = React.useState(() => value == null ? "" : String(value));
+    const [error, setError] = React.useState<string | null>(null);
 
-    function handleChange(newValue: any) {
-        if (transform) newValue = transform(newValue);
+    React.useEffect(() => {
+        setState(value == null ? "" : String(value));
+        setError(null);
+    }, [value]);
 
-        const valid = isValid?.(newValue) ?? true;
+    function handleChange(nextValue: string) {
+        const transformedValue = transform ? transform(nextValue) : nextValue as T;
+        const valid = isValid?.(transformedValue) ?? true;
 
-        setState(newValue);
+        setState(nextValue);
         setError(resolveError(valid));
 
         if (valid === true) {
-            settings.store[settingsKey] = newValue;
-            updateRPC();
+            onValueChange(transformedValue);
         }
     }
 
@@ -131,7 +225,10 @@ function SingleSetting<T>({ settingsKey, label, disabled, isValid, transform }: 
     );
 }
 
-function SelectSetting<T>({ settingsKey, label, options, disabled }: SelectOption<T>) {
+function SelectSetting<T>({ label, options, disabled, value, onValueChange }: SelectOption<T> & {
+    value: T | undefined;
+    onValueChange: (value: T) => void;
+}) {
     return (
         <div className={cl("single", { disabled })}>
             <Heading tag="h5">{label}</Heading>
@@ -140,8 +237,8 @@ function SelectSetting<T>({ settingsKey, label, options, disabled }: SelectOptio
                 options={options}
                 maxVisibleItems={5}
                 closeOnSelect={true}
-                select={v => settings.store[settingsKey] = v}
-                isSelected={v => v === settings.store[settingsKey]}
+                select={onValueChange}
+                isSelected={v => v === value}
                 serialize={v => String(v)}
                 isDisabled={disabled}
             />
@@ -151,12 +248,157 @@ function SelectSetting<T>({ settingsKey, label, options, disabled }: SelectOptio
 
 export function RPCSettings() {
     const s = settings.use();
+    const profiles = React.useMemo(() => parseProfiles(s.multiRpcProfiles), [s.multiRpcProfiles]);
+    const [selectedProfileIndex, setSelectedProfileIndex] = React.useState<number | null>(null);
+
+    React.useEffect(() => {
+        if (selectedProfileIndex == null) return;
+        if (selectedProfileIndex >= profiles.length) {
+            setSelectedProfileIndex(profiles.length ? profiles.length - 1 : null);
+        }
+    }, [profiles.length, selectedProfileIndex]);
+
+    const selectedProfile = selectedProfileIndex == null ? null : profiles[selectedProfileIndex] ?? null;
+    const currentType = (selectedProfile?.type ?? s.type ?? ActivityType.PLAYING) as ActivityType;
+    const currentTimestampMode = (selectedProfile?.timestampMode ?? s.timestampMode ?? TimestampMode.NONE) as TimestampMode;
+
+    const applySetting = React.useCallback(<T,>(settingsKey: SettingsKey, value: T) => {
+        if (selectedProfileIndex == null) {
+            settings.store[settingsKey] = value;
+            updateRPC();
+            return;
+        }
+
+        const nextProfiles = [...parseProfiles(settings.store.multiRpcProfiles)];
+        const nextProfile = { ...(nextProfiles[selectedProfileIndex] ?? buildBlankProfile()) };
+        nextProfile[settingsKey as keyof RpcProfile] = value as never;
+        nextProfiles[selectedProfileIndex] = nextProfile;
+        saveProfiles(nextProfiles);
+    }, [selectedProfileIndex]);
+
+    const addProfile = React.useCallback(() => {
+        const nextProfiles = [...profiles, buildBlankProfile()];
+        settings.store.multiRpcEnabled = true;
+        saveProfiles(nextProfiles);
+        setSelectedProfileIndex(nextProfiles.length - 1);
+    }, [profiles]);
+
+    const duplicateLiveRpc = React.useCallback(() => {
+        const snapshot = {} as RpcProfile;
+
+        for (const key of profileKeys) {
+            const value = s[key as SettingsKey];
+            if (value != null && value !== "") snapshot[key] = value as never;
+        }
+
+        const nextProfiles = [...profiles, snapshot];
+        settings.store.multiRpcEnabled = true;
+        saveProfiles(nextProfiles);
+        setSelectedProfileIndex(nextProfiles.length - 1);
+    }, [profiles, s]);
+
+    const deleteProfile = React.useCallback((index: number) => {
+        const nextProfiles = profiles.filter((_, currentIndex) => currentIndex !== index);
+        saveProfiles(nextProfiles);
+        setSelectedProfileIndex(current => {
+            if (current == null) return null;
+            if (current === index) return nextProfiles.length ? Math.min(index, nextProfiles.length - 1) : null;
+            return current > index ? current - 1 : current;
+        });
+    }, [profiles]);
+
+    const applySelectedProfileToLive = React.useCallback(() => {
+        if (!selectedProfile) return;
+
+        const target = settings.store as unknown as Record<string, unknown>;
+        for (const [key, value] of Object.entries(selectedProfile)) {
+            target[key] = value;
+        }
+
+        updateRPC();
+    }, [selectedProfile]);
+
+    const openLiveRpc = React.useCallback(() => {
+        setSelectedProfileIndex(null);
+    }, []);
+
+    const currentValues = selectedProfile ?? s;
+    const isProfileEditor = selectedProfileIndex != null;
 
     return (
         <div className={cl("root")}>
+            <div className={cl("section")}>
+                <div className={cl("section-heading")}>
+                    <Heading tag="h3">Workspace</Heading>
+                    <Text variant="text-sm/normal">Switch between the live Rich Presence and saved reusable profiles. Hit + to create a new RPC without leaving this page.</Text>
+                </div>
+
+                <div className={cl("toolbar")}>
+                    <Button size="small" onClick={addProfile}>+ New Profile</Button>
+                    <Button size="small" variant="secondary" onClick={duplicateLiveRpc}>Duplicate Live RPC</Button>
+                    {isProfileEditor && <Button size="small" variant="secondary" onClick={openLiveRpc}>Back to Live RPC</Button>}
+                    {isProfileEditor && <Button size="small" variant="primary" onClick={applySelectedProfileToLive}>Use This Profile Now</Button>}
+                </div>
+
+                <div className={cl("targets")}>
+                    <div
+                        className={cl("target-card", {
+                            "target-card-active": !isProfileEditor
+                        })}
+                        onClick={openLiveRpc}
+                    >
+                        <Heading tag="h4">Live RPC</Heading>
+                        <Text variant="text-sm/normal">{s.appName || "No live RPC configured yet."}</Text>
+                        <span className={cl("target-meta")}>{getActivityTypeLabel(s.type)} · pushed immediately</span>
+                    </div>
+
+                    {profiles.map((profile, index) => (
+                        <div
+                            key={`profile-${index}`}
+                            className={cl("target-card", {
+                                "target-card-active": selectedProfileIndex === index
+                            })}
+                            onClick={() => setSelectedProfileIndex(index)}
+                        >
+                            <Heading tag="h4">{profile.appName || `Profile ${index + 1}`}</Heading>
+                            <Text variant="text-sm/normal">{profile.details || profile.state || "Empty profile. Start filling out the fields below."}</Text>
+                            <span className={cl("target-meta")}>{getActivityTypeLabel(profile.type)} · saved profile</span>
+
+                            <div className={cl("target-actions")}>
+                                <Button size="small" variant="secondary" onClick={event => {
+                                    event.stopPropagation();
+                                    setSelectedProfileIndex(index);
+                                }}>
+                                    Edit
+                                </Button>
+                                <Button size="small" variant="dangerSecondary" onClick={event => {
+                                    event.stopPropagation();
+                                    deleteProfile(index);
+                                }}>
+                                    Delete
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <Text className={cl("footnote")} variant="text-sm/normal">
+                    Saved profiles are used by rotation. The Live RPC is the presence Discord sees immediately.
+                </Text>
+            </div>
+
+            <Divider />
+
+            <div className={cl("section")}>
+                <div className={cl("section-heading")}>
+                    <Heading tag="h3">{isProfileEditor ? `Editing ${selectedProfile?.appName || `Profile ${selectedProfileIndex! + 1}`}` : "Editing Live RPC"}</Heading>
+                    <Text variant="text-sm/normal">{isProfileEditor ? "Changes here are saved to the selected profile card." : "Changes here update your currently active Rich Presence."}</Text>
+                </div>
+
             <SelectSetting
-                settingsKey="type"
                 label="Activity Type"
+                value={currentType}
+                onValueChange={value => applySetting("type", value)}
                 options={[
                     {
                         label: "Playing",
@@ -183,74 +425,174 @@ export function RPCSettings() {
             />
 
             <PairSetting data={[
-                { settingsKey: "appID", label: "Application ID", isValid: isAppIdValid },
-                { settingsKey: "appName", label: "Application Name", isValid: makeValidator(128, true) },
+                {
+                    settingsKey: "appID",
+                    label: "Application ID",
+                    isValid: isAppIdValid,
+                    value: currentValues.appID,
+                    onValueChange: (value: string) => applySetting("appID", value)
+                },
+                {
+                    settingsKey: "appName",
+                    label: "Application Name",
+                    isValid: makeValidator(128, true),
+                    value: currentValues.appName,
+                    onValueChange: (value: string) => applySetting("appName", value)
+                },
             ]} />
 
             <PairSetting data={[
-                { settingsKey: "details", label: "Detail (line 1)", isValid: maxLength128 },
-                { settingsKey: "detailsURL", label: "Detail URL", isValid: isUrlValid },
+                {
+                    settingsKey: "details",
+                    label: "Detail (line 1)",
+                    isValid: maxLength128,
+                    value: currentValues.details,
+                    onValueChange: (value: string) => applySetting("details", value)
+                },
+                {
+                    settingsKey: "detailsURL",
+                    label: "Detail URL",
+                    isValid: isUrlValid,
+                    value: currentValues.detailsURL,
+                    onValueChange: (value: string) => applySetting("detailsURL", value)
+                },
             ]} />
 
             <PairSetting data={[
-                { settingsKey: "state", label: "State (line 2)", isValid: maxLength128 },
-                { settingsKey: "stateURL", label: "State URL", isValid: isUrlValid },
+                {
+                    settingsKey: "state",
+                    label: "State (line 2)",
+                    isValid: maxLength128,
+                    value: currentValues.state,
+                    onValueChange: (value: string) => applySetting("state", value)
+                },
+                {
+                    settingsKey: "stateURL",
+                    label: "State URL",
+                    isValid: isUrlValid,
+                    value: currentValues.stateURL,
+                    onValueChange: (value: string) => applySetting("stateURL", value)
+                },
             ]} />
 
             <SingleSetting
-                settingsKey="streamLink"
                 label="Stream Link (Twitch or YouTube, only if activity type is Streaming)"
-                disabled={s.type !== ActivityType.STREAMING}
-                isValid={isStreamLinkValid}
+                value={currentValues.streamLink}
+                onValueChange={(value: string) => applySetting("streamLink", value)}
+                disabled={currentType !== ActivityType.STREAMING}
+                isValid={value => currentType !== ActivityType.STREAMING ? true : isStreamLinkValid(value)}
             />
 
             <PairSetting data={[
                 {
                     settingsKey: "partySize",
                     label: "Party Size",
+                    value: currentValues.partySize,
+                    onValueChange: (value: number) => applySetting("partySize", value),
                     transform: parseNumber,
                     isValid: isNumberValid,
-                    disabled: s.type !== ActivityType.PLAYING,
+                    disabled: currentType !== ActivityType.PLAYING,
                 },
                 {
                     settingsKey: "partyMaxSize",
                     label: "Maximum Party Size",
+                    value: currentValues.partyMaxSize,
+                    onValueChange: (value: number) => applySetting("partyMaxSize", value),
                     transform: parseNumber,
                     isValid: isNumberValid,
-                    disabled: s.type !== ActivityType.PLAYING,
+                    disabled: currentType !== ActivityType.PLAYING,
                 },
             ]} />
 
             <Divider />
 
             <PairSetting data={[
-                { settingsKey: "imageBig", label: "Large Image URL/Key", isValid: isImageKeyValid },
-                { settingsKey: "imageBigTooltip", label: "Large Image Text", isValid: maxLength128 },
+                {
+                    settingsKey: "imageBig",
+                    label: "Large Image URL/Key",
+                    isValid: isImageKeyValid,
+                    value: currentValues.imageBig,
+                    onValueChange: (value: string) => applySetting("imageBig", value)
+                },
+                {
+                    settingsKey: "imageBigTooltip",
+                    label: "Large Image Text",
+                    isValid: maxLength128,
+                    value: currentValues.imageBigTooltip,
+                    onValueChange: (value: string) => applySetting("imageBigTooltip", value)
+                },
             ]} />
-            <SingleSetting settingsKey="imageBigURL" label="Large Image clickable URL" isValid={isUrlValid} />
+            <SingleSetting
+                label="Large Image clickable URL"
+                value={currentValues.imageBigURL}
+                onValueChange={(value: string) => applySetting("imageBigURL", value)}
+                isValid={isUrlValid}
+            />
 
             <PairSetting data={[
-                { settingsKey: "imageSmall", label: "Small Image URL/Key", isValid: isImageKeyValid },
-                { settingsKey: "imageSmallTooltip", label: "Small Image Text", isValid: maxLength128 },
+                {
+                    settingsKey: "imageSmall",
+                    label: "Small Image URL/Key",
+                    isValid: isImageKeyValid,
+                    value: currentValues.imageSmall,
+                    onValueChange: (value: string) => applySetting("imageSmall", value)
+                },
+                {
+                    settingsKey: "imageSmallTooltip",
+                    label: "Small Image Text",
+                    isValid: maxLength128,
+                    value: currentValues.imageSmallTooltip,
+                    onValueChange: (value: string) => applySetting("imageSmallTooltip", value)
+                },
             ]} />
-            <SingleSetting settingsKey="imageSmallURL" label="Small Image clickable URL" isValid={isUrlValid} />
+            <SingleSetting
+                label="Small Image clickable URL"
+                value={currentValues.imageSmallURL}
+                onValueChange={(value: string) => applySetting("imageSmallURL", value)}
+                isValid={isUrlValid}
+            />
 
             <Divider />
 
             <PairSetting data={[
-                { settingsKey: "buttonOneText", label: "Button1 Text", isValid: makeValidator(31) },
-                { settingsKey: "buttonOneURL", label: "Button1 URL", isValid: isUrlValid },
+                {
+                    settingsKey: "buttonOneText",
+                    label: "Button1 Text",
+                    isValid: makeValidator(31),
+                    value: currentValues.buttonOneText,
+                    onValueChange: (value: string) => applySetting("buttonOneText", value)
+                },
+                {
+                    settingsKey: "buttonOneURL",
+                    label: "Button1 URL",
+                    isValid: isUrlValid,
+                    value: currentValues.buttonOneURL,
+                    onValueChange: (value: string) => applySetting("buttonOneURL", value)
+                },
             ]} />
             <PairSetting data={[
-                { settingsKey: "buttonTwoText", label: "Button2 Text", isValid: makeValidator(31) },
-                { settingsKey: "buttonTwoURL", label: "Button2 URL", isValid: isUrlValid },
+                {
+                    settingsKey: "buttonTwoText",
+                    label: "Button2 Text",
+                    isValid: makeValidator(31),
+                    value: currentValues.buttonTwoText,
+                    onValueChange: (value: string) => applySetting("buttonTwoText", value)
+                },
+                {
+                    settingsKey: "buttonTwoURL",
+                    label: "Button2 URL",
+                    isValid: isUrlValid,
+                    value: currentValues.buttonTwoURL,
+                    onValueChange: (value: string) => applySetting("buttonTwoURL", value)
+                },
             ]} />
 
             <Divider />
 
             <SelectSetting
-                settingsKey="timestampMode"
                 label="Timestamp Mode"
+                value={currentTimestampMode}
+                onValueChange={value => applySetting("timestampMode", value)}
                 options={[
                     {
                         label: "None",
@@ -276,58 +618,85 @@ export function RPCSettings() {
                 {
                     settingsKey: "startTime",
                     label: "Start Timestamp (in milliseconds)",
+                    value: currentValues.startTime,
+                    onValueChange: (value: number) => applySetting("startTime", value),
                     transform: parseNumber,
                     isValid: isNumberValid,
-                    disabled: s.timestampMode !== TimestampMode.CUSTOM,
+                    disabled: currentTimestampMode !== TimestampMode.CUSTOM,
                 },
                 {
                     settingsKey: "endTime",
                     label: "End Timestamp (in milliseconds)",
+                    value: currentValues.endTime,
+                    onValueChange: (value: number) => applySetting("endTime", value),
                     transform: parseNumber,
                     isValid: isNumberValid,
-                    disabled: s.timestampMode !== TimestampMode.CUSTOM,
+                    disabled: currentTimestampMode !== TimestampMode.CUSTOM,
                 },
             ]} />
+
+            </div>
 
             <Divider />
 
-            <SelectSetting
-                settingsKey="multiRpcEnabled"
-                label="Enable Multiple RPC Rotation"
-                options={[
-                    { label: "Disabled", value: false, default: true },
-                    { label: "Enabled", value: true }
-                ]}
-            />
+            <div className={cl("section")}>
+                <div className={cl("section-heading")}>
+                    <Heading tag="h3">Rotation</Heading>
+                    <Text variant="text-sm/normal">Cycle through saved profiles automatically when you want the sidebar page to drive your presence hands-free.</Text>
+                </div>
 
-            <PairSetting data={[
-                {
-                    settingsKey: "multiRpcIntervalSec",
-                    label: "Rotation Interval (seconds)",
-                    transform: parseNumber,
-                    isValid: value => value >= 5 ? true : "Must be at least 5 seconds.",
-                    disabled: !s.multiRpcEnabled,
-                },
-                {
-                    settingsKey: "multiRpcProfiles",
-                    label: "Profiles JSON (array)",
-                    isValid: (value: string) => {
-                        if (!value) return true;
-                        try {
-                            const parsed = JSON.parse(value);
-                            if (!Array.isArray(parsed)) return "Must be a JSON array.";
-                            return true;
-                        } catch {
-                            return "Invalid JSON.";
-                        }
+                <SelectSetting
+                    label="Enable Multiple RPC Rotation"
+                    value={s.multiRpcEnabled}
+                    onValueChange={value => {
+                        settings.store.multiRpcEnabled = value;
+                        updateRPC();
+                    }}
+                    options={[
+                        { label: "Disabled", value: false, default: true },
+                        { label: "Enabled", value: true }
+                    ]}
+                />
+
+                <PairSetting data={[
+                    {
+                        settingsKey: "multiRpcIntervalSec",
+                        label: "Rotation Interval (seconds)",
+                        value: s.multiRpcIntervalSec,
+                        onValueChange: (value: number) => {
+                            settings.store.multiRpcIntervalSec = value;
+                            updateRPC();
+                        },
+                        transform: parseNumber,
+                        isValid: value => value >= 5 ? true : "Must be at least 5 seconds.",
+                        disabled: !s.multiRpcEnabled,
                     },
-                    disabled: !s.multiRpcEnabled,
-                },
-            ]} />
+                    {
+                        settingsKey: "multiRpcProfiles",
+                        label: "Profiles JSON (advanced)",
+                        value: s.multiRpcProfiles,
+                        onValueChange: (value: string) => {
+                            settings.store.multiRpcProfiles = value;
+                            updateRPC();
+                        },
+                        isValid: (value: string) => {
+                            if (!value) return true;
+                            try {
+                                const parsed = JSON.parse(value);
+                                if (!Array.isArray(parsed)) return "Must be a JSON array.";
+                                return true;
+                            } catch {
+                                return "Invalid JSON.";
+                            }
+                        },
+                        disabled: !s.multiRpcEnabled,
+                    },
+                ]} />
 
-            <Text variant="text-sm/normal">
-                {"Example: [{\"appName\":\"Coding\",\"details\":\"Fixing bugs\"},{\"appName\":\"Gaming\",\"state\":\"In Match\"}]"}
-            </Text>
+                <Text className={cl("footnote")} variant="text-sm/normal">
+                    {"Example: [{\"appName\":\"Coding\",\"details\":\"Fixing bugs\"},{\"appName\":\"Gaming\",\"state\":\"In Match\"}]"}
+                </Text>
+            </div>
         </div>
     );
 }

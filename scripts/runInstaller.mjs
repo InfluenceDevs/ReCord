@@ -27,10 +27,8 @@ import { fileURLToPath } from "url";
 
 const INSTALLER_BASE_URLS = [
     process.env.RECORD_INSTALLER_BASE_URL,
-    process.env.VENCORD_INSTALLER_BASE_URL,
-    "https://github.com/InfluenceDevs/Installer/releases/latest/download/"
+    "https://github.com/InfluenceDevs/ReCord/releases/latest/download/"
 ].filter(Boolean);
-const INSTALLER_PATH_DARWIN = "VencordInstaller.app/Contents/MacOS/VencordInstaller";
 const RECORD_REPO_API = "https://api.github.com/repos/InfluenceDevs/ReCord";
 
 const BASE_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -40,11 +38,11 @@ const ETAG_FILE = join(FILE_DIR, "etag.txt");
 function getFilename() {
     switch (process.platform) {
         case "win32":
-            return "VencordInstallerCli.exe";
+            return "ReCordInstallerCli.exe";
         case "darwin":
-            return "VencordInstaller.MacOS.zip";
+            return "ReCordInstaller";
         case "linux":
-            return "VencordInstallerCli-linux";
+            return "ReCordInstallerCli-linux";
         default:
             throw new Error("Unsupported platform: " + process.platform);
     }
@@ -115,16 +113,39 @@ async function extractBinaryFromArchive(archiveUrl, outputFile) {
     writeFileSync(outputFile, all[targetPath], { mode: 0o755 });
 }
 
+function getVersion() {
+    return JSON.parse(readFileSync(join(BASE_DIR, "package.json"), "utf8")).version;
+}
+
+function findLocalReleaseInstaller() {
+    const releaseManifest = join(BASE_DIR, "dist", "release", "release-manifest.json");
+    const bundledBinary = join(BASE_DIR, "dist", "release", "ReCord-Installer-Bundle", getPlatformBinaryName());
+
+    if (!existsSync(releaseManifest) || !existsSync(bundledBinary)) return null;
+
+    try {
+        const manifest = JSON.parse(readFileSync(releaseManifest, "utf8"));
+        if (manifest?.version !== getVersion()) return null;
+    } catch {
+        return null;
+    }
+
+    return bundledBinary;
+}
+
 async function ensureBinary() {
+    const localBinary = findLocalReleaseInstaller();
+    if (localBinary) {
+        console.log("Using local ReCord installer bundle binary:", localBinary);
+        return localBinary;
+    }
+
     const filename = getFilename();
-    console.log("Downloading " + filename);
+    console.log("Resolving ReCord installer binary: " + filename);
 
     mkdirSync(FILE_DIR, { recursive: true });
 
-    const downloadName = join(FILE_DIR, filename);
-    const outputFile = process.platform === "darwin"
-        ? join(FILE_DIR, "VencordInstaller")
-        : downloadName;
+    const outputFile = join(FILE_DIR, filename);
 
     const etag = existsSync(outputFile) && existsSync(ETAG_FILE)
         ? readFileSync(ETAG_FILE, "utf-8")
@@ -167,17 +188,14 @@ async function ensureBinary() {
 
     writeFileSync(ETAG_FILE, res.headers.get("etag"));
 
+    // WHY DOES NODE FETCH RETURN A WEB STREAM OH MY GOD
+    const body = Readable.fromWeb(res.body);
+    await finished(body.pipe(createWriteStream(outputFile, {
+        mode: 0o755,
+        autoClose: true
+    })));
+
     if (process.platform === "darwin") {
-        console.log("Unzipping...");
-        const zip = new Uint8Array(await res.arrayBuffer());
-
-        const ff = await import("fflate");
-        const bytes = ff.unzipSync(zip, {
-            filter: f => f.name === INSTALLER_PATH_DARWIN
-        })[INSTALLER_PATH_DARWIN];
-
-        writeFileSync(outputFile, bytes, { mode: 0o755 });
-
         console.log("Overriding security policy for installer binary (this is required to run it)");
         console.log("xattr might error, that's okay");
 
@@ -189,13 +207,6 @@ async function ensureBinary() {
         };
         logAndRun(`sudo spctl --add '${outputFile}' --label "ReCord Installer"`);
         logAndRun(`sudo xattr -d com.apple.quarantine '${outputFile}'`);
-    } else {
-        // WHY DOES NODE FETCH RETURN A WEB STREAM OH MY GOD
-        const body = Readable.fromWeb(res.body);
-        await finished(body.pipe(createWriteStream(outputFile, {
-            mode: 0o755,
-            autoClose: true
-        })));
     }
 
     console.log("Finished downloading!");
@@ -220,7 +231,8 @@ try {
             RECORD_USER_DATA_DIR: BASE_DIR,
             RECORD_DEV_INSTALL: "1",
             VENCORD_USER_DATA_DIR: BASE_DIR,
-            VENCORD_DEV_INSTALL: "1"
+            VENCORD_DEV_INSTALL: "1",
+            RECORD_FORCE_BRAND: "1"
         }
     });
 } catch {

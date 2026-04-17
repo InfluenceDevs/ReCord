@@ -40,6 +40,7 @@
     background: transparent !important;
 }
 
-[data-fullscreen="true"] .baseLayer-W6S8cY {
+[data-fullscreen="true"] [class^="baseLayer-"],
+[data-fullscreen="true"] [class*=" baseLayer-"] {
     backdrop-filter: none !important;
 }

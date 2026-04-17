@@ -7,14 +7,27 @@
 import { Button } from "@components/Button";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { Margins } from "@utils/margins";
-import { findByPropsLazy } from "@webpack";
-import { Forms, React, Text, UserStore, useStateFromStores } from "@webpack/common";
+import { findByProps } from "@webpack";
+import { Forms, React, Text, UserStore } from "@webpack/common";
 
-const AccountSwitcherStore = findByPropsLazy("canAddAccount", "getAccounts");
-const AccountSwitcherApi = findByPropsLazy("canAddAccount", "switchAccount");
+function resolveAccountSwitcherStore() {
+    try {
+        return findByProps("canAddAccount", "getAccounts") as Record<string, unknown> | undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function resolveAccountSwitcherApi() {
+    try {
+        return findByProps("canAddAccount", "switchAccount") as Record<string, unknown> | undefined;
+    } catch {
+        return undefined;
+    }
+}
 
 function getAccountsSafe() {
-    const getAccounts = (AccountSwitcherStore as any)?.getAccounts;
+    const getAccounts = resolveAccountSwitcherStore()?.getAccounts;
     if (typeof getAccounts !== "function") return null;
 
     try {
@@ -26,7 +39,7 @@ function getAccountsSafe() {
 }
 
 async function switchToAccount(account: any) {
-    const api = AccountSwitcherApi as any;
+    const api = resolveAccountSwitcherApi() as any;
     const ids = [account?.id, account?.accountId, account?.userId, account?.uid].filter(Boolean);
     const methods = ["switchAccount", "switchToAccount", "setActiveAccount"];
 
@@ -54,19 +67,26 @@ async function switchToAccount(account: any) {
 }
 
 function AccountCenterTab() {
+    const [accounts, setAccounts] = React.useState<any[]>(() => getAccountsSafe() ?? []);
+    const [apiReady, setApiReady] = React.useState(() => getAccountsSafe() !== null);
     const [status, setStatus] = React.useState("");
     const [isSwitching, setIsSwitching] = React.useState(false);
-
-    const accounts = useStateFromStores([AccountSwitcherStore as any], () => getAccountsSafe());
-    const apiReady = accounts !== null;
-    const accountList = accounts ?? [];
+    const accountList = accounts;
 
     const currentId = UserStore.getCurrentUser()?.id;
 
     const refresh = React.useCallback(() => {
-        // Trigger a re-render for stores that do not always emit changes reliably.
-        setStatus(status => status);
+        const next = getAccountsSafe();
+        setApiReady(next !== null);
+        setAccounts(next ?? []);
     }, []);
+
+    React.useEffect(() => {
+        refresh();
+
+        const id = window.setInterval(refresh, 3000);
+        return () => clearInterval(id);
+    }, [refresh]);
 
     const onSwitch = React.useCallback(async (account: any) => {
         setStatus("");
@@ -82,34 +102,48 @@ function AccountCenterTab() {
 
     return (
         <SettingsTab>
-            <Forms.FormTitle tag="h2">Account Center</Forms.FormTitle>
-            <Forms.FormText className={Margins.bottom16} style={{ color: "var(--text-muted)", maxWidth: 860 }}>
-                Connected accounts from Discord's switcher. Click an account to switch instantly.
-            </Forms.FormText>
+            <div className="vc-settings-hero">
+                <Forms.FormTitle tag="h2">Account Center</Forms.FormTitle>
+                <Forms.FormText className={Margins.bottom16} style={{ maxWidth: 860 }}>
+                    Connected accounts from Discord's switcher, cleaned up into a faster overview with instant switching and a clearer current-account state.
+                </Forms.FormText>
 
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <div className="vc-settings-pill-row">
+                    <div className="vc-settings-pill"><strong>Connected</strong> {accountList.length}</div>
+                    <div className="vc-settings-pill"><strong>API</strong> {apiReady ? "Ready" : "Unavailable"}</div>
+                    <div className="vc-settings-pill"><strong>Current</strong> {currentId ? "Detected" : "Unknown"}</div>
+                </div>
+            </div>
+
+            <div className="vc-settings-actions">
                 <Button size="small" onClick={refresh}>Refresh</Button>
             </div>
 
             {!apiReady && (
-                <Text variant="text-sm/normal" style={{ color: "#ed4245", marginBottom: 10 }}>
-                    Discord account-switcher API was not found in this build. Restart Discord and try again.
-                </Text>
+                <div className="vc-settings-card">
+                    <Text variant="text-sm/normal" style={{ color: "#ed4245" }}>
+                        Discord account-switcher API was not found in this build. Restart Discord and try again.
+                    </Text>
+                </div>
             )}
 
             {!!status && (
-                <Text variant="text-sm/normal" style={{ color: "#ed4245", marginBottom: 10 }}>
-                    {status}
-                </Text>
+                <div className="vc-settings-card">
+                    <Text variant="text-sm/normal" style={{ color: "#ed4245" }}>
+                        {status}
+                    </Text>
+                </div>
             )}
 
             {accountList.length === 0 && (
-                <Text variant="text-sm/normal" style={{ color: "var(--text-muted)" }}>
-                    No connected accounts found. Add accounts from Discord's native account switcher first.
-                </Text>
+                <div className="vc-settings-card">
+                    <Text variant="text-sm/normal" style={{ color: "var(--text-muted)" }}>
+                        No connected accounts found. Add accounts from Discord's native account switcher first.
+                    </Text>
+                </div>
             )}
 
-            <div style={{ display: "grid", gap: 8 }}>
+            <div className="vc-settings-stat-grid">
                 {accountList.map((account, idx) => {
                     const userId = account?.userId ?? account?.id;
                     const user = userId ? UserStore.getUser(userId) : null;
@@ -120,11 +154,11 @@ function AccountCenterTab() {
                     return (
                         <div
                             key={`${userId ?? idx}`}
+                            className="vc-settings-card"
                             style={{
-                                border: "1px solid var(--border-subtle)",
-                                borderRadius: 12,
-                                padding: "10px 12px",
-                                background: isCurrent ? "rgba(88,101,242,0.16)" : "var(--background-secondary)",
+                                background: isCurrent
+                                    ? "linear-gradient(165deg, rgb(88 101 242 / 18%), color-mix(in srgb, var(--background-secondary) 92%, transparent))"
+                                    : undefined,
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "space-between",

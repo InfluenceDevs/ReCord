@@ -73,10 +73,35 @@ function NetworkTab() {
         setIpLoading(true);
         setIpError(null);
 
-        const providers: Array<{ url: string; parse: (data: any) => string | null; }> = [
-            { url: "https://api.ipify.org?format=json", parse: data => data?.ip ?? null },
-            { url: "https://ifconfig.co/json", parse: data => data?.ip ?? null },
-            { url: "https://api.myip.com", parse: data => data?.ip ?? null },
+        const providers: Array<{ url: string; parse: (response: Response) => Promise<string | null>; }> = [
+            {
+                url: "https://api64.ipify.org?format=json",
+                parse: async response => {
+                    const data = await response.json();
+                    return data?.ip ?? null;
+                }
+            },
+            {
+                url: "https://api.ipify.org?format=text",
+                parse: async response => {
+                    const text = (await response.text()).trim();
+                    return text || null;
+                }
+            },
+            {
+                url: "https://ifconfig.co/json",
+                parse: async response => {
+                    const data = await response.json();
+                    return data?.ip ?? null;
+                }
+            },
+            {
+                url: "https://api.myip.com",
+                parse: async response => {
+                    const data = await response.json();
+                    return data?.ip ?? null;
+                }
+            },
         ];
 
         try {
@@ -84,10 +109,14 @@ function NetworkTab() {
 
             for (const provider of providers) {
                 try {
-                    const response = await fetch(provider.url, { cache: "no-store" });
+                    const response = await fetch(provider.url, {
+                        cache: "no-store",
+                        headers: {
+                            Accept: "application/json,text/plain;q=0.9,*/*;q=0.8"
+                        }
+                    });
                     if (!response.ok) continue;
-                    const data = await response.json();
-                    const parsed = provider.parse(data);
+                    const parsed = await provider.parse(response);
                     if (parsed) {
                         resolved = parsed;
                         break;

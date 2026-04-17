@@ -59,6 +59,20 @@ function getObjectProp(node: ObjectLiteralExpression, name: string) {
     return prop;
 }
 
+function parseDevObject(node: ObjectLiteralExpression) {
+    const name = getObjectProp(node, "name");
+    const id = getObjectProp(node, "id");
+
+    if (!name || !isStringLiteral(name) || !id || id.kind !== SyntaxKind.BigIntLiteral) {
+        return null;
+    }
+
+    return {
+        name: name.text,
+        id: (id as BigIntLiteral).text.slice(0, -1)
+    } satisfies Dev;
+}
+
 function parseDevs() {
     const file = createSourceFile("constants.ts", readFileSync("src/utils/constants.ts", "utf8"), ScriptTarget.Latest);
 
@@ -78,10 +92,10 @@ function parseDevs() {
 
             if (!isObjectLiteralExpression(value)) throw new Error(`Failed to parse devs: ${name} is not an object literal`);
 
-            devs[name] = {
-                name: (getObjectProp(value, "name") as StringLiteral).text,
-                id: (getObjectProp(value, "id") as BigIntLiteral).text.slice(0, -1)
-            };
+            const dev = parseDevObject(value);
+            if (!dev) throw new Error(`Failed to parse devs: ${name} is missing a valid name or id`);
+
+            devs[name] = dev;
         }
 
         return;
@@ -92,12 +106,24 @@ function parseDevs() {
 
 async function parseFile(fileName: string) {
     const file = createSourceFile(fileName, await readFile(fileName, "utf8"), ScriptTarget.Latest);
+    const localDevs = {} as Record<string, Dev>;
 
     const fail = (reason: string) => {
         return new Error(`Invalid plugin ${fileName}, because ${reason}`);
     };
 
     for (const node of file.getChildAt(0).getChildren()) {
+        if (isVariableStatement(node)) {
+            for (const declaration of node.declarationList.declarations) {
+                const name = getName(declaration);
+                const value = declaration.initializer;
+                if (!name || !value || !isObjectLiteralExpression(value)) continue;
+
+                const dev = parseDevObject(value);
+                if (dev) localDevs[name] = dev;
+            }
+        }
+
         if (!isExportAssignment(node) || !isCallExpression(node.expression)) continue;
 
         const call = node.expression;
@@ -133,10 +159,26 @@ async function parseFile(fileName: string) {
                 case "authors":
                     if (!isArrayLiteralExpression(value)) throw fail("authors is not an array literal");
                     data.authors = value.elements.map(e => {
-                        if (!isPropertyAccessExpression(e)) throw fail("authors array contains non-property access expressions");
-                        const d = devs[getName(e)!];
-                        if (!d) throw fail(`couldn't look up author ${getName(e)}`);
-                        return d;
+                        if (isPropertyAccessExpression(e)) {
+                            const name = getName(e);
+                            const dev = name ? devs[name] : undefined;
+                            if (!dev) throw fail(`couldn't look up author ${name}`);
+                            return dev;
+                        }
+
+                        if (isIdentifier(e)) {
+                            const dev = localDevs[e.text];
+                            if (!dev) throw fail(`couldn't look up author ${e.text}`);
+                            return dev;
+                        }
+
+                        if (isObjectLiteralExpression(e)) {
+                            const dev = parseDevObject(e);
+                            if (!dev) throw fail("authors array contains invalid object literal expressions");
+                            return dev;
+                        }
+
+                        throw fail("authors array contains unsupported expressions");
                     });
                     break;
                 case "tags":

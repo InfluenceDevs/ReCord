@@ -11,10 +11,9 @@ import zipper from "zip-local";
 
 const INSTALLER_BASE_URLS = [
     process.env.RECORD_INSTALLER_BASE_URL,
-    process.env.VENCORD_INSTALLER_BASE_URL,
-    "https://github.com/InfluenceDevs/Installer/releases/latest/download/"
+    "https://github.com/InfluenceDevs/ReCord/releases/latest/download/"
 ].filter(Boolean);
-const INSTALLER_PATH_DARWIN = "VencordInstaller.app/Contents/MacOS/VencordInstaller";
+const RECORD_REPO_API = "https://api.github.com/repos/InfluenceDevs/ReCord";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST_DIR = join(ROOT, "dist");
@@ -32,25 +31,63 @@ function getInstallerConfig() {
     switch (process.platform) {
         case "win32":
             return {
-                downloadName: "VencordInstallerCli.exe",
+                downloadName: "ReCordInstallerCli.exe",
                 outputName: "ReCordInstallerCli.exe",
                 artifactName: "ReCord-Windows-Installer.zip"
             };
         case "darwin":
             return {
-                downloadName: "VencordInstaller.MacOS.zip",
+                downloadName: "ReCordInstaller",
                 outputName: "ReCordInstaller",
                 artifactName: "ReCord-macOS-Installer.zip"
             };
         case "linux":
             return {
-                downloadName: "VencordInstallerCli-linux",
+                downloadName: "ReCordInstallerCli-linux",
                 outputName: "ReCordInstallerCli-linux",
                 artifactName: "ReCord-Linux-Installer.zip"
             };
         default:
             throw new Error(`Unsupported platform: ${process.platform}`);
     }
+}
+
+async function findLatestAssetUrl(assetName) {
+    const res = await fetch(`${RECORD_REPO_API}/releases/latest`, {
+        headers: {
+            Accept: "application/vnd.github+json",
+            "User-Agent": "ReCord Release Builder (https://github.com/InfluenceDevs/ReCord)"
+        }
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const asset = data?.assets?.find?.(a => a?.name === assetName);
+    return asset?.browser_download_url ?? null;
+}
+
+async function extractBinaryFromArchive(archiveUrl, outputFile, outputName) {
+    const res = await fetch(archiveUrl, {
+        headers: {
+            "User-Agent": "ReCord Release Builder (https://github.com/InfluenceDevs/ReCord)"
+        }
+    });
+
+    if (!res.ok) {
+        throw new Error(`Failed to download archive fallback: ${res.status} ${res.statusText}`);
+    }
+
+    const zip = new Uint8Array(await res.arrayBuffer());
+    const ff = await import("fflate");
+    const all = ff.unzipSync(zip);
+
+    const targetPath = Object.keys(all).find(path => path.endsWith(outputName));
+    if (!targetPath) {
+        throw new Error(`Archive fallback missing ${outputName}`);
+    }
+
+    writeFileSync(outputFile, all[targetPath], { mode: 0o755 });
 }
 
 async function downloadInstaller(tempDir) {
@@ -76,26 +113,22 @@ async function downloadInstaller(tempDir) {
         break;
     }
 
-    if (!res) {
-        throw new Error(`Failed to download installer binary ${cfg.downloadName} from any configured source.`);
-    }
-
-    if (process.platform === "darwin") {
-        const zip = new Uint8Array(await res.arrayBuffer());
-        const ff = await import("fflate");
-        const bytes = ff.unzipSync(zip, {
-            filter: f => f.name === INSTALLER_PATH_DARWIN
-        })[INSTALLER_PATH_DARWIN];
-        writeFileSync(targetPath, bytes, { mode: 0o755 });
+    if (res) {
+        const body = Readable.fromWeb(res.body);
+        await finished(body.pipe(createWriteStream(sourcePath, {
+            mode: 0o755,
+            autoClose: true
+        })));
+        cpSync(sourcePath, targetPath);
         return targetPath;
     }
 
-    const body = Readable.fromWeb(res.body);
-    await finished(body.pipe(createWriteStream(sourcePath, {
-        mode: 0o755,
-        autoClose: true
-    })));
-    cpSync(sourcePath, targetPath);
+    const archiveUrl = await findLatestAssetUrl(cfg.artifactName);
+    if (!archiveUrl) {
+        throw new Error(`Failed to download installer binary ${cfg.downloadName} from direct URLs and archive ${cfg.artifactName} was not found.`);
+    }
+
+    await extractBinaryFromArchive(archiveUrl, targetPath, cfg.outputName);
     return targetPath;
 }
 
