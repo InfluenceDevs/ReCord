@@ -39,9 +39,21 @@ const DEFAULT_STATE: VoicePlaybackState = {
     selectedOutputDevice: "default"
 };
 
+function getStorage() {
+    try {
+        if (typeof globalThis === "undefined") return null;
+        return globalThis.localStorage ?? null;
+    } catch {
+        return null;
+    }
+}
+
 function loadState(): VoicePlaybackState {
     try {
-        const raw = JSON.parse(localStorage.getItem(STORE_KEY) ?? "{}");
+        const storage = getStorage();
+        if (!storage) return DEFAULT_STATE;
+
+        const raw = JSON.parse(storage.getItem(STORE_KEY) ?? "{}");
         return { ...DEFAULT_STATE, ...raw };
     } catch {
         return DEFAULT_STATE;
@@ -49,7 +61,13 @@ function loadState(): VoicePlaybackState {
 }
 
 function saveState(state: VoicePlaybackState) {
-    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    try {
+        const storage = getStorage();
+        if (!storage) return;
+        storage.setItem(STORE_KEY, JSON.stringify(state));
+    } catch {
+        // no-op when storage is unavailable
+    }
 }
 
 // Audio context for playback
