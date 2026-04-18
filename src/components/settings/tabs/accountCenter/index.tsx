@@ -125,13 +125,25 @@ function AccountCenterTab() {
     // Saved tokens
     const [savedTokens, setSavedTokens] = React.useState<{ label: string; token: string }[]>(() => loadSavedTokens());
 
-    const currentId = UserStore.getCurrentUser()?.id;
+    const currentUser = UserStore.getCurrentUser();
+    const currentId = currentUser?.id;
 
     const refresh = React.useCallback(() => {
         const next = getAccountsSafe();
         setApiReady(next !== null);
-        setAccounts(next ?? []);
-    }, []);
+        // Only keep accounts that resolve as real Discord users.
+        // This filters out third-party connected accounts (Crunchyroll, Twitch, Spotify, etc.)
+        // which live in the same store but are not Discord accounts.
+        const discordOnly = (next ?? []).filter((a: any) => {
+            const uid = a?.userId ?? a?.id;
+            return uid && UserStore.getUser(String(uid));
+        });
+        // Always include the current user at the top if not already present.
+        if (currentUser && !discordOnly.some((a: any) => String(a?.userId ?? a?.id) === String(currentUser.id))) {
+            discordOnly.unshift({ id: currentUser.id, userId: currentUser.id, _injected: true });
+        }
+        setAccounts(discordOnly);
+    }, [currentUser]);
 
     React.useEffect(() => {
         refresh();
@@ -327,25 +339,17 @@ function AccountCenterTab() {
                 </section>
             )}
 
-            {/* â”€â”€ Connected accounts from Discord's native switcher â”€â”€ */}
+            {/* Discord Accounts */}
             <section>
-                <Forms.FormTitle tag="h3" style={{ marginBottom: 4 }}>Connected Accounts</Forms.FormTitle>
+                <Forms.FormTitle tag="h3" style={{ marginBottom: 4 }}>Discord Accounts</Forms.FormTitle>
                 <Forms.FormText style={{ color: "var(--text-muted)", marginBottom: 16 }}>
-                    Accounts already connected to Discord's native account switcher.
+                    Discord accounts you are logged in to. Switch between them or add more via token above.
                 </Forms.FormText>
 
-                {!apiReady && (
-                    <div className="vc-settings-card">
-                        <Text variant="text-sm/normal" style={{ color: "var(--status-danger)" }}>
-                            Discord account-switcher API was not found. Restart Discord and try again.
-                        </Text>
-                    </div>
-                )}
-
-                {apiReady && accounts.length === 0 && (
+                {accounts.length === 0 && (
                     <div className="vc-settings-card">
                         <Text variant="text-sm/normal" style={{ color: "var(--text-muted)" }}>
-                            No connected accounts found. Add accounts via Discord's native switcher first, or use "Add Account" above.
+                            No Discord accounts found. Try refreshing.
                         </Text>
                     </div>
                 )}
@@ -353,10 +357,11 @@ function AccountCenterTab() {
                 <div className="vc-settings-stat-grid">
                     {accounts.map((account, idx) => {
                         const userId = account?.userId ?? account?.id;
-                        const user = userId ? UserStore.getUser(userId) : null;
+                        const user = userId ? UserStore.getUser(String(userId)) : null;
                         const title = user?.globalName || user?.username || account?.name || `Account ${idx + 1}`;
-                        const subtitle = user?.username ? `@${user.username}` : "Connected account";
+                        const subtitle = user?.username ? `@${user.username}` : "Discord account";
                         const isCurrent = !!(currentId && userId && String(currentId) === String(userId));
+
 
                         return (
                             <div
