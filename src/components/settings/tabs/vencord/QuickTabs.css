@@ -1,4 +1,4 @@
-/* ReCord settings layout */
+/* ReCord settings layout — Discord-native flat design */
 .vc-record-layout {
     display: flex;
     flex-direction: column;
@@ -11,13 +11,10 @@
     flex-wrap: wrap;
     justify-content: space-between;
     gap: 12px;
-    border: 1px solid color-mix(in srgb, var(--border-subtle) 75%, var(--text-muted) 25%);
-    border-radius: 16px;
+    border: 1px solid var(--background-modifier-accent);
+    border-radius: 8px;
     padding: 14px;
-    background:
-        radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--green-360) 18%, transparent) 0%, transparent 58%),
-        radial-gradient(120% 140% at 0% 100%, color-mix(in srgb, var(--yellow-300) 16%, transparent) 0%, transparent 62%),
-        var(--background-secondary);
+    background: var(--background-secondary-alt);
 }
 
 .vc-record-header-main {
@@ -30,9 +27,9 @@
 .vc-record-logo {
     width: 38px;
     height: 38px;
-    border-radius: 11px;
-    border: 1px solid var(--border-subtle);
-    background: var(--background-tertiary);
+    border-radius: 8px;
+    border: 1px solid var(--background-modifier-accent);
+    background: var(--background-secondary);
     object-fit: cover;
 }
 
@@ -47,18 +44,18 @@
 .vc-record-badge {
     display: inline-flex;
     align-items: center;
-    border: 1px solid color-mix(in srgb, var(--green-360) 40%, var(--border-subtle) 60%);
+    border: 1px solid var(--background-modifier-accent);
     border-radius: 999px;
-    padding: 5px 10px;
+    padding: 4px 10px;
     color: var(--header-primary);
+    font-size: 12px;
     font-weight: 600;
-    background: color-mix(in srgb, var(--background-tertiary) 85%, var(--green-360) 15%);
+    background: var(--background-secondary);
 }
 
 .vc-record-badge-soft {
-    border-color: var(--border-subtle);
-    background: var(--background-tertiary);
-    font-weight: 500;
+    font-weight: 400;
+    color: var(--text-muted);
 }
 
 .vc-record-nav-panel {
@@ -72,10 +69,6 @@
     margin-top: 8px;
 }
 
-.vc-record-quick-tabs .vc-btn-base {
-    justify-content: center;
-}
-
 .vc-record-grid {
     display: grid;
     gap: 12px;
@@ -83,10 +76,10 @@
 }
 
 .vc-record-panel {
-    border: 1px solid var(--border-subtle);
-    border-radius: 14px;
-    padding: 12px;
-    background: linear-gradient(170deg, color-mix(in srgb, var(--background-secondary) 92%, white 8%), var(--background-secondary));
+    border: 1px solid var(--background-modifier-accent);
+    border-radius: 8px;
+    padding: 14px;
+    background: var(--background-secondary);
 }
 
 .vc-record-panel-wide {
@@ -112,3 +105,4 @@
         justify-content: flex-start;
     }
 }
+

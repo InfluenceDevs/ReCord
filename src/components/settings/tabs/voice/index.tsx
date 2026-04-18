@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+// ─── Voice Settings Tab ──────────────────────────────────────────────────────
+// Self-monitoring (sidetone) with bass/treble/voice-changer and device routing.
+// Audio engine uses MediaStreamDestination → HTMLAudioElement so setSinkId works
+// and AudioContext.resume() is called so the context is never left suspended.
+
 import { Button } from "@components/Button";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { Margins } from "@utils/margins";
@@ -70,179 +75,159 @@ function saveState(state: VoicePlaybackState) {
     }
 }
 
-// Audio context for playback
-let audioContext: AudioContext | null = null;
+// ─── Audio engine ────────────────────────────────────────────────────────────
+// Uses MediaStreamDestination → HTMLAudioElement pipeline so that:
+//   1. AudioContext.resume() is called right after creation (fixes suspended state)
+//   2. setSinkId() on the <audio> element routes to the correct output device
+//   3. Each call creates a fresh context + source (no stale-node reuse bug)
+
+let audioCtx: AudioContext | null = null;
 let mediaStream: MediaStream | null = null;
-let sourceNode: MediaStreamAudioSourceNode | null = null;
+let volumeNode: GainNode | null = null;
+let bassNode: BiquadFilterNode | null = null;
+let trebleNode: BiquadFilterNode | null = null;
+let effectNode: BiquadFilterNode | null = null;
+let outputEl: HTMLAudioElement | null = null;
 
-// Audio processing nodes
-let echoCancellationFilter: BiquadFilterNode | null = null;
-let noiseSuppressionGain: GainNode | null = null;
-let autoGainNode: DynamicsCompressor | null = null;
-let volumeControl: GainNode | null = null;
-let bassFilter: BiquadFilterNode | null = null;
-let trebleFilter: BiquadFilterNode | null = null;
-let voiceEffectFilter: BiquadFilterNode | null = null;
-
-function applyVoiceChanger(mode: VoicePlaybackState["voiceChanger"]) {
-    if (!voiceEffectFilter) return;
-
+function applyEffect(node: BiquadFilterNode, mode: VoicePlaybackState["voiceChanger"]) {
     switch (mode) {
         case "deep":
-            voiceEffectFilter.type = "lowshelf";
-            voiceEffectFilter.frequency.value = 240;
-            voiceEffectFilter.gain.value = 10;
+            node.type = "lowshelf";
+            node.frequency.value = 240;
+            node.gain.value = 10;
             break;
         case "chipmunk":
-            voiceEffectFilter.type = "highshelf";
-            voiceEffectFilter.frequency.value = 2600;
-            voiceEffectFilter.gain.value = 12;
+            node.type = "highshelf";
+            node.frequency.value = 2600;
+            node.gain.value = 12;
             break;
         case "robot":
-            voiceEffectFilter.type = "bandpass";
-            voiceEffectFilter.frequency.value = 900;
-            voiceEffectFilter.Q.value = 3;
-            voiceEffectFilter.gain.value = 0;
+            node.type = "bandpass";
+            node.frequency.value = 900;
+            node.Q.value = 3;
             break;
         case "radio":
-            voiceEffectFilter.type = "bandpass";
-            voiceEffectFilter.frequency.value = 1800;
-            voiceEffectFilter.Q.value = 2;
-            voiceEffectFilter.gain.value = 0;
+            node.type = "bandpass";
+            node.frequency.value = 1800;
+            node.Q.value = 2;
             break;
         default:
-            voiceEffectFilter.type = "allpass";
-            voiceEffectFilter.frequency.value = 1000;
-            voiceEffectFilter.gain.value = 0;
-            break;
+            node.type = "allpass";
+            node.frequency.value = 1000;
+            node.gain.value = 0;
     }
 }
 
-async function initializeAudioContext(state: VoicePlaybackState) {
+/** Start self-monitoring. Returns an error string on failure, null on success. */
+async function startPlayback(state: VoicePlaybackState): Promise<string | null> {
     try {
-        if (!audioContext) {
-            audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        }
+        // Always start clean
+        await stopPlayback();
 
-        // Request microphone access
+        // Request mic with user-chosen constraints
         mediaStream = await navigator.mediaDevices.getUserMedia({
             audio: {
-                deviceId: state.selectedInputDevice !== "default" ? state.selectedInputDevice : undefined,
+                deviceId: state.selectedInputDevice !== "default"
+                    ? { ideal: state.selectedInputDevice }
+                    : undefined,
                 echoCancellation: state.echoCancellation,
                 noiseSuppression: state.noiseSuppression,
                 autoGainControl: state.autoGainControl
             }
         });
 
-        // Create audio nodes
-        if (!sourceNode) {
-            sourceNode = audioContext.createMediaStreamSource(mediaStream);
+        // Create and immediately resume AudioContext
+        audioCtx = new AudioContext();
+        if (audioCtx.state === "suspended") await audioCtx.resume();
+
+        const source = audioCtx.createMediaStreamSource(mediaStream);
+
+        bassNode = audioCtx.createBiquadFilter();
+        bassNode.type = "lowshelf";
+        bassNode.frequency.value = 200;
+        bassNode.gain.value = state.bassGain;
+
+        trebleNode = audioCtx.createBiquadFilter();
+        trebleNode.type = "highshelf";
+        trebleNode.frequency.value = 3500;
+        trebleNode.gain.value = state.trebleGain;
+
+        effectNode = audioCtx.createBiquadFilter();
+        applyEffect(effectNode, state.voiceChanger);
+
+        volumeNode = audioCtx.createGain();
+        volumeNode.gain.value = state.playbackVolume;
+
+        // Route to a MediaStreamDestination so <audio> can setSinkId
+        const dest = audioCtx.createMediaStreamDestination();
+        source.connect(bassNode);
+        bassNode.connect(trebleNode);
+        trebleNode.connect(effectNode);
+        effectNode.connect(volumeNode);
+        volumeNode.connect(dest);
+
+        // Play via HTMLAudioElement for output-device routing
+        outputEl = new Audio();
+        outputEl.srcObject = dest.stream;
+        outputEl.autoplay = true;
+
+        if (
+            state.selectedOutputDevice !== "default" &&
+            typeof (outputEl as any).setSinkId === "function"
+        ) {
+            try {
+                await (outputEl as any).setSinkId(state.selectedOutputDevice);
+            } catch {
+                // setSinkId unavailable for this device, fall through to default
+            }
         }
 
-        // Create processing chain
-        volumeControl = audioContext.createGain();
-        volumeControl.gain.value = state.playbackVolume;
-
-        bassFilter = audioContext.createBiquadFilter();
-        bassFilter.type = "lowshelf";
-        bassFilter.frequency.value = 200;
-        bassFilter.gain.value = state.bassGain;
-
-        trebleFilter = audioContext.createBiquadFilter();
-        trebleFilter.type = "highshelf";
-        trebleFilter.frequency.value = 3500;
-        trebleFilter.gain.value = state.trebleGain;
-
-        voiceEffectFilter = audioContext.createBiquadFilter();
-        applyVoiceChanger(state.voiceChanger);
-
-        // Echo cancellation (simple implementation using delay + inversion)
-        echoCancellationFilter = audioContext.createBiquadFilter();
-        echoCancellationFilter.type = "lowpass";
-        echoCancellationFilter.frequency.value = 8000;
-
-        // Noise suppression (gate)
-        noiseSuppressionGain = audioContext.createGain();
-        noiseSuppressionGain.gain.value = state.noiseSuppression ? 1 : 1;
-
-        // Auto gain (compressor)
-        autoGainNode = audioContext.createDynamicsCompressor();
-        autoGainNode.threshold.value = -50;
-        autoGainNode.knee.value = 40;
-        autoGainNode.ratio.value = 12;
-        autoGainNode.attack.value = 0.003;
-        autoGainNode.release.value = 0.25;
-
-        // Connect processing chain
-        sourceNode.connect(noiseSuppressionGain);
-        noiseSuppressionGain.connect(state.echoCancellation ? echoCancellationFilter! : autoGainNode!);
-        if (state.echoCancellation) {
-            echoCancellationFilter!.connect(autoGainNode!);
-        }
-        autoGainNode!.connect(bassFilter);
-        bassFilter.connect(trebleFilter);
-        trebleFilter.connect(voiceEffectFilter);
-        voiceEffectFilter.connect(volumeControl);
-        volumeControl.connect(audioContext.destination);
-
-        return true;
-    } catch (error) {
-        console.error("Failed to initialize audio context:", error);
-        return false;
+        await outputEl.play();
+        return null;
+    } catch (err: any) {
+        await stopPlayback();
+        const msg: string = err?.message ?? String(err);
+        if (/Permission|NotAllowed|denied/i.test(msg))
+            return "Microphone permission denied. Allow microphone access in Discord settings and try again.";
+        if (/NotFound|device not found|Requested device/i.test(msg))
+            return "Microphone not found. Check your device selection and try again.";
+        return `Playback failed: ${msg}`;
     }
 }
 
-async function stopAudioPlayback() {
+async function stopPlayback() {
     try {
+        if (outputEl) {
+            outputEl.pause();
+            outputEl.srcObject = null;
+            outputEl = null;
+        }
         if (mediaStream) {
-            mediaStream.getTracks().forEach(track => track.stop());
+            mediaStream.getTracks().forEach(t => t.stop());
             mediaStream = null;
         }
-
-        if (sourceNode) {
-            sourceNode.disconnect();
-            sourceNode = null;
+        if (audioCtx) {
+            await audioCtx.close();
+            audioCtx = null;
         }
-
-        if (audioContext) {
-            await audioContext.close();
-            audioContext = null;
-        }
-
-        echoCancellationFilter = null;
-        noiseSuppressionGain = null;
-        autoGainNode = null;
-        volumeControl = null;
-        bassFilter = null;
-        trebleFilter = null;
-        voiceEffectFilter = null;
-    } catch (error) {
-        console.error("Failed to stop audio playback:", error);
+        volumeNode = bassNode = trebleNode = effectNode = null;
+    } catch {
+        // best-effort cleanup
     }
-}
-
-async function restartPlaybackIfNeeded(state: VoicePlaybackState, isPlaying: boolean) {
-    if (!isPlaying) return;
-
-    await stopAudioPlayback();
-    await initializeAudioContext(state);
 }
 
 function VoiceTab() {
     const [state, setState] = React.useState<VoicePlaybackState>(() => loadState());
     const [isPlaying, setIsPlaying] = React.useState(false);
-    const [devices, setDevices] = React.useState<{
-        input: MediaDeviceInfo[];
-        output: MediaDeviceInfo[];
-    }>({ input: [], output: [] });
     const [error, setError] = React.useState<string | null>(null);
+    const [devices, setDevices] = React.useState<{ input: MediaDeviceInfo[]; output: MediaDeviceInfo[] }>({ input: [], output: [] });
 
     React.useEffect(() => {
-        // Load audio devices
-        navigator.mediaDevices.enumerateDevices().then(deviceInfos => {
-            const input = deviceInfos.filter(device => device.kind === "audioinput");
-            const output = deviceInfos.filter(device => device.kind === "audiooutput");
-            setDevices({ input, output });
+        navigator.mediaDevices.enumerateDevices().then(list => {
+            setDevices({
+                input: list.filter(d => d.kind === "audioinput"),
+                output: list.filter(d => d.kind === "audiooutput")
+            });
         });
     }, []);
 
@@ -250,125 +235,104 @@ function VoiceTab() {
         setState(prev => {
             const next = { ...prev, [key]: value };
             saveState(next);
-
-            // Update playback volume in real-time
-            if (key === "playbackVolume" && volumeControl) {
-                volumeControl.gain.value = value;
-            }
-
-            if (key === "bassGain" && bassFilter) {
-                bassFilter.gain.value = value;
-            }
-
-            if (key === "trebleGain" && trebleFilter) {
-                trebleFilter.gain.value = value;
-            }
-
-            if (key === "voiceChanger") {
-                applyVoiceChanger(next.voiceChanger);
-            }
-
+            // Live-update audio nodes without restarting
+            if (key === "playbackVolume" && volumeNode) volumeNode.gain.value = value;
+            if (key === "bassGain" && bassNode) bassNode.gain.value = value;
+            if (key === "trebleGain" && trebleNode) trebleNode.gain.value = value;
+            if (key === "voiceChanger" && effectNode) applyEffect(effectNode, value);
             return next;
         });
     }, []);
 
+    // Auto-start when persistentPlayback is turned on
     React.useEffect(() => {
         if (!state.persistentPlayback || isPlaying) return;
-
-        initializeAudioContext(state).then(success => {
-            if (success) {
-                setIsPlaying(true);
-                setError(null);
-            }
+        startPlayback(state).then(err => {
+            if (err) setError(err);
+            else { setIsPlaying(true); setError(null); }
         });
-    }, [state.persistentPlayback, isPlaying]);
+    }, [state.persistentPlayback]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const toggleMicrophonePlayback = React.useCallback(async () => {
+    const toggle = React.useCallback(async () => {
         if (isPlaying) {
-            await stopAudioPlayback();
+            await stopPlayback();
             setIsPlaying(false);
             setError(null);
         } else {
-            const success = await initializeAudioContext(state);
-            if (success) {
+            const err = await startPlayback(state);
+            if (err) {
+                setError(err);
+                Alerts.show({ title: "Microphone Error", body: err, confirmText: "OK" });
+            } else {
                 setIsPlaying(true);
                 setError(null);
-                Alerts.show({
-                    title: "Microphone Playback Started",
-                    body: "You can now hear your own voice with applied settings.",
-                    confirmText: "OK"
-                });
-            } else {
-                setError("Failed to access microphone. Check permissions and try again.");
-                Alerts.show({
-                    title: "Microphone Access Failed",
-                    body: "Could not access your microphone. Please check your permissions.",
-                    confirmText: "OK"
-                });
             }
         }
     }, [isPlaying, state]);
+
+    const toggleRow = (label: string, desc: string, key: keyof VoicePlaybackState) => (
+        <div key={key} className="vc-voice-row">
+            <div>
+                <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>{label}</Forms.FormTitle>
+                <Forms.FormText style={{ color: "var(--text-muted)" }}>{desc}</Forms.FormText>
+            </div>
+            <Button
+                size="small"
+                variant={state[key] ? "primary" : "secondary"}
+                onClick={() => update(key, !state[key])}
+            >
+                {state[key] ? "On" : "Off"}
+            </Button>
+        </div>
+    );
+
+    const slider = (label: string, key: "playbackVolume" | "bassGain" | "trebleGain", min: number, max: number, step: number, fmt: (v: number) => string) => (
+        <div style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <Forms.FormTitle tag="h5" style={{ margin: 0 }}>{label}</Forms.FormTitle>
+                <span style={{ color: "var(--text-muted)", fontSize: 13 }}>{fmt(state[key] as number)}</span>
+            </div>
+            <input
+                type="range"
+                min={min} max={max} step={step}
+                value={state[key] as number}
+                onChange={e => update(key, parseFloat(e.target.value))}
+                style={{ width: "100%", accentColor: "var(--brand-500)" }}
+            />
+        </div>
+    );
 
     return (
         <SettingsTab>
             <Forms.FormTitle tag="h2">Voice Settings</Forms.FormTitle>
             <Forms.FormText className={Margins.bottom16} style={{ color: "var(--text-muted)" }}>
-                Configure microphone input, audio processing, and self-monitoring (sidetone).
+                Configure microphone self-monitoring (sidetone), audio processing, and device routing.
             </Forms.FormText>
 
-            {/* Microphone Playback Section */}
+            {/* ── Self-monitoring ── */}
             <section>
-                <Forms.FormTitle tag="h3" style={{ marginBottom: 8 }}>Self-Monitoring (Sidetone)</Forms.FormTitle>
+                <Forms.FormTitle tag="h3" style={{ marginBottom: 4 }}>Self-Monitoring</Forms.FormTitle>
                 <Forms.FormText style={{ color: "var(--text-muted)", marginBottom: 16 }}>
-                    Hear your own voice in real-time with audio processing effects applied. This helps you monitor microphone quality before joining calls.
+                    Hear your own microphone in real-time. Useful for checking mic quality before calls.
                 </Forms.FormText>
 
-                <div style={{
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: 12,
-                    padding: 12,
-                    background: "var(--background-secondary)",
-                    marginBottom: 12
-                }}>
-                    <div style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: 12
-                    }}>
-                        <div>
-                            <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>
-                                Microphone Playback
-                            </Forms.FormTitle>
-                            <Forms.FormText style={{ color: "var(--text-muted)" }}>
-                                {isPlaying ? "Active - hearing your voice" : "Inactive - click to enable"}
-                            </Forms.FormText>
-                        </div>
-                        <Button
-                            size="small"
-                            variant={isPlaying ? "destructive" : "primary"}
-                            onClick={toggleMicrophonePlayback}
-                        >
-                            {isPlaying ? "Stop Playback" : "Start Playback"}
-                        </Button>
+                <div className="vc-voice-row">
+                    <div>
+                        <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>Microphone Playback</Forms.FormTitle>
+                        <Forms.FormText style={{ color: isPlaying ? "var(--text-positive)" : "var(--text-muted)" }}>
+                            {isPlaying ? "Active — you can hear yourself" : "Inactive"}
+                        </Forms.FormText>
                     </div>
+                    <Button size="small" variant={isPlaying ? "destructive" : "primary"} onClick={toggle}>
+                        {isPlaying ? "Stop" : "Start"}
+                    </Button>
                 </div>
 
-                <div style={{
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: 12,
-                    padding: 12,
-                    background: "var(--background-secondary)",
-                    marginBottom: 12,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 12
-                }}>
+                <div className="vc-voice-row" style={{ marginBottom: 12 }}>
                     <div>
-                        <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>Always Keep Playback On</Forms.FormTitle>
+                        <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>Always Keep On</Forms.FormTitle>
                         <Forms.FormText style={{ color: "var(--text-muted)" }}>
-                            Keeps monitoring active while you are in VC and when you leave this tab.
+                            Auto-restarts playback when enabled, even after navigating away.
                         </Forms.FormText>
                     </div>
                     <Button
@@ -377,8 +341,10 @@ function VoiceTab() {
                         onClick={async () => {
                             const next = !state.persistentPlayback;
                             update("persistentPlayback", next);
-                            if (next) {
-                                await restartPlaybackIfNeeded({ ...state, persistentPlayback: true }, isPlaying);
+                            if (next && !isPlaying) {
+                                const err = await startPlayback({ ...state, persistentPlayback: true });
+                                if (err) setError(err);
+                                else { setIsPlaying(true); setError(null); }
                             }
                         }}
                     >
@@ -388,88 +354,34 @@ function VoiceTab() {
 
                 {error && (
                     <div style={{
-                        background: "color-mix(in srgb, var(--red-360) 10%, transparent)",
-                        border: "1px solid var(--red-360)",
-                        borderRadius: 8,
-                        padding: 10,
+                        background: "color-mix(in srgb, var(--status-danger) 10%, transparent)",
+                        border: "1px solid var(--status-danger)",
+                        borderRadius: 6,
+                        padding: "8px 12px",
                         marginBottom: 12,
-                        color: "var(--text-normal)"
+                        color: "var(--text-normal)",
+                        fontSize: 13
                     }}>
                         {error}
                     </div>
                 )}
 
-                {/* Playback Volume */}
-                <div style={{ marginBottom: 12 }}>
-                    <Forms.FormTitle tag="h5" style={{ marginBottom: 8 }}>Playback Volume</Forms.FormTitle>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={state.playbackVolume}
-                            onChange={(e) => update("playbackVolume", parseFloat(e.target.value))}
-                            style={{
-                                flex: 1,
-                                height: 6,
-                                borderRadius: 3,
-                                appearance: "none",
-                                background: "var(--brand-500)",
-                                outline: "none"
-                            }}
-                        />
-                        <span style={{ minWidth: 45, textAlign: "right", color: "var(--text-muted)" }}>
-                            {Math.round(state.playbackVolume * 100)}%
-                        </span>
-                    </div>
-                </div>
+                {slider("Playback Volume", "playbackVolume", 0, 1, 0.01, v => `${Math.round(v * 100)}%`)}
+                {slider("Bass", "bassGain", -20, 20, 1, v => `${v > 0 ? "+" : ""}${v} dB`)}
+                {slider("Treble", "trebleGain", -20, 20, 1, v => `${v > 0 ? "+" : ""}${v} dB`)}
 
-                <div style={{ marginBottom: 12 }}>
-                    <Forms.FormTitle tag="h5" style={{ marginBottom: 8 }}>Bass</Forms.FormTitle>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                            type="range"
-                            min="-20"
-                            max="20"
-                            step="1"
-                            value={state.bassGain}
-                            onChange={e => update("bassGain", Number(e.target.value))}
-                            style={{ flex: 1, height: 6, borderRadius: 3, appearance: "none", background: "var(--brand-500)", outline: "none" }}
-                        />
-                        <span style={{ minWidth: 56, textAlign: "right", color: "var(--text-muted)" }}>{state.bassGain} dB</span>
-                    </div>
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                    <Forms.FormTitle tag="h5" style={{ marginBottom: 8 }}>Treble</Forms.FormTitle>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                            type="range"
-                            min="-20"
-                            max="20"
-                            step="1"
-                            value={state.trebleGain}
-                            onChange={e => update("trebleGain", Number(e.target.value))}
-                            style={{ flex: 1, height: 6, borderRadius: 3, appearance: "none", background: "var(--brand-500)", outline: "none" }}
-                        />
-                        <span style={{ minWidth: 56, textAlign: "right", color: "var(--text-muted)" }}>{state.trebleGain} dB</span>
-                    </div>
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                    <Forms.FormTitle tag="h5" style={{ marginBottom: 8 }}>Voice Changer</Forms.FormTitle>
+                <div style={{ marginBottom: 4 }}>
+                    <Forms.FormTitle tag="h5" style={{ marginBottom: 6 }}>Voice Changer</Forms.FormTitle>
                     <select
                         value={state.voiceChanger}
                         onChange={e => update("voiceChanger", e.target.value as VoicePlaybackState["voiceChanger"])}
                         style={{
                             width: "100%",
                             padding: "8px 12px",
-                            borderRadius: 8,
-                            border: "1px solid var(--border-subtle)",
-                            background: "var(--background-secondary)",
-                            color: "var(--text-normal)",
-                            cursor: "pointer"
+                            borderRadius: 4,
+                            border: "1px solid var(--input-border)",
+                            background: "var(--input-background)",
+                            color: "var(--text-normal)"
                         }}
                     >
                         <option value="off">Off</option>
@@ -481,125 +393,66 @@ function VoiceTab() {
                 </div>
             </section>
 
-            {/* Audio Processing Section */}
+            {/* ── Audio Processing ── */}
             <section>
-                <Forms.FormTitle tag="h3" style={{ marginBottom: 8 }}>Audio Processing</Forms.FormTitle>
+                <Forms.FormTitle tag="h3" style={{ marginBottom: 4 }}>Audio Processing</Forms.FormTitle>
                 <Forms.FormText style={{ color: "var(--text-muted)", marginBottom: 16 }}>
-                    Enable advanced audio filters to improve microphone quality during playback.
+                    Applied by the browser when capturing your microphone. Changes take effect on next playback start.
                 </Forms.FormText>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {[
-                        { key: "echoCancellation", title: "Echo Cancellation", desc: "Removes microphone feedback and echo." },
-                        { key: "noiseSuppression", title: "Noise Suppression", desc: "Reduces background noise during playback." },
-                        { key: "autoGainControl", title: "Auto Gain Control", desc: "Automatically normalizes microphone volume." }
-                    ].map(({ key, title, desc }) => (
-                        <div
-                            key={key}
-                            style={{
-                                border: "1px solid var(--border-subtle)",
-                                borderRadius: 12,
-                                padding: 12,
-                                background: "var(--background-secondary)",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center"
-                            }}
-                        >
-                            <div>
-                                <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>{title}</Forms.FormTitle>
-                                <Forms.FormText style={{ color: "var(--text-muted)" }}>{desc}</Forms.FormText>
-                            </div>
-                            <Button
-                                size="small"
-                                onClick={() => update(key as keyof VoicePlaybackState, !state[key as keyof VoicePlaybackState])}
-                            >
-                                {state[key as keyof VoicePlaybackState] ? "Enabled" : "Disabled"}
-                            </Button>
-                        </div>
-                    ))}
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                    {toggleRow("Echo Cancellation", "Removes feedback and echo from playback.", "echoCancellation")}
+                    {toggleRow("Noise Suppression", "Reduces background noise.", "noiseSuppression")}
+                    {toggleRow("Auto Gain Control", "Automatically normalises microphone level.", "autoGainControl")}
                 </div>
             </section>
 
-            {/* Device Selection Section */}
+            {/* ── Devices ── */}
             <section>
-                <Forms.FormTitle tag="h3" style={{ marginBottom: 8 }}>Audio Devices</Forms.FormTitle>
+                <Forms.FormTitle tag="h3" style={{ marginBottom: 4 }}>Devices</Forms.FormTitle>
                 <Forms.FormText style={{ color: "var(--text-muted)", marginBottom: 16 }}>
-                    Select which microphone and speaker to use for playback.
+                    Choose which microphone to capture and which speaker to play back through.
                 </Forms.FormText>
 
-                {/* Input Device */}
                 <div style={{ marginBottom: 12 }}>
-                    <Forms.FormTitle tag="h5" style={{ marginBottom: 8 }}>Input Device (Microphone)</Forms.FormTitle>
+                    <Forms.FormTitle tag="h5" style={{ marginBottom: 6 }}>Input Device (Microphone)</Forms.FormTitle>
                     <select
                         value={state.selectedInputDevice}
-                        onChange={(e) => update("selectedInputDevice", e.target.value)}
-                        style={{
-                            width: "100%",
-                            padding: "8px 12px",
-                            borderRadius: 8,
-                            border: "1px solid var(--border-subtle)",
-                            background: "var(--background-secondary)",
-                            color: "var(--text-normal)",
-                            cursor: "pointer"
-                        }}
+                        onChange={e => update("selectedInputDevice", e.target.value)}
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: 4, border: "1px solid var(--input-border)", background: "var(--input-background)", color: "var(--text-normal)" }}
                     >
                         <option value="default">Default Device</option>
-                        {devices.input.map((device, idx) => (
-                            <option key={idx} value={device.deviceId}>
-                                {device.label || `Microphone ${idx + 1}`}
-                            </option>
+                        {devices.input.map((d, i) => (
+                            <option key={d.deviceId || i} value={d.deviceId}>{d.label || `Microphone ${i + 1}`}</option>
                         ))}
                     </select>
                 </div>
 
-                {/* Output Device */}
                 <div>
-                    <Forms.FormTitle tag="h5" style={{ marginBottom: 8 }}>Output Device (Speaker)</Forms.FormTitle>
+                    <Forms.FormTitle tag="h5" style={{ marginBottom: 6 }}>Output Device (Speaker)</Forms.FormTitle>
                     <select
                         value={state.selectedOutputDevice}
-                        onChange={(e) => update("selectedOutputDevice", e.target.value)}
-                        style={{
-                            width: "100%",
-                            padding: "8px 12px",
-                            borderRadius: 8,
-                            border: "1px solid var(--border-subtle)",
-                            background: "var(--background-secondary)",
-                            color: "var(--text-normal)",
-                            cursor: "pointer"
-                        }}
+                        onChange={e => update("selectedOutputDevice", e.target.value)}
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: 4, border: "1px solid var(--input-border)", background: "var(--input-background)", color: "var(--text-normal)" }}
                     >
                         <option value="default">Default Device</option>
-                        {devices.output.map((device, idx) => (
-                            <option key={idx} value={device.deviceId}>
-                                {device.label || `Speaker ${idx + 1}`}
-                            </option>
+                        {devices.output.map((d, i) => (
+                            <option key={d.deviceId || i} value={d.deviceId}>{d.label || `Speaker ${i + 1}`}</option>
                         ))}
                     </select>
                 </div>
             </section>
 
-            {/* Test Section */}
-            <section>
-                <Forms.FormTitle tag="h3" style={{ marginBottom: 8 }}>Quick Start</Forms.FormTitle>
-                <Forms.FormText style={{ color: "var(--text-muted)", marginBottom: 16 }}>
-                    1. Select your devices above
-                    2. Adjust audio processing settings
-                    3. Click "Start Playback" to test your microphone
-                    4. Adjust volume until comfortable
-                    5. Click "Stop Playback" when done
-                </Forms.FormText>
-                <div style={{
-                    background: "color-mix(in srgb, var(--brand-500) 10%, transparent)",
-                    border: "1px solid var(--brand-500)",
-                    borderRadius: 8,
-                    padding: 10,
-                    color: "var(--text-normal)",
-                    fontSize: 12
-                }}>
-                    💡 Tip: Use self-monitoring before important calls to verify your audio quality!
-                </div>
-            </section>
+            <style>{`
+                .vc-voice-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 0;
+                    border-bottom: 1px solid var(--background-modifier-accent);
+                }
+                .vc-voice-row:last-child { border-bottom: none; }
+            `}</style>
         </SettingsTab>
     );
 }
