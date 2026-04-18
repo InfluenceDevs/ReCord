@@ -42,13 +42,26 @@ function git(...args: string[]) {
 }
 
 async function migrateLegacyOriginIfNeeded() {
+    if (!await isGitRepo()) return;
+
     const current = (await git("remote", "get-url", "origin")).stdout.trim();
     if (!VENCORD_ORIGIN_RE.test(current)) return;
 
     await git("remote", "set-url", "origin", RECORD_ORIGIN_URL);
 }
 
+async function isGitRepo() {
+    try {
+        const res = await git("rev-parse", "--is-inside-work-tree");
+        return res.stdout.trim() === "true";
+    } catch {
+        return false;
+    }
+}
+
 async function getRepo() {
+    if (!await isGitRepo()) return "https://github.com/InfluenceDevs/ReCord";
+
     await migrateLegacyOriginIfNeeded();
 
     const res = await git("remote", "get-url", "origin");
@@ -58,6 +71,8 @@ async function getRepo() {
 }
 
 async function calculateGitChanges() {
+    if (!await isGitRepo()) return [];
+
     await migrateLegacyOriginIfNeeded();
     await git("fetch");
 
@@ -79,6 +94,8 @@ async function calculateGitChanges() {
 }
 
 async function pull() {
+    if (!await isGitRepo()) return false;
+
     await migrateLegacyOriginIfNeeded();
     const res = await git("pull");
     return res.stdout.includes("Fast-forward");

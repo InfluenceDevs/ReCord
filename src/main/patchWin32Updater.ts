@@ -61,7 +61,23 @@ function patchLatest() {
             name: "discord",
             main: "index.js"
         }));
-        writeFileSync(join(app, "index.js"), `require(${JSON.stringify(join(__dirname, "patcher.js"))});`);
+        writeFileSync(join(app, "index.js"), [
+            "const path = require('path');",
+            "const fs = require('fs');",
+            `const patcherPath = ${JSON.stringify(join(__dirname, "patcher.js"))};`,
+            "try {",
+            "  require(patcherPath);",
+            "} catch (err) {",
+            "  console.error('[ReCord] Failed to load patcher.js', err);",
+            "  const fallbackAsar = path.join(__dirname, '..', '_app.asar');",
+            "  if (fs.existsSync(fallbackAsar)) {",
+            "    const pkg = require(path.join(fallbackAsar, 'package.json'));",
+            "    require(path.join(fallbackAsar, pkg.main));",
+            "  } else {",
+            "    throw err;",
+            "  }",
+            "}"
+        ].join("\n"));
     } catch (err) {
         console.error("[ReCord] Failed to repatch latest host update", err);
     }

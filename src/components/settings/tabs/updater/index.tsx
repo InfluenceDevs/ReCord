@@ -35,7 +35,7 @@ function Updater() {
 
     const [repo, err, repoPending] = useAwaiter(getRepo, {
         fallbackValue: "Loading...",
-        onError: e => UpdateLogger.error("Failed to retrieve repo", err)
+        onError: e => UpdateLogger.error("Failed to retrieve repo", e)
     });
 
     const commonProps: CommonProps = {
@@ -65,7 +65,7 @@ function Updater() {
                 {repoPending
                     ? repo
                     : err
-                        ? "Failed to retrieve - check console"
+                        ? "Unavailable in this build"
                         : (
                             <Link href={repo}>
                                 {repo.split("/").slice(-2).join("/")}

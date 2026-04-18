@@ -28,56 +28,64 @@ import { installExt } from "./utils/extensions";
 
 if (IS_VESKTOP || !IS_VANILLA) {
     app.whenReady().then(() => {
-        const assetsDir = join(process.env.VENCORD_USER_DATA_DIR || join(__dirname, ".."), "Images");
+        const userDataDir = process.env.RECORD_USER_DATA_DIR ?? process.env.VENCORD_USER_DATA_DIR ?? join(__dirname, "..");
+        const assetsDir = join(userDataDir, "Images");
 
         protocol.handle("vencord", ({ url: unsafeUrl }) => {
-            let url = decodeURI(unsafeUrl).slice("vencord://".length).replace(/\?v=\d+$/, "");
+            try {
+                let url = decodeURI(unsafeUrl).slice("vencord://".length).replace(/\?v=\d+$/, "");
 
-            if (url.endsWith("/")) url = url.slice(0, -1);
+                if (url.endsWith("/")) url = url.slice(0, -1);
 
-            // Some callers use vencord://assets/x while others may use vencord:///assets/x.
-            if (!url.startsWith("/")) url = `/${url}`;
+                // Some callers use vencord://assets/x while others may use vencord:///assets/x.
+                if (!url.startsWith("/")) url = `/${url}`;
 
-            if (url.startsWith("/assets/")) {
-                const assetPath = url.slice("/assets/".length);
-                const safeUrl = ensureSafePath(assetsDir, assetPath);
-                if (!safeUrl) {
-                    return new Response(null, {
-                        status: 404
-                    });
+                if (url.startsWith("/assets/")) {
+                    const assetPath = url.slice("/assets/".length);
+                    const safeUrl = ensureSafePath(assetsDir, assetPath);
+                    if (!safeUrl) {
+                        return new Response(null, {
+                            status: 404
+                        });
+                    }
+
+                    return net.fetch(pathToFileURL(safeUrl).toString());
                 }
 
-                return net.fetch(pathToFileURL(safeUrl).toString());
-            }
+                if (url.startsWith("/themes/")) {
+                    const theme = url.slice("/themes/".length);
 
-            if (url.startsWith("/themes/")) {
-                const theme = url.slice("/themes/".length);
+                    const safeUrl = ensureSafePath(THEMES_DIR, theme);
+                    if (!safeUrl) {
+                        return new Response(null, {
+                            status: 404
+                        });
+                    }
 
-                const safeUrl = ensureSafePath(THEMES_DIR, theme);
-                if (!safeUrl) {
-                    return new Response(null, {
-                        status: 404
-                    });
+                    return net.fetch(pathToFileURL(safeUrl).toString());
                 }
 
-                return net.fetch(pathToFileURL(safeUrl).toString());
-            }
+                // Source Maps! Maybe there's a better way but since the renderer is executed
+                // from a string I don't think any other form of sourcemaps would work
 
-            // Source Maps! Maybe there's a better way but since the renderer is executed
-            // from a string I don't think any other form of sourcemaps would work
-
-            switch (url) {
-                case "renderer.js.map":
-                case "vencordDesktopRenderer.js.map":
-                case "preload.js.map":
-                case "vencordDesktopPreload.js.map":
-                case "patcher.js.map":
-                case "vencordDesktopMain.js.map":
-                    return net.fetch(pathToFileURL(join(__dirname, url)).toString());
-                default:
-                    return new Response(null, {
-                        status: 404
-                    });
+                switch (url) {
+                    case "renderer.js.map":
+                    case "vencordDesktopRenderer.js.map":
+                    case "preload.js.map":
+                    case "vencordDesktopPreload.js.map":
+                    case "patcher.js.map":
+                    case "vencordDesktopMain.js.map":
+                        return net.fetch(pathToFileURL(join(__dirname, url)).toString());
+                    default:
+                        return new Response(null, {
+                            status: 404
+                        });
+                }
+            } catch (err) {
+                console.error("[ReCord] Failed to handle vencord:// request", unsafeUrl, err);
+                return new Response(null, {
+                    status: 500
+                });
             }
         });
 

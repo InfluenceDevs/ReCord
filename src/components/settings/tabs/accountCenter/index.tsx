@@ -10,20 +10,29 @@ import { Margins } from "@utils/margins";
 import { findByProps } from "@webpack";
 import { Forms, React, Text, UserStore } from "@webpack/common";
 
-function resolveAccountSwitcherStore() {
+function findByPropsSafe(...props: string[]) {
     try {
-        return findByProps("canAddAccount", "getAccounts") as Record<string, unknown> | undefined;
+        return findByProps(...props) as Record<string, unknown> | undefined;
     } catch {
         return undefined;
     }
 }
 
+function resolveAccountSwitcherStore() {
+    return (
+        findByPropsSafe("canAddAccount", "getAccounts")
+        ?? findByPropsSafe("getAccounts", "getCurrentAccount")
+        ?? findByPropsSafe("getAccounts")
+    );
+}
+
 function resolveAccountSwitcherApi() {
-    try {
-        return findByProps("canAddAccount", "switchAccount") as Record<string, unknown> | undefined;
-    } catch {
-        return undefined;
-    }
+    return (
+        findByPropsSafe("canAddAccount", "switchAccount")
+        ?? findByPropsSafe("switchToAccount")
+        ?? findByPropsSafe("setActiveAccount")
+        ?? findByPropsSafe("switchAccount")
+    );
 }
 
 function getAccountsSafe() {

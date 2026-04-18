@@ -51,6 +51,7 @@ Var OpenFolderAfterState
 Var Dialog
 Var LabelTitle
 Var LabelDesc
+Var WindowsInfoLabel
 
 Var OpInstall
 Var OpRepair
@@ -66,9 +67,9 @@ Var BrowseButton
 
 Var ActionFlag
 Var CustomLocationText
-Var WindowsInfoLabel
 Var OsBuildNumber
 Var IsWin11
+Var PayloadDir
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
@@ -110,12 +111,10 @@ Section "Start Menu Shortcuts" SEC_START
 SectionEnd
 
 Function ApplyDarkStyle
-  SetCtlColors $LabelTitle "FFFFFF" "1D1F24"
-  SetCtlColors $LabelDesc "B9C0CC" "1D1F24"
-  SetCtlColors $WindowsInfoLabel "9CD67A" "1D1F24"
-  SetCtlColors $OpInstall "EAF2FF" "2C5DAA"
-  SetCtlColors $OpRepair "D7DFEA" "1D1F24"
-  SetCtlColors $OpUninstall "D7DFEA" "1D1F24"
+  ; Keep styling minimal for native readability and reliable click targets.
+  SetCtlColors $LabelTitle "2E3A4A" "FFFFFF"
+  SetCtlColors $LabelDesc "4A5565" "FFFFFF"
+  SetCtlColors $WindowsInfoLabel "1E7A34" "FFFFFF"
 FunctionEnd
 
 Function ToggleCustomLocationControls
@@ -144,71 +143,81 @@ Function OptionsPageCreate
     Abort
   ${EndIf}
 
-  ${NSD_CreateLabel} 0 0u 100% 12u "Patch Action"
+  ; Header
+  ${NSD_CreateLabel} 0 0u 100% 12u "Choose how ReCord should patch Discord"
   Pop $LabelTitle
-
-  ${NSD_CreateLabel} 0 12u 100% 10u "Choose an Action"
+  ${NSD_CreateLabel} 0 12u 100% 10u "Pick one action, then select targets below."
   Pop $LabelDesc
 
-  ${NSD_CreateRadioButton} 0 24u 100% 14u "Install ReCord"
+  ; Action group
+  ${NSD_CreateGroupBox} 0 24u 100% 42u "Action"
+  Pop $0
+
+  ${NSD_CreateRadioButton} 8u 36u 90% 10u "Install ReCord"
   Pop $OpInstall
   ${NSD_SetState} $OpInstall ${BST_CHECKED}
 
-  ${NSD_CreateRadioButton} 0 41u 100% 14u "Repair ReCord"
+  ${NSD_CreateRadioButton} 8u 47u 90% 10u "Repair existing ReCord patch"
   Pop $OpRepair
 
-  ${NSD_CreateRadioButton} 0 58u 100% 14u "Uninstall ReCord Patch"
+  ${NSD_CreateRadioButton} 8u 58u 90% 10u "Remove ReCord patch"
   Pop $OpUninstall
 
-  ${NSD_CreateLabel} 0 78u 100% 12u "Discord Targets"
-  Pop $WindowsInfoLabel
+  ; Target group
+  ${NSD_CreateGroupBox} 0 70u 100% 64u "Discord targets"
+  Pop $0
 
-  ${If} $IsWin11 == 1
-    ${NSD_CreateLabel} 0 92u 100% 12u "Detected: Windows 11 (fully supported)"
-  ${Else}
-    ${NSD_CreateLabel} 0 92u 100% 12u "Detected: Windows 10 (fully supported)"
-  ${EndIf}
-  Pop $LabelTitle
-
-  ${NSD_CreateCheckbox} 0 108u 32% 12u "Auto"
+  ${NSD_CreateCheckbox} 8u 82u 22% 10u "Auto"
   Pop $BranchAuto
   ${NSD_SetState} $BranchAuto ${BST_CHECKED}
 
-  ${NSD_CreateCheckbox} 34% 108u 32% 12u "Stable"
+  ${NSD_CreateCheckbox} 31% 82u 22% 10u "Stable"
   Pop $BranchStable
   ${If} ${FileExists} "$LOCALAPPDATA\\Discord\\*"
     ${NSD_SetState} $BranchStable ${BST_CHECKED}
   ${EndIf}
 
-  ${NSD_CreateCheckbox} 68% 108u 32% 12u "PTB"
+  ${NSD_CreateCheckbox} 54% 82u 18% 10u "PTB"
   Pop $BranchPtb
   ${If} ${FileExists} "$LOCALAPPDATA\\DiscordPTB\\*"
     ${NSD_SetState} $BranchPtb ${BST_CHECKED}
   ${EndIf}
 
-  ${NSD_CreateCheckbox} 0 122u 32% 12u "Canary"
+  ${NSD_CreateCheckbox} 74% 82u 22% 10u "Canary"
   Pop $BranchCanary
   ${If} ${FileExists} "$LOCALAPPDATA\\DiscordCanary\\*"
     ${NSD_SetState} $BranchCanary ${BST_CHECKED}
   ${EndIf}
 
-  ${NSD_CreateCheckbox} 0 138u 100% 12u "Use custom Discord location"
+  ${NSD_CreateCheckbox} 8u 95u 90% 10u "Use custom Discord location"
   Pop $UseCustomLocation
   ${NSD_OnClick} $UseCustomLocation ToggleCustomLocationControls
 
-  ${NSD_CreateText} 0 154u 78% 12u "$LOCALAPPDATA\\Discord"
+  ${NSD_CreateText} 8u 106u 70% 12u "$LOCALAPPDATA\\Discord"
   Pop $CustomLocation
 
-  ${NSD_CreateButton} 80% 154u 20% 12u "Browse"
+  ${NSD_CreateButton} 80% 106u 18% 12u "Browse"
   Pop $BrowseButton
   ${NSD_OnClick} $BrowseButton BrowseForLocation
 
-  ${NSD_CreateCheckbox} 0 174u 100% 12u "Run selected action now"
+  ; Post-install options
+  ${NSD_CreateGroupBox} 0 136u 100% 30u "After setup"
+  Pop $0
+
+  ${NSD_CreateCheckbox} 8u 147u 90% 10u "Run selected action now"
   Pop $RunActionNow
   ${NSD_SetState} $RunActionNow ${BST_CHECKED}
 
-  ${NSD_CreateCheckbox} 0 188u 100% 12u "Open install folder after setup"
+  ${NSD_CreateCheckbox} 8u 157u 90% 10u "Open install folder after setup"
   Pop $OpenFolderAfter
+
+  ; OS info footer on custom page
+  ${If} $IsWin11 == 1
+    ${NSD_CreateLabel} 0 171u 100% 10u "Detected: Windows 11 (fully supported)"
+  ${Else}
+    ${NSD_CreateLabel} 0 171u 100% 10u "Detected: Windows 10 (fully supported)"
+  ${EndIf}
+  Pop $WindowsInfoLabel
 
   Call ToggleCustomLocationControls
   Call ApplyDarkStyle
@@ -252,10 +261,15 @@ Function .onInstSuccess
     Return
   ${EndIf}
 
-  System::Call 'Kernel32::SetEnvironmentVariable(t, t) i("RECORD_USER_DATA_DIR", "$INSTDIR\\app")'
+  StrCpy $PayloadDir "$INSTDIR\\record-app"
+  IfFileExists "$PayloadDir\\*.*" +2 0
+    StrCpy $PayloadDir "$INSTDIR\\app"
+
+  System::Call 'Kernel32::SetEnvironmentVariable(t, t) i("RECORD_USER_DATA_DIR", "$PayloadDir")'
   System::Call 'Kernel32::SetEnvironmentVariable(t, t) i("RECORD_DEV_INSTALL", "1")'
+  System::Call 'Kernel32::SetEnvironmentVariable(t, t) i("RECORD_FORCE_BRAND", "1")'
   ; Backward-compat environment names expected by upstream installer binaries.
-  System::Call 'Kernel32::SetEnvironmentVariable(t, t) i("VENCORD_USER_DATA_DIR", "$INSTDIR\\app")'
+  System::Call 'Kernel32::SetEnvironmentVariable(t, t) i("VENCORD_USER_DATA_DIR", "$PayloadDir")'
   System::Call 'Kernel32::SetEnvironmentVariable(t, t) i("VENCORD_DEV_INSTALL", "1")'
 
   ${NSD_GetState} $OpInstall $0

@@ -156,13 +156,13 @@ export default definePlugin({
     commands: [
         {
             name: "vencord-debug",
-            description: "Send Vencord debug info",
+            description: "Send ReCord debug info",
             predicate: ctx => isPluginDev(UserStore.getCurrentUser()?.id) || isSupportAllowedChannel(ctx.channel),
             execute: async () => ({ content: await generateDebugInfoMessage() })
         },
         {
             name: "vencord-plugins",
-            description: "Send Vencord plugin list",
+            description: "Send ReCord plugin list",
             predicate: ctx => isPluginDev(UserStore.getCurrentUser()?.id) || isSupportAllowedChannel(ctx.channel),
             execute: () => ({ content: generatePluginList() })
         }

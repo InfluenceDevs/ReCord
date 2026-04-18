@@ -26,6 +26,17 @@ import { IS_VANILLA } from "./utils/constants";
 
 console.log("[ReCord] Starting up...");
 
+if (!(global as any).__recordCrashGuardsInstalled) {
+    (global as any).__recordCrashGuardsInstalled = true;
+    process.on("uncaughtException", err => {
+        console.error("[ReCord] Uncaught main-process exception", err);
+    });
+
+    process.on("unhandledRejection", reason => {
+        console.error("[ReCord] Unhandled main-process rejection", reason);
+    });
+}
+
 // Our injector file at app/index.js
 const injectorPath = require.main!.filename;
 
@@ -43,6 +54,7 @@ app.setAppPath(asarPath);
 
 if (!IS_VANILLA) {
     const settings = RendererSettings.store;
+    const userDataDir = process.env.RECORD_USER_DATA_DIR ?? process.env.VENCORD_USER_DATA_DIR ?? join(__dirname, "..");
     // Repatch after host updates on Windows
     if (process.platform === "win32") {
         require("./patchWin32Updater");
@@ -69,7 +81,7 @@ if (!IS_VANILLA) {
 
     class BrowserWindow extends electron.BrowserWindow {
         constructor(options: BrowserWindowConstructorOptions) {
-            const customIconPath = join(process.env.VENCORD_USER_DATA_DIR || join(__dirname, ".."), "Images", process.platform === "win32" ? "app.ico" : "icon.png");
+            const customIconPath = join(userDataDir, "Images", process.platform === "win32" ? "app.ico" : "icon.png");
             if (!options.icon && existsSync(customIconPath)) {
                 options.icon = customIconPath;
             }
