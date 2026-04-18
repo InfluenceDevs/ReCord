@@ -11,10 +11,14 @@ import { Alerts, Forms, React } from "@webpack/common";
 
 interface VoicePlaybackState {
     microphonePlaybackEnabled: boolean;
+    persistentPlayback: boolean;
     playbackVolume: number;
     echoCancellation: boolean;
     noiseSuppression: boolean;
     autoGainControl: boolean;
+    bassGain: number;
+    trebleGain: number;
+    voiceChanger: "off" | "deep" | "chipmunk" | "robot" | "radio";
     selectedInputDevice: string;
     selectedOutputDevice: string;
 }
@@ -23,10 +27,14 @@ const STORE_KEY = "record_voice_playback_settings";
 
 const DEFAULT_STATE: VoicePlaybackState = {
     microphonePlaybackEnabled: false,
+    persistentPlayback: false,
     playbackVolume: 0.5,
     echoCancellation: true,
     noiseSuppression: true,
     autoGainControl: true,
+    bassGain: 0,
+    trebleGain: 0,
+    voiceChanger: "off",
     selectedInputDevice: "default",
     selectedOutputDevice: "default"
 };
@@ -48,14 +56,49 @@ function saveState(state: VoicePlaybackState) {
 let audioContext: AudioContext | null = null;
 let mediaStream: MediaStream | null = null;
 let sourceNode: MediaStreamAudioSourceNode | null = null;
-let scriptProcessor: ScriptProcessorNode | null = null;
-let destination: AudioNode | null = null;
 
 // Audio processing nodes
 let echoCancellationFilter: BiquadFilterNode | null = null;
 let noiseSuppressionGain: GainNode | null = null;
 let autoGainNode: DynamicsCompressor | null = null;
 let volumeControl: GainNode | null = null;
+let bassFilter: BiquadFilterNode | null = null;
+let trebleFilter: BiquadFilterNode | null = null;
+let voiceEffectFilter: BiquadFilterNode | null = null;
+
+function applyVoiceChanger(mode: VoicePlaybackState["voiceChanger"]) {
+    if (!voiceEffectFilter) return;
+
+    switch (mode) {
+        case "deep":
+            voiceEffectFilter.type = "lowshelf";
+            voiceEffectFilter.frequency.value = 240;
+            voiceEffectFilter.gain.value = 10;
+            break;
+        case "chipmunk":
+            voiceEffectFilter.type = "highshelf";
+            voiceEffectFilter.frequency.value = 2600;
+            voiceEffectFilter.gain.value = 12;
+            break;
+        case "robot":
+            voiceEffectFilter.type = "bandpass";
+            voiceEffectFilter.frequency.value = 900;
+            voiceEffectFilter.Q.value = 3;
+            voiceEffectFilter.gain.value = 0;
+            break;
+        case "radio":
+            voiceEffectFilter.type = "bandpass";
+            voiceEffectFilter.frequency.value = 1800;
+            voiceEffectFilter.Q.value = 2;
+            voiceEffectFilter.gain.value = 0;
+            break;
+        default:
+            voiceEffectFilter.type = "allpass";
+            voiceEffectFilter.frequency.value = 1000;
+            voiceEffectFilter.gain.value = 0;
+            break;
+    }
+}
 
 async function initializeAudioContext(state: VoicePlaybackState) {
     try {
@@ -82,6 +125,19 @@ async function initializeAudioContext(state: VoicePlaybackState) {
         volumeControl = audioContext.createGain();
         volumeControl.gain.value = state.playbackVolume;
 
+        bassFilter = audioContext.createBiquadFilter();
+        bassFilter.type = "lowshelf";
+        bassFilter.frequency.value = 200;
+        bassFilter.gain.value = state.bassGain;
+
+        trebleFilter = audioContext.createBiquadFilter();
+        trebleFilter.type = "highshelf";
+        trebleFilter.frequency.value = 3500;
+        trebleFilter.gain.value = state.trebleGain;
+
+        voiceEffectFilter = audioContext.createBiquadFilter();
+        applyVoiceChanger(state.voiceChanger);
+
         // Echo cancellation (simple implementation using delay + inversion)
         echoCancellationFilter = audioContext.createBiquadFilter();
         echoCancellationFilter.type = "lowpass";
@@ -99,17 +155,17 @@ async function initializeAudioContext(state: VoicePlaybackState) {
         autoGainNode.attack.value = 0.003;
         autoGainNode.release.value = 0.25;
 
-        // Get output destination
-        destination = audioContext.destination;
-
         // Connect processing chain
         sourceNode.connect(noiseSuppressionGain);
         noiseSuppressionGain.connect(state.echoCancellation ? echoCancellationFilter! : autoGainNode!);
         if (state.echoCancellation) {
             echoCancellationFilter!.connect(autoGainNode!);
         }
-        autoGainNode!.connect(volumeControl);
-        volumeControl.connect(destination);
+        autoGainNode!.connect(bassFilter);
+        bassFilter.connect(trebleFilter);
+        trebleFilter.connect(voiceEffectFilter);
+        voiceEffectFilter.connect(volumeControl);
+        volumeControl.connect(audioContext.destination);
 
         return true;
     } catch (error) {
@@ -139,10 +195,19 @@ async function stopAudioPlayback() {
         noiseSuppressionGain = null;
         autoGainNode = null;
         volumeControl = null;
-        destination = null;
+        bassFilter = null;
+        trebleFilter = null;
+        voiceEffectFilter = null;
     } catch (error) {
         console.error("Failed to stop audio playback:", error);
     }
+}
+
+async function restartPlaybackIfNeeded(state: VoicePlaybackState, isPlaying: boolean) {
+    if (!isPlaying) return;
+
+    await stopAudioPlayback();
+    await initializeAudioContext(state);
 }
 
 function VoiceTab() {
@@ -173,9 +238,32 @@ function VoiceTab() {
                 volumeControl.gain.value = value;
             }
 
+            if (key === "bassGain" && bassFilter) {
+                bassFilter.gain.value = value;
+            }
+
+            if (key === "trebleGain" && trebleFilter) {
+                trebleFilter.gain.value = value;
+            }
+
+            if (key === "voiceChanger") {
+                applyVoiceChanger(next.voiceChanger);
+            }
+
             return next;
         });
     }, []);
+
+    React.useEffect(() => {
+        if (!state.persistentPlayback || isPlaying) return;
+
+        initializeAudioContext(state).then(success => {
+            if (success) {
+                setIsPlaying(true);
+                setError(null);
+            }
+        });
+    }, [state.persistentPlayback, isPlaying]);
 
     const toggleMicrophonePlayback = React.useCallback(async () => {
         if (isPlaying) {
@@ -240,12 +328,44 @@ function VoiceTab() {
                         </div>
                         <Button
                             size="small"
-                            color={isPlaying ? Button.Colors.RED : Button.Colors.PRIMARY}
+                            variant={isPlaying ? "destructive" : "primary"}
                             onClick={toggleMicrophonePlayback}
                         >
                             {isPlaying ? "Stop Playback" : "Start Playback"}
                         </Button>
                     </div>
+                </div>
+
+                <div style={{
+                    border: "1px solid var(--border-subtle)",
+                    borderRadius: 12,
+                    padding: 12,
+                    background: "var(--background-secondary)",
+                    marginBottom: 12,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 12
+                }}>
+                    <div>
+                        <Forms.FormTitle tag="h5" style={{ marginBottom: 2 }}>Always Keep Playback On</Forms.FormTitle>
+                        <Forms.FormText style={{ color: "var(--text-muted)" }}>
+                            Keeps monitoring active while you are in VC and when you leave this tab.
+                        </Forms.FormText>
+                    </div>
+                    <Button
+                        size="small"
+                        variant={state.persistentPlayback ? "primary" : "secondary"}
+                        onClick={async () => {
+                            const next = !state.persistentPlayback;
+                            update("persistentPlayback", next);
+                            if (next) {
+                                await restartPlaybackIfNeeded({ ...state, persistentPlayback: true }, isPlaying);
+                            }
+                        }}
+                    >
+                        {state.persistentPlayback ? "Enabled" : "Disabled"}
+                    </Button>
                 </div>
 
                 {error && (
@@ -285,6 +405,61 @@ function VoiceTab() {
                             {Math.round(state.playbackVolume * 100)}%
                         </span>
                     </div>
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                    <Forms.FormTitle tag="h5" style={{ marginBottom: 8 }}>Bass</Forms.FormTitle>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <input
+                            type="range"
+                            min="-20"
+                            max="20"
+                            step="1"
+                            value={state.bassGain}
+                            onChange={e => update("bassGain", Number(e.target.value))}
+                            style={{ flex: 1, height: 6, borderRadius: 3, appearance: "none", background: "var(--brand-500)", outline: "none" }}
+                        />
+                        <span style={{ minWidth: 56, textAlign: "right", color: "var(--text-muted)" }}>{state.bassGain} dB</span>
+                    </div>
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                    <Forms.FormTitle tag="h5" style={{ marginBottom: 8 }}>Treble</Forms.FormTitle>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <input
+                            type="range"
+                            min="-20"
+                            max="20"
+                            step="1"
+                            value={state.trebleGain}
+                            onChange={e => update("trebleGain", Number(e.target.value))}
+                            style={{ flex: 1, height: 6, borderRadius: 3, appearance: "none", background: "var(--brand-500)", outline: "none" }}
+                        />
+                        <span style={{ minWidth: 56, textAlign: "right", color: "var(--text-muted)" }}>{state.trebleGain} dB</span>
+                    </div>
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                    <Forms.FormTitle tag="h5" style={{ marginBottom: 8 }}>Voice Changer</Forms.FormTitle>
+                    <select
+                        value={state.voiceChanger}
+                        onChange={e => update("voiceChanger", e.target.value as VoicePlaybackState["voiceChanger"])}
+                        style={{
+                            width: "100%",
+                            padding: "8px 12px",
+                            borderRadius: 8,
+                            border: "1px solid var(--border-subtle)",
+                            background: "var(--background-secondary)",
+                            color: "var(--text-normal)",
+                            cursor: "pointer"
+                        }}
+                    >
+                        <option value="off">Off</option>
+                        <option value="deep">Deep Voice</option>
+                        <option value="chipmunk">Chipmunk</option>
+                        <option value="robot">Robot</option>
+                        <option value="radio">Radio</option>
+                    </select>
                 </div>
             </section>
 
