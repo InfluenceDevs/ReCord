@@ -26,3 +26,4 @@ export { default as ThemesTab } from "./themes";
 export { default as UpdaterTab } from "./updater";
 export { default as ReCordTab } from "./vencord";
 export { default as VencordTab } from "./vencord";
+export { default as VoiceTab } from "./voice";

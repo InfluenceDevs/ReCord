@@ -2,27 +2,30 @@
     margin-top: 18px;
     margin-bottom: 14px;
     border: 1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent);
-    border-radius: 18px;
-    padding: 10px 16px 0;
+    border-radius: 20px;
+    padding: 10px 18px 0;
     position: sticky;
     top: 0;
     z-index: 4;
-    backdrop-filter: blur(14px);
+    backdrop-filter: blur(20px);
     background:
-        linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 92%, transparent), color-mix(in srgb, var(--background-tertiary) 88%, transparent)),
-        radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--brand-500) 10%, transparent), transparent 55%);
-    box-shadow: 0 16px 36px color-mix(in srgb, var(--background-floating) 22%, transparent);
+        linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 94%, transparent), color-mix(in srgb, var(--background-tertiary) 92%, transparent)),
+        radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--brand-500) 12%, transparent), transparent 55%);
+    box-shadow:
+        0 16px 36px color-mix(in srgb, var(--background-floating) 22%, transparent),
+        0 0 1px color-mix(in srgb, var(--brand-500) 8%, transparent);
 }
 
 .vc-settings-tab {
-    --vc-panel-radius: 14px;
+    --vc-panel-radius: 16px;
     --vc-panel-border: 1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent);
+    --vc-panel-background: linear-gradient(165deg, color-mix(in srgb, var(--background-secondary) 96%, transparent), color-mix(in srgb, var(--background-tertiary) 92%, transparent));
 
     display: grid;
-    gap: 16px;
+    gap: 18px;
     width: min(1120px, 100%);
     margin: 0 auto;
-    padding: 8px 0 28px;
+    padding: 8px 0 40px;
     animation: vc-settings-enter 220ms ease;
 }
 
@@ -32,6 +35,8 @@
 
 .vc-settings-tab h5 {
     letter-spacing: 0.02em;
+    font-weight: 700;
+    color: var(--header-primary);
 }
 
 .vc-settings-tab h2,
@@ -44,26 +49,39 @@
 .vc-settings-tab h2 {
     font-size: clamp(26px, 3vw, 34px);
     letter-spacing: -0.03em;
+    background: linear-gradient(
+        135deg,
+        var(--header-primary) 0%,
+        color-mix(in srgb, var(--text-brand) 90%, transparent) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .vc-settings-tab h3 {
     font-size: 20px;
     letter-spacing: -0.02em;
+    color: var(--header-primary);
 }
 
 .vc-settings-tab p,
 .vc-settings-tab .vc-settings-muted {
     color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.5;
 }
 
 .vc-settings-tab section {
     border: var(--vc-panel-border);
     border-radius: var(--vc-panel-radius);
-    padding: 18px;
-    background:
-        linear-gradient(165deg, color-mix(in srgb, var(--background-secondary) 96%, transparent), color-mix(in srgb, var(--background-tertiary) 90%, transparent)),
-        radial-gradient(140% 120% at 0% 0%, color-mix(in srgb, var(--brand-500) 7%, transparent), transparent 58%);
-    box-shadow: 0 14px 34px color-mix(in srgb, var(--background-floating) 24%, transparent);
+    padding: 20px;
+    background: var(--vc-panel-background),
+        radial-gradient(140% 120% at 0% 0%, color-mix(in srgb, var(--brand-500) 8%, transparent), transparent 58%);
+    box-shadow:
+        0 14px 34px color-mix(in srgb, var(--background-floating) 24%, transparent),
+        inset 0 0 1px color-mix(in srgb, var(--white) 3%, transparent);
+    backdrop-filter: blur(2px);
 }
 
 .vc-settings-tab section + section {
@@ -73,12 +91,14 @@
 .vc-settings-hero {
     border: var(--vc-panel-border);
     border-radius: 24px;
-    padding: 24px;
+    padding: 28px;
     background:
-        radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--brand-500) 16%, transparent), transparent 55%),
-        radial-gradient(110% 130% at 100% 0%, color-mix(in srgb, var(--green-360) 14%, transparent), transparent 52%),
-        linear-gradient(160deg, color-mix(in srgb, var(--background-secondary) 95%, transparent), color-mix(in srgb, var(--background-tertiary) 88%, transparent));
-    box-shadow: 0 20px 42px color-mix(in srgb, var(--background-floating) 26%, transparent);
+        radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--brand-500) 18%, transparent), transparent 55%),
+        radial-gradient(110% 130% at 100% 0%, color-mix(in srgb, var(--green-360) 15%, transparent), transparent 52%),
+        linear-gradient(160deg, color-mix(in srgb, var(--background-secondary) 96%, transparent), color-mix(in srgb, var(--background-tertiary) 90%, transparent));
+    box-shadow:
+        0 20px 42px color-mix(in srgb, var(--background-floating) 26%, transparent),
+        inset 0 0 1px color-mix(in srgb, var(--white) 4%, transparent);
 }
 
 .vc-settings-hero p {
@@ -89,7 +109,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-    margin-top: 14px;
+    margin-top: 16px;
 }
 
 .vc-settings-pill {
@@ -97,55 +117,82 @@
     align-items: center;
     gap: 8px;
     min-height: 32px;
-    padding: 0 12px;
+    padding: 6px 14px;
     border: 1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent);
     border-radius: 999px;
-    background: color-mix(in srgb, var(--background-secondary) 84%, transparent);
+    background: color-mix(in srgb, var(--background-secondary) 86%, transparent);
     color: var(--header-primary);
     font-size: 12px;
     font-weight: 600;
+    transition: all 200ms ease;
 }
 
 .vc-settings-pill strong {
     color: var(--text-brand);
 }
 
+.vc-settings-pill:hover {
+    background: color-mix(in srgb, var(--background-secondary) 92%, transparent);
+    border-color: color-mix(in srgb, var(--border-subtle) 92%, transparent);
+}
+
 .vc-settings-stat-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
 }
 
 .vc-settings-stat-card,
 .vc-settings-card {
     border: var(--vc-panel-border);
-    border-radius: 18px;
-    padding: 16px 18px;
+    border-radius: 20px;
+    padding: 18px 20px;
     background:
-        linear-gradient(165deg, color-mix(in srgb, var(--background-secondary) 95%, transparent), color-mix(in srgb, var(--background-tertiary) 89%, transparent));
-    box-shadow: 0 14px 30px color-mix(in srgb, var(--background-floating) 18%, transparent);
+        linear-gradient(165deg, color-mix(in srgb, var(--background-secondary) 96%, transparent), color-mix(in srgb, var(--background-tertiary) 91%, transparent));
+    box-shadow:
+        0 14px 30px color-mix(in srgb, var(--background-floating) 18%, transparent),
+        inset 0 0 1px color-mix(in srgb, var(--white) 2%, transparent);
+    transition: all 200ms ease;
+}
+
+.vc-settings-stat-card:hover,
+.vc-settings-card:hover {
+    border-color: color-mix(in srgb, var(--border-subtle) 92%, transparent);
+    box-shadow:
+        0 20px 40px color-mix(in srgb, var(--background-floating) 28%, transparent),
+        inset 0 0 1px color-mix(in srgb, var(--white) 4%, transparent);
+    transform: translateY(-2px);
 }
 
 .vc-settings-stat-card h4,
 .vc-settings-stat-card h5,
 .vc-settings-card h4,
 .vc-settings-card h5 {
-    margin: 0 0 6px;
+    margin: 0 0 8px;
+    color: var(--header-primary);
 }
 
 .vc-settings-stat-value {
     display: block;
-    margin-top: 8px;
+    margin-top: 10px;
     color: var(--header-primary);
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 800;
     letter-spacing: -0.04em;
+    background: linear-gradient(
+        135deg,
+        var(--text-brand) 0%,
+        color-mix(in srgb, var(--text-brand) 70%, transparent) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .vc-settings-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
 }
 
 .vc-settings-tab-bar-item {

@@ -18,8 +18,8 @@
 
 import { isPluginEnabled } from "@api/PluginManager";
 import { definePluginSettings } from "@api/Settings";
-import { BackupRestoreIcon, CloudIcon, CogWheel, LogIcon, MainSettingsIcon, NotesIcon, PaintbrushIcon, PatchHelperIcon, PlaceholderIcon, PluginsIcon, SafetyIcon, UpdaterIcon, VesktopSettingsIcon } from "@components/Icons";
-import { AccountCenterTab, BackupAndRestoreTab, CloudTab, ConsoleTab, CustomRpcTab, DownloadsTab, GhostChatsTab, ModulesTab, OpsecTab, PatchHelperTab, PerformanceTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
+import { BackupRestoreIcon, CloudIcon, CogWheel, LogIcon, MainSettingsIcon, Microphone, NotesIcon, PaintbrushIcon, PatchHelperIcon, PlaceholderIcon, PluginsIcon, SafetyIcon, UpdaterIcon, VesktopSettingsIcon } from "@components/Icons";
+import { AccountCenterTab, BackupAndRestoreTab, CloudTab, ConsoleTab, CustomRpcTab, DownloadsTab, GhostChatsTab, ModulesTab, OpsecTab, PatchHelperTab, PerformanceTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab, VoiceTab } from "@components/settings/tabs";
 import { Devs } from "@utils/constants";
 import { isTruthy } from "@utils/guards";
 import definePlugin, { IconProps, OptionType } from "@utils/types";
@@ -111,6 +111,7 @@ const settingsSectionMap: [string, string][] = [
     ["ReCordGhostChats", "vencord_ghost_chats_panel"],
     ["ReCordOpsec", "vencord_opsec_panel"],
     ["ReCordPerformance", "vencord_performance_panel"],
+    ["ReCordVoice", "vencord_voice_panel"],
     ["ReCordModules", "vencord_modules_panel"],
     ["ReCordDownloads", "vencord_downloads_panel"],
     ["ReCordCustomRPC", "vencord_custom_rpc_panel"],
@@ -281,6 +282,13 @@ export default definePlugin({
                 panelTitle: "ReCord Performance",
                 Component: PerformanceTab,
                 Icon: UpdaterIcon
+            }),
+            buildEntry({
+                key: "vencord_voice",
+                title: "Voice",
+                panelTitle: "Voice Settings",
+                Component: VoiceTab,
+                Icon: Microphone
             }),
             buildEntry({
                 key: "vencord_modules",
