@@ -5,9 +5,10 @@
  */
 
 import { resetAllSettings, resetPerformanceSettings, Settings, useSettings } from "@api/Settings";
+import { Button } from "@components/Button";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { Margins } from "@utils/margins";
-import { Alerts, Button, Forms, React, TextInput } from "@webpack/common";
+import { Alerts, Forms, React, TextInput } from "@webpack/common";
 
 type PerfKey = Exclude<keyof typeof Settings.performance, "backgroundFps">;
 

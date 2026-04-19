@@ -56,6 +56,7 @@ window.VencordNative = {
     native: {
         getVersions: () => ({}),
         openExternal: async (url) => void open(url, "_blank"),
+        openMicrophonePrivacySettings: NOOP_ASYNC,
         getRendererCss: async () => {
             if (IS_USERSCRIPT)
                 // need to wait for next tick for _vcUserScriptRendererCss to be set

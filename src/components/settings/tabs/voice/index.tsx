@@ -360,7 +360,7 @@ function VoiceTab() {
                             {isPlaying ? "Active — you can hear yourself" : "Inactive"}
                         </Forms.FormText>
                     </div>
-                    <Button size="small" variant={isPlaying ? "destructive" : "primary"} onClick={toggle}>
+                    <Button size="small" variant={isPlaying ? "dangerPrimary" : "primary"} onClick={toggle}>
                         {isPlaying ? "Stop" : "Start"}
                     </Button>
                 </div>

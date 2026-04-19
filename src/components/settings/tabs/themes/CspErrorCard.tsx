@@ -7,12 +7,13 @@
 import { Divider } from "@components/Divider";
 import { ErrorCard } from "@components/ErrorCard";
 import { Link } from "@components/Link";
+import { Button } from "@components/Button";
 import { CspBlockedUrls, useCspErrors } from "@utils/cspViolations";
 import { Margins } from "@utils/margins";
 import { classes } from "@utils/misc";
 import { relaunch } from "@utils/native";
 import { useForceUpdater } from "@utils/react";
-import { Alerts, Button, Forms } from "@webpack/common";
+import { Alerts, Forms } from "@webpack/common";
 
 export function CspErrorCard() {
     if (IS_WEB) return null;

@@ -17,7 +17,8 @@
 */
 
 import { app, net, protocol } from "electron";
-import { join } from "path";
+import { appendFileSync, mkdirSync } from "fs";
+import { dirname, join } from "path";
 import { pathToFileURL } from "url";
 
 import { initCsp } from "./csp";
@@ -26,10 +27,70 @@ import { RendererSettings } from "./settings";
 import { IS_VANILLA, THEMES_DIR } from "./utils/constants";
 import { installExt } from "./utils/extensions";
 
+let hasInstalledCrashHandlers = false;
+
+function resolveRuntimeDataDir() {
+    return process.env.RECORD_USER_DATA_DIR
+        ?? process.env.VENCORD_USER_DATA_DIR
+        ?? (app.isReady() ? app.getPath("userData") : join(__dirname, ".."));
+}
+
+function writeCrashLog(source: string, error: unknown) {
+    try {
+        const now = new Date().toISOString();
+        const details = error instanceof Error
+            ? `${error.name}: ${error.message}\n${error.stack ?? ""}`
+            : typeof error === "string"
+                ? error
+                : JSON.stringify(error, null, 2);
+
+        const logPath = join(resolveRuntimeDataDir(), "logs", "record-crash.log");
+        mkdirSync(dirname(logPath), { recursive: true });
+        appendFileSync(logPath, `[${now}] ${source}\n${details}\n\n`, "utf8");
+    } catch {
+        // Ignore logger failures to avoid interfering with app startup.
+    }
+}
+
+function installCrashHandlers() {
+    if (hasInstalledCrashHandlers) return;
+    hasInstalledCrashHandlers = true;
+
+    process.on("uncaughtException", error => {
+        writeCrashLog("uncaughtException", error);
+        console.error("[ReCord] uncaughtException", error);
+    });
+
+    process.on("unhandledRejection", reason => {
+        writeCrashLog("unhandledRejection", reason);
+        console.error("[ReCord] unhandledRejection", reason);
+    });
+}
+
 if (IS_VESKTOP || !IS_VANILLA) {
+    installCrashHandlers();
+
     app.whenReady().then(() => {
         const userDataDir = process.env.RECORD_USER_DATA_DIR ?? process.env.VENCORD_USER_DATA_DIR ?? join(__dirname, "..");
         const assetsDir = join(userDataDir, "Images");
+
+        app.on("render-process-gone", (_event, webContents, details) => {
+            writeCrashLog("render-process-gone", {
+                reason: details.reason,
+                exitCode: details.exitCode,
+                webContentsId: webContents.id
+            });
+        });
+
+        app.on("child-process-gone", (_event, details) => {
+            writeCrashLog("child-process-gone", {
+                type: details.type,
+                reason: details.reason,
+                exitCode: details.exitCode,
+                serviceName: details.serviceName,
+                name: details.name
+            });
+        });
 
         protocol.handle("vencord", ({ url: unsafeUrl }) => {
             try {

@@ -227,7 +227,7 @@ function AccountCenterTab() {
 
             <div className="vc-settings-actions">
                 <Button size="small" onClick={refresh}>Refresh</Button>
-                <Button size="small" variant={showAddForm ? "destructive" : "primary"} onClick={() => { setShowAddForm(p => !p); setStatus(""); }}>
+                <Button size="small" variant={showAddForm ? "dangerPrimary" : "primary"} onClick={() => { setShowAddForm(p => !p); setStatus(""); }}>
                     {showAddForm ? "Cancel" : "Add Account"}
                 </Button>
             </div>
@@ -336,7 +336,7 @@ function AccountCenterTab() {
                                     <Button size="small" variant="primary" disabled={isLoggingIn} onClick={() => void onLoginSaved(entry.token)}>
                                         Log In
                                     </Button>
-                                    <Button size="small" variant="destructive" onClick={() => onRemoveSaved(idx)}>
+                                    <Button size="small" variant="dangerPrimary" onClick={() => onRemoveSaved(idx)}>
                                         Remove
                                     </Button>
                                 </div>

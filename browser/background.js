@@ -16,7 +16,11 @@ chrome.webRequest.onHeadersReceived.addListener(
             // In main frame requests, the CSP needs to be removed to enable fetching of custom css
             // as desired by the user
             removeFirst(responseHeaders, h => h.name.toLowerCase() === "content-security-policy");
-        } else if (type === "stylesheet" && url.startsWith("https://raw.githubusercontent.com/")) {
+        } else if (type === "stylesheet" && (
+            url.startsWith("https://raw.githubusercontent.com/")
+            || url.startsWith("https://cdn.jsdelivr.net/")
+            || url.startsWith("https://gist.githubusercontent.com/")
+        )) {
             // Most users will load css from GitHub, but GitHub doesn't set the correct content type,
             // so we fix it here
             removeFirst(responseHeaders, h => h.name.toLowerCase() === "content-type");
@@ -27,6 +31,14 @@ chrome.webRequest.onHeadersReceived.addListener(
         }
         return { responseHeaders };
     },
-    { urls: ["https://raw.githubusercontent.com/*", "*://*.discord.com/*"], types: ["main_frame", "stylesheet"] },
+    {
+        urls: [
+            "https://raw.githubusercontent.com/*",
+            "https://cdn.jsdelivr.net/*",
+            "https://gist.githubusercontent.com/*",
+            "*://*.discord.com/*"
+        ],
+        types: ["main_frame", "stylesheet"]
+    },
     ["blocking", "responseHeaders"]
 );

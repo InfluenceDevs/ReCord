@@ -18,9 +18,11 @@
 
 import "./styles.css";
 
+import { useSettings } from "@api/Settings";
 import { Card } from "@components/Card";
 import { Link } from "@components/Link";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
+import { useCspErrors } from "@utils/cspViolations";
 import { getStylusWebStoreUrl } from "@utils/web";
 import { Forms, React, TabBar, useState } from "@webpack/common";
 
@@ -31,6 +33,38 @@ import { OnlineThemesTab } from "./OnlineThemesTab";
 const enum ThemeTab {
     LOCAL,
     ONLINE
+}
+
+const RECORD_DEFAULT_THEME_URL = "https://raw.githubusercontent.com/InfluenceDevs/ReCord-Theme/main/ReCordTheme.css";
+
+function ThemeDiagnosticsCard() {
+    const settings = useSettings(["themeLinks", "enabledThemes"]);
+    const blockedUrls = useCspErrors();
+
+    return (
+        <Card variant={blockedUrls.length > 0 ? "warning" : "normal"} defaultPadding>
+            <Forms.FormTitle tag="h5">Theme Diagnostics</Forms.FormTitle>
+            <Forms.FormText>
+                Active sources: {1 + settings.themeLinks.length + settings.enabledThemes.length}
+            </Forms.FormText>
+            <Forms.FormText>
+                Built-in base theme: <Link href={RECORD_DEFAULT_THEME_URL}>{RECORD_DEFAULT_THEME_URL}</Link>
+            </Forms.FormText>
+            <Forms.FormText>
+                CSP-blocked resources: {blockedUrls.length}
+            </Forms.FormText>
+            {!!blockedUrls.length && (
+                <>
+                    <Forms.FormText>Blocked URLs (latest first):</Forms.FormText>
+                    {blockedUrls.slice().reverse().slice(0, 8).map(url => (
+                        <Forms.FormText key={url}>
+                            {url.startsWith("http") ? <Link href={url}>{url}</Link> : url}
+                        </Forms.FormText>
+                    ))}
+                </>
+            )}
+        </Card>
+    );
 }
 
 function ThemesTab() {
@@ -60,6 +94,7 @@ function ThemesTab() {
             </TabBar>
 
             <CspErrorCard />
+            <ThemeDiagnosticsCard />
 
             {currentTab === ThemeTab.LOCAL && <LocalThemesTab />}
             {currentTab === ThemeTab.ONLINE && <OnlineThemesTab />}

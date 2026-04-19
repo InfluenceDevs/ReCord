@@ -35,5 +35,39 @@
             "resourceTypes": ["stylesheet"],
             "urlFilter": "||raw.githubusercontent.com^"
         }
+    },
+    {
+        "id": 3,
+        "action": {
+            "type": "modifyHeaders",
+            "responseHeaders": [
+                {
+                    "header": "content-type",
+                    "operation": "set",
+                    "value": "text/css"
+                }
+            ]
+        },
+        "condition": {
+            "resourceTypes": ["stylesheet"],
+            "urlFilter": "||cdn.jsdelivr.net^"
+        }
+    },
+    {
+        "id": 4,
+        "action": {
+            "type": "modifyHeaders",
+            "responseHeaders": [
+                {
+                    "header": "content-type",
+                    "operation": "set",
+                    "value": "text/css"
+                }
+            ]
+        },
+        "condition": {
+            "resourceTypes": ["stylesheet"],
+            "urlFilter": "||gist.githubusercontent.com^"
+        }
     }
 ]
