@@ -20,68 +20,78 @@ function findByPropsSafe(...props: string[]) {
     }
 }
 
+type NativeAccountEntry = {
+    switchId: string;
+    userId: string;
+    nativeAccount: any;
+};
+
 function resolveAccountSwitcherStore() {
-    return (
-        findByPropsSafe("canAddAccount", "getAccounts")
-        ?? findByPropsSafe("getAccounts", "getCurrentAccount")
-        ?? findByPropsSafe("getAccounts")
-    );
+    return findByPropsSafe("canAddAccount", "getAccounts") as {
+        getAccounts?: () => unknown;
+        getCurrentAccount?: () => unknown;
+    } | undefined;
 }
 
 function resolveAccountSwitcherApi() {
-    return (
-        findByPropsSafe("canAddAccount", "switchAccount")
-        ?? findByPropsSafe("switchToAccount")
-        ?? findByPropsSafe("setActiveAccount")
-        ?? findByPropsSafe("switchAccount")
-    );
+    return findByPropsSafe("canAddAccount", "switchAccount") as {
+        switchAccount?: (accountId: string) => unknown;
+    } | undefined;
+}
+
+function normalizeNativeAccount(account: any): NativeAccountEntry | null {
+    const switchId = account?.id ?? account?.accountId;
+    const userId = account?.userId ?? account?.id;
+
+    if (!switchId || !userId) return null;
+    if (!UserStore.getUser(String(userId))) return null;
+
+    return {
+        switchId: String(switchId),
+        userId: String(userId),
+        nativeAccount: account
+    };
 }
 
 function getAccountsSafe() {
     const getAccounts = resolveAccountSwitcherStore()?.getAccounts;
     if (typeof getAccounts !== "function") return null;
+
     try {
         const next = getAccounts();
-        return Array.isArray(next) ? next : [];
+        if (!Array.isArray(next)) return [];
+        return next.map(normalizeNativeAccount).filter(Boolean) as NativeAccountEntry[];
     } catch {
         return [];
     }
 }
 
-async function switchToAccount(account: any) {
-    const api = resolveAccountSwitcherApi() as any;
-    const ids = [account?.id, account?.accountId, account?.userId, account?.uid].filter(Boolean);
-    const methods = ["switchAccount", "switchToAccount", "setActiveAccount"];
+async function switchToAccount(account: NativeAccountEntry) {
+    const api = resolveAccountSwitcherApi();
+    if (typeof api?.switchAccount !== "function") return false;
 
-    for (const method of methods) {
-        if (typeof api?.[method] !== "function") continue;
-        for (const id of ids) {
-            try { await Promise.resolve(api[method](id)); return true; } catch { /* noop */ }
-        }
-        try { await Promise.resolve(api[method](account)); return true; } catch { /* noop */ }
+    try {
+        await Promise.resolve(api.switchAccount(account.switchId));
+        return true;
+    } catch {
+        return false;
     }
-    return false;
 }
 
 /**
- * Add an account by user token.
- * Discord exposes an internal loginWithToken method via the authentication module.
- * We locate it safely and invoke it â€” this is the same mechanism Discord's own
- * "Add Account" flow uses in the multi-account switcher.
+ * Log into a token by setting Discord's active token and reloading.
+ * This repo already uses the same fallback in authEnhancer when native login helpers are unavailable.
  */
 async function loginWithToken(token: string): Promise<string | null> {
-    // Find the loginWithToken function in Discord's webpack modules
-    const auth = (
-        findByPropsSafe("loginWithToken", "logout")
-        ?? findByPropsSafe("loginWithToken")
-    ) as any;
-
-    if (typeof auth?.loginWithToken !== "function") {
-        return "Discord's loginWithToken API was not found. Try restarting Discord.";
-    }
+    const cleanedToken = token.trim().replace(/^"|"$/g, "");
+    if (!cleanedToken) return "Enter a token first.";
 
     try {
-        await Promise.resolve(auth.loginWithToken(token));
+        getStorage()?.setItem("token", JSON.stringify(cleanedToken));
+        window.setTimeout(() => {
+            location.href = "/channels/@me";
+            location.reload();
+        }, 250);
         return null;
     } catch (e: any) {
         const msg: string = e?.message ?? String(e);
@@ -110,7 +120,7 @@ function saveSavedTokens(list: { label: string; token: string }[]) {
 // â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function AccountCenterTab() {
-    const [accounts, setAccounts] = React.useState<any[]>(() => getAccountsSafe() ?? []);
+    const [accounts, setAccounts] = React.useState<NativeAccountEntry[]>(() => getAccountsSafe() ?? []);
     const [apiReady, setApiReady] = React.useState(() => getAccountsSafe() !== null);
     const [status, setStatus] = React.useState("");
     const [statusOk, setStatusOk] = React.useState(false);
@@ -131,17 +141,16 @@ function AccountCenterTab() {
     const refresh = React.useCallback(() => {
         const next = getAccountsSafe();
         setApiReady(next !== null);
-        // Only keep accounts that resolve as real Discord users.
-        // This filters out third-party connected accounts (Crunchyroll, Twitch, Spotify, etc.)
-        // which live in the same store but are not Discord accounts.
-        const discordOnly = (next ?? []).filter((a: any) => {
-            const uid = a?.userId ?? a?.id;
-            return uid && UserStore.getUser(String(uid));
-        });
-        // Always include the current user at the top if not already present.
-        if (currentUser && !discordOnly.some((a: any) => String(a?.userId ?? a?.id) === String(currentUser.id))) {
-            discordOnly.unshift({ id: currentUser.id, userId: currentUser.id, _injected: true });
+        const discordOnly = next ?? [];
+
+        if (currentUser && !discordOnly.some(account => account.userId === String(currentUser.id))) {
+            discordOnly.unshift({
+                switchId: String(currentUser.id),
+                userId: String(currentUser.id),
+                nativeAccount: null
+            });
         }
+
         setAccounts(discordOnly);
     }, [currentUser]);
 
@@ -151,7 +160,7 @@ function AccountCenterTab() {
         return () => clearInterval(id);
     }, [refresh]);
 
-    const onSwitch = React.useCallback(async (account: any) => {
+    const onSwitch = React.useCallback(async (account: NativeAccountEntry) => {
         setStatus("");
         setIsSwitching(true);
         const ok = await switchToAccount(account);
@@ -173,7 +182,6 @@ function AccountCenterTab() {
             setStatus(err);
             setStatusOk(false);
         } else {
-            // Save token for quick re-login
             const label = labelInput.trim() || `Account ${savedTokens.length + 1}`;
             const updated = [...savedTokens, { label, token }];
             setSavedTokens(updated);
@@ -181,9 +189,8 @@ function AccountCenterTab() {
             setTokenInput("");
             setLabelInput("");
             setShowAddForm(false);
-            setStatus("Account added successfully!");
+            setStatus("Logging into saved token and reloading...");
             setStatusOk(true);
-            refresh();
         }
         setIsLoggingIn(false);
     }, [tokenInput, labelInput, savedTokens, refresh]);
@@ -199,16 +206,16 @@ function AccountCenterTab() {
         setStatus("");
         const err = await loginWithToken(token);
         if (err) { setStatus(err); setStatusOk(false); }
-        else { setStatus("Switched!"); setStatusOk(true); refresh(); }
+        else { setStatus("Logging into saved token and reloading..."); setStatusOk(true); }
         setIsLoggingIn(false);
-    }, [refresh]);
+    }, []);
 
     return (
         <SettingsTab>
             <div className="vc-settings-hero">
                 <Forms.FormTitle tag="h2">Account Center</Forms.FormTitle>
                 <Forms.FormText className={Margins.bottom16} style={{ maxWidth: 860 }}>
-                    Manage your Discord accounts. Switch between connected accounts instantly or add a new account via token.
+                    Manage your Discord accounts. Use Discord's built-in account switcher for native multi-account sessions, or use token login to replace the active session.
                 </Forms.FormText>
 
                 <div className="vc-settings-pill-row">
@@ -244,9 +251,9 @@ function AccountCenterTab() {
             {/* â”€â”€ Add Account form â”€â”€ */}
             {showAddForm && (
                 <section>
-                    <Forms.FormTitle tag="h3" style={{ marginBottom: 4 }}>Add Account via Token</Forms.FormTitle>
+                    <Forms.FormTitle tag="h3" style={{ marginBottom: 4 }}>Token Login</Forms.FormTitle>
                     <Forms.FormText style={{ color: "var(--text-muted)", marginBottom: 16 }}>
-                        Enter a Discord user token to log in to that account. Tokens are stored locally and never sent anywhere outside Discord.
+                        Enter a Discord user token to replace the active session. Saved tokens stay local to this client.
                     </Forms.FormText>
 
                     <div style={{ marginBottom: 10 }}>
@@ -295,7 +302,7 @@ function AccountCenterTab() {
                             disabled={isLoggingIn || !tokenInput.trim()}
                             onClick={() => void onAddToken()}
                         >
-                            {isLoggingIn ? "Logging in..." : "Log In"}
+                            {isLoggingIn ? "Logging in..." : "Log In and Reload"}
                         </Button>
                     </div>
 
@@ -314,7 +321,7 @@ function AccountCenterTab() {
                 <section>
                     <Forms.FormTitle tag="h3" style={{ marginBottom: 4 }}>Saved Accounts</Forms.FormTitle>
                     <Forms.FormText style={{ color: "var(--text-muted)", marginBottom: 16 }}>
-                        Accounts saved by token. Click Log In to switch to them instantly.
+                        Saved token logins. These replace the active session and reload Discord.
                     </Forms.FormText>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {savedTokens.map((entry, idx) => (
@@ -356,11 +363,11 @@ function AccountCenterTab() {
 
                 <div className="vc-settings-stat-grid">
                     {accounts.map((account, idx) => {
-                        const userId = account?.userId ?? account?.id;
-                        const user = userId ? UserStore.getUser(String(userId)) : null;
-                        const title = user?.globalName || user?.username || account?.name || `Account ${idx + 1}`;
+                        const userId = account.userId;
+                        const user = UserStore.getUser(userId);
+                        const title = user?.globalName || user?.username || account.nativeAccount?.name || `Account ${idx + 1}`;
                         const subtitle = user?.username ? `@${user.username}` : "Discord account";
-                        const isCurrent = !!(currentId && userId && String(currentId) === String(userId));
+                        const isCurrent = !!(currentId && String(currentId) === String(userId));
 
 
                         return (
@@ -389,7 +396,7 @@ function AccountCenterTab() {
 
                                 <Button
                                     size="small"
-                                    disabled={isCurrent || !apiReady || isSwitching}
+                                    disabled={isCurrent || !apiReady || isSwitching || !account.nativeAccount}
                                     onClick={() => void onSwitch(account)}
                                 >
                                     {isCurrent ? "Current" : isSwitching ? "Switching..." : "Switch"}

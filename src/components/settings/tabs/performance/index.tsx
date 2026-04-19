@@ -275,7 +275,7 @@ function PerformanceTab() {
                 <Button size="small" onClick={resetPerformanceSettings}>Reset Performance Defaults</Button>
                 <Button
                     size="small"
-                    color={Button.Colors.PRIMARY}
+                    variant="primary"
                     onClick={() => {
                         Alerts.show({
                             title: "Reset all settings?",

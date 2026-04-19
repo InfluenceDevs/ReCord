@@ -89,6 +89,38 @@ let trebleNode: BiquadFilterNode | null = null;
 let effectNode: BiquadFilterNode | null = null;
 let outputEl: HTMLAudioElement | null = null;
 
+function isPermissionDeniedError(message: string) {
+    return /Permission|NotAllowed|denied/i.test(message);
+}
+
+function mapMicrophoneError(err: any) {
+    const msg: string = err?.message ?? String(err);
+    if (isPermissionDeniedError(msg)) {
+        return "Microphone permission denied. Allow microphone access for Discord or ReCord, then try again.";
+    }
+
+    if (/NotFound|device not found|Requested device/i.test(msg)) {
+        return "Microphone not found. Check your device selection and try again.";
+    }
+
+    return `Playback failed: ${msg}`;
+}
+
+async function requestMicrophonePermission(selectedInputDevice: string): Promise<string | null> {
+    try {
+        const permissionStream = await navigator.mediaDevices.getUserMedia({
+            audio: selectedInputDevice !== "default"
+                ? { deviceId: { ideal: selectedInputDevice } }
+                : true
+        });
+
+        permissionStream.getTracks().forEach(track => track.stop());
+        return null;
+    } catch (err) {
+        return mapMicrophoneError(err);
+    }
+}
+
 function applyEffect(node: BiquadFilterNode, mode: VoicePlaybackState["voiceChanger"]) {
     switch (mode) {
         case "deep":
@@ -123,6 +155,9 @@ async function startPlayback(state: VoicePlaybackState): Promise<string | null> 
     try {
         // Always start clean
         await stopPlayback();
+
+        const permissionError = await requestMicrophonePermission(state.selectedInputDevice);
+        if (permissionError) return permissionError;
 
         // Request mic with user-chosen constraints
         mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -186,12 +221,7 @@ async function startPlayback(state: VoicePlaybackState): Promise<string | null> 
         return null;
     } catch (err: any) {
         await stopPlayback();
-        const msg: string = err?.message ?? String(err);
-        if (/Permission|NotAllowed|denied/i.test(msg))
-            return "Microphone permission denied. Allow microphone access in Discord settings and try again.";
-        if (/NotFound|device not found|Requested device/i.test(msg))
-            return "Microphone not found. Check your device selection and try again.";
-        return `Playback failed: ${msg}`;
+        return mapMicrophoneError(err);
     }
 }
 
@@ -222,7 +252,7 @@ function VoiceTab() {
     const [error, setError] = React.useState<string | null>(null);
     const [devices, setDevices] = React.useState<{ input: MediaDeviceInfo[]; output: MediaDeviceInfo[] }>({ input: [], output: [] });
 
-    React.useEffect(() => {
+    const refreshDevices = React.useCallback(() => {
         navigator.mediaDevices.enumerateDevices().then(list => {
             setDevices({
                 input: list.filter(d => d.kind === "audioinput"),
@@ -230,6 +260,10 @@ function VoiceTab() {
             });
         });
     }, []);
+
+    React.useEffect(() => {
+        refreshDevices();
+    }, [refreshDevices]);
 
     const update = React.useCallback((key: keyof VoicePlaybackState, value: any) => {
         setState(prev => {
@@ -302,6 +336,9 @@ function VoiceTab() {
         </div>
     );
 
+    const canOpenMicPrivacySettings = typeof VencordNative?.native?.openMicrophonePrivacySettings === "function";
+    const isPermissionError = !!error && isPermissionDeniedError(error);
+
     return (
         <SettingsTab>
             <Forms.FormTitle tag="h2">Voice Settings</Forms.FormTitle>
@@ -363,6 +400,35 @@ function VoiceTab() {
                         fontSize: 13
                     }}>
                         {error}
+                    </div>
+                )}
+
+                {isPermissionError && (
+                    <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+                        <Button
+                            size="small"
+                            onClick={async () => {
+                                const permissionError = await requestMicrophonePermission(state.selectedInputDevice);
+                                if (permissionError) {
+                                    setError(permissionError);
+                                    return;
+                                }
+
+                                refreshDevices();
+                                setError(null);
+                            }}
+                        >
+                            Retry Permission
+                        </Button>
+                        {canOpenMicPrivacySettings && (
+                            <Button
+                                size="small"
+                                variant="secondary"
+                                onClick={() => void VencordNative.native.openMicrophonePrivacySettings()}
+                            >
+                                Open Mic Privacy Settings
+                            </Button>
+                        )}
                     </div>
                 )}
 

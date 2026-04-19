@@ -24,7 +24,7 @@ import { PopoutWindowStore } from "@webpack/common";
 import { userStyleRootNode, vencordRootNode } from "./Styles";
 
 // Built-in ReCord default theme — always loaded as the base layer before user themes
-const RECORD_DEFAULT_THEME_URL = "https://cdn.jsdelivr.net/gh/InfluenceDevs/ReCord-Theme@main/ReCordTheme.css";
+const RECORD_DEFAULT_THEME_URL = "https://raw.githubusercontent.com/InfluenceDevs/ReCord-Theme/main/ReCordTheme.css";
 
 let style: HTMLStyleElement;
 let themesStyle: HTMLStyleElement;

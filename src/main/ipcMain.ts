@@ -89,6 +89,18 @@ ipcMain.handle(IpcEvents.OPEN_EXTERNAL, (_, url) => {
     shell.openExternal(url);
 });
 
+ipcMain.handle(IpcEvents.OPEN_MICROPHONE_PRIVACY_SETTINGS, () => {
+    if (process.platform === "win32") {
+        return shell.openExternal("ms-settings:privacy-microphone");
+    }
+
+    if (process.platform === "darwin") {
+        return shell.openExternal("x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone");
+    }
+
+    return shell.openExternal("https://support.discord.com/hc/en-us/articles/20510");
+});
+
 
 ipcMain.handle(IpcEvents.GET_QUICK_CSS, () => readCss());
 ipcMain.handle(IpcEvents.SET_QUICK_CSS, (_, css) =>

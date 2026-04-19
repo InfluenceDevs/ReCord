@@ -33,6 +33,7 @@ export const enum IpcEvents {
     THEME_UPDATE = "VencordThemeUpdate",
 
     OPEN_EXTERNAL = "VencordOpenExternal",
+    OPEN_MICROPHONE_PRIVACY_SETTINGS = "VencordOpenMicrophonePrivacySettings",
     OPEN_THEMES_FOLDER = "VencordOpenThemesFolder",
     OPEN_SETTINGS_FOLDER = "VencordOpenSettingsFolder",
     OPEN_USER_PLUGINS_FOLDER = "VencordOpenUserPluginsFolder",

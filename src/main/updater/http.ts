@@ -68,7 +68,18 @@ async function calculateGitChanges() {
 
     if (compareSemver(VERSION, latestTag) >= 0) return [];
 
-    if (!gitHash) return [];
+    // Some standalone builds do not embed gitHash.
+    // In that case we can still check semver + release assets and present a generic changelog item.
+    if (!gitHash) {
+        const isOutdated = await fetchUpdates();
+        if (!isOutdated) return [];
+
+        return [{
+            hash: latestTag,
+            author: "ReCord",
+            message: `Update available: ${latestTag}`
+        }];
+    }
 
     let comparison: any;
     try {

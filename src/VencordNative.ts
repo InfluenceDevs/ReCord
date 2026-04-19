@@ -80,6 +80,7 @@ export default {
     native: {
         getVersions: () => process.versions as Partial<NodeJS.ProcessVersions>,
         openExternal: (url: string) => invoke<void>(IpcEvents.OPEN_EXTERNAL, url),
+        openMicrophonePrivacySettings: () => invoke<void>(IpcEvents.OPEN_MICROPHONE_PRIVACY_SETTINGS),
         getRendererCss: () => invoke<string>(IpcEvents.GET_RENDERER_CSS),
         onRendererCssUpdate: (cb: (newCss: string) => void) => {
             if (!IS_DEV) return;
