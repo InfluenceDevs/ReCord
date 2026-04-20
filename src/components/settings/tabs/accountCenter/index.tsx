@@ -363,9 +363,9 @@ function AccountCenterTab() {
 
                 <div className="vc-settings-stat-grid">
                     {accounts.map((account, idx) => {
-                        const userId = account.userId;
+                        const { nativeAccount, userId } = account;
                         const user = UserStore.getUser(userId);
-                        const title = user?.globalName || user?.username || account.nativeAccount?.name || `Account ${idx + 1}`;
+                        const title = user?.globalName || user?.username || nativeAccount?.name || `Account ${idx + 1}`;
                         const subtitle = user?.username ? `@${user.username}` : "Discord account";
                         const isCurrent = !!(currentId && String(currentId) === String(userId));
 

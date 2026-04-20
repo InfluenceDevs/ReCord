@@ -285,7 +285,7 @@ function VoiceTab() {
             if (err) setError(err);
             else { setIsPlaying(true); setError(null); }
         });
-    }, [state.persistentPlayback]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [state.persistentPlayback]);
 
     const toggle = React.useCallback(async () => {
         if (isPlaying) {

@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { Button } from "@components/Button";
 import { Divider } from "@components/Divider";
 import { ErrorCard } from "@components/ErrorCard";
 import { Link } from "@components/Link";
-import { Button } from "@components/Button";
 import { CspBlockedUrls, useCspErrors } from "@utils/cspViolations";
 import { Margins } from "@utils/margins";
 import { classes } from "@utils/misc";

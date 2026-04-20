@@ -193,9 +193,9 @@ export const startPlugin = traceFunction("startPlugin", function startPlugin(p: 
             return false;
         }
         try {
-            const ret = p.start();
+            const ret = p.start() as any;
             if (ret instanceof Promise)
-                ret.catch(e => logger.error(`Plugin ${name} async start() rejected\n`, e));
+                ret.catch((e: any) => logger.error(`Plugin ${name} async start() rejected\n`, e));
         } catch (e) {
             logger.error(`Failed to start ${name}\n`, e);
             return false;
@@ -262,9 +262,9 @@ export const stopPlugin = traceFunction("stopPlugin", function stopPlugin(p: Plu
             return false;
         }
         try {
-            const ret = p.stop();
+            const ret = p.stop() as any;
             if (ret instanceof Promise)
-                ret.catch(e => logger.error(`Plugin ${name} async stop() rejected\n`, e));
+                ret.catch((e: any) => logger.error(`Plugin ${name} async stop() rejected\n`, e));
         } catch (e) {
             logger.error(`Failed to stop ${name}\n`, e);
             return false;
