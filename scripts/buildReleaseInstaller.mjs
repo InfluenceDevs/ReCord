@@ -15,6 +15,19 @@ const INSTALLER_BASE_URLS = [
 ].filter(Boolean);
 const RECORD_REPO_API = "https://api.github.com/repos/InfluenceDevs/ReCord";
 
+function getRequestHeaders(extra = {}) {
+    const headers = {
+        "User-Agent": "ReCord Release Builder (https://github.com/InfluenceDevs/ReCord)",
+        ...extra
+    };
+
+    if (process.env.GITHUB_TOKEN) {
+        headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+    }
+
+    return headers;
+}
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST_DIR = join(ROOT, "dist");
 const IMAGES_DIR = join(ROOT, "Images");
@@ -54,10 +67,9 @@ function getInstallerConfig() {
 
 async function findLatestAssetUrl(assetName) {
     const res = await fetch(`${RECORD_REPO_API}/releases/latest`, {
-        headers: {
-            Accept: "application/vnd.github+json",
-            "User-Agent": "ReCord Release Builder (https://github.com/InfluenceDevs/ReCord)"
-        }
+        headers: getRequestHeaders({
+            Accept: "application/vnd.github+json"
+        })
     });
 
     if (!res.ok) return null;
@@ -69,9 +81,7 @@ async function findLatestAssetUrl(assetName) {
 
 async function extractBinaryFromArchive(archiveUrl, outputFile, outputName) {
     const res = await fetch(archiveUrl, {
-        headers: {
-            "User-Agent": "ReCord Release Builder (https://github.com/InfluenceDevs/ReCord)"
-        }
+        headers: getRequestHeaders()
     });
 
     if (!res.ok) {
@@ -99,9 +109,7 @@ async function downloadInstaller(tempDir) {
 
     for (const baseUrl of INSTALLER_BASE_URLS) {
         const candidate = await fetch(baseUrl + cfg.downloadName, {
-            headers: {
-                "User-Agent": "ReCord Release Builder (https://github.com/InfluenceDevs/ReCord)"
-            }
+            headers: getRequestHeaders()
         });
 
         if (!candidate.ok) {
@@ -123,7 +131,17 @@ async function downloadInstaller(tempDir) {
         return targetPath;
     }
 
-    const archiveUrl = await findLatestAssetUrl(cfg.artifactName);
+    // Fallback 1: direct latest-download archive URL (works even when GitHub API is rate-limited)
+    let archiveUrl = `${INSTALLER_BASE_URLS[INSTALLER_BASE_URLS.length - 1]}${cfg.artifactName}`;
+    try {
+        await extractBinaryFromArchive(archiveUrl, targetPath, cfg.outputName);
+        return targetPath;
+    } catch {
+        // Continue to API lookup fallback below
+    }
+
+    // Fallback 2: GitHub API asset lookup
+    archiveUrl = await findLatestAssetUrl(cfg.artifactName);
     if (!archiveUrl) {
         throw new Error(`Failed to download installer binary ${cfg.downloadName} from direct URLs and archive ${cfg.artifactName} was not found.`);
     }
