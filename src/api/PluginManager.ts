@@ -193,7 +193,9 @@ export const startPlugin = traceFunction("startPlugin", function startPlugin(p: 
             return false;
         }
         try {
-            p.start();
+            const ret = p.start();
+            if (ret instanceof Promise)
+                ret.catch(e => logger.error(`Plugin ${name} async start() rejected\n`, e));
         } catch (e) {
             logger.error(`Failed to start ${name}\n`, e);
             return false;
@@ -208,8 +210,8 @@ export const startPlugin = traceFunction("startPlugin", function startPlugin(p: 
             try {
                 registerCommand(cmd, name);
             } catch (e) {
-                logger.error(`Failed to register command ${cmd.name}\n`, e);
-                return false;
+                logger.error(`Failed to register command ${cmd.name} of plugin ${name}\n`, e);
+                // non-fatal: continue registering other commands
             }
         }
     }
@@ -260,7 +262,9 @@ export const stopPlugin = traceFunction("stopPlugin", function stopPlugin(p: Plu
             return false;
         }
         try {
-            p.stop();
+            const ret = p.stop();
+            if (ret instanceof Promise)
+                ret.catch(e => logger.error(`Plugin ${name} async stop() rejected\n`, e));
         } catch (e) {
             logger.error(`Failed to stop ${name}\n`, e);
             return false;
@@ -275,8 +279,8 @@ export const stopPlugin = traceFunction("stopPlugin", function stopPlugin(p: Plu
             try {
                 unregisterCommand(cmd.name);
             } catch (e) {
-                logger.error(`Failed to unregister command ${cmd.name}\n`, e);
-                return false;
+                logger.error(`Failed to unregister command ${cmd.name} of plugin ${name}\n`, e);
+                // non-fatal: continue unregistering other commands
             }
         }
     }
