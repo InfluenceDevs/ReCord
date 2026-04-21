@@ -218,7 +218,7 @@ export default definePlugin({
     },
 
     getDonorBadges(userId: string) {
-        return DonorBadges[userId]?.map(badge => ({
+        return DonorBadges[userId]?.filter(badge => badge.badge).map(badge => ({
             iconSrc: badge.badge,
             description: badge.tooltip,
             position: BadgePosition.START,
@@ -249,7 +249,7 @@ export default definePlugin({
                                 >
                                     <Flex justifyContent="center" alignItems="center" gap="0.5em">
                                         <Heart />
-                                        Record Donor
+                                        ReCord Donor
                                     </Flex>
                                 </Forms.FormTitle>
                             </ModalHeader>
@@ -270,10 +270,10 @@ export default definePlugin({
                                 </Flex>
                                 <div style={{ padding: "1em" }}>
                                     <Forms.FormText>
-                                        This Badge is a special perk for ReCord Donors
+                                        This Badge is a special perk for ReCord Donors supporting development.
                                     </Forms.FormText>
                                     <Forms.FormText className={Margins.top20}>
-                                        Please consider supporting the development of ReCord by becoming a donor. It would mean a lot!!
+                                        Thanks for your support! 💜
                                     </Forms.FormText>
                                 </div>
                             </ModalContent>

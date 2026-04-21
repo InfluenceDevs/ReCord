@@ -16,6 +16,23 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+import { readFileSync } from "fs";
+import { join } from "path";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+
+function getVersion() {
+    try {
+        const packageJsonPath = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "package.json");
+        const pkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+        return `v${pkg.version}`;
+    } catch {
+        return "v0.0.0";
+    }
+}
+
+export const VERSION = getVersion();
+
 export const VENCORD_FILES = [
     IS_DISCORD_DESKTOP ? "patcher.js" : "vencordDesktopMain.js",
     IS_DISCORD_DESKTOP ? "preload.js" : "vencordDesktopPreload.js",

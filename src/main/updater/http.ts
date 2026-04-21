@@ -25,7 +25,7 @@ import { join } from "path";
 
 import gitHash from "~git-hash";
 
-import { serializeErrors, VENCORD_FILES } from "./common";
+import { serializeErrors, VENCORD_FILES, VERSION } from "./common";
 
 const RECORD_REMOTE = "InfluenceDevs/ReCord";
 const API_BASE = `https://api.github.com/repos/${RECORD_REMOTE}`;
