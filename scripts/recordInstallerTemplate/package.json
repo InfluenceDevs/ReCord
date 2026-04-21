@@ -43,11 +43,6 @@
     "afterAllArtifactBuild": "scripts/fixmac.js",
     "extraResources": [
       {
-        "from": "../Vencord/dist/release/ReCord-Installer-Bundle/ReCordInstallerCli.exe",
-        "to": "ReCordInstallerCli.exe",
-        "filter": ["**/*"]
-      },
-      {
         "from": "../Vencord/dist",
         "to": "record-app/dist",
         "filter": [
