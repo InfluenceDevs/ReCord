@@ -1,5 +1,4 @@
-/* the profile popout badge container(s) */
-[class*="profile"] [class*="tags"] [class*="container"] {
-    /* Discord has gap set to 2px instead of 1px, which causes the 12th badge to wrap to a new line. */
+/* Keep this scoped to badge rows only; broader selectors can affect profile decoration layout. */
+[class*="profile"] [class*="tags"] [class*="badgeList"] {
     gap: 1px;
 }
