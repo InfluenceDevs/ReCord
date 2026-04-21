@@ -35,7 +35,7 @@ import { ContextMenuApi, Forms, Menu, Toasts, UserStore } from "@webpack/common"
 
 const CONTRIBUTOR_BADGE = "https://cdn3.emoji.gg/emojis/74376-builder.png";
 const DEVELOPER_BADGE = "https://cdn3.emoji.gg/emojis/7893-developer-hax-5555ff.png";
-const CREATOR_BADGE = "https://cdn3.emoji.gg/emojis/53714-seastonecrown.png";
+const CREATOR_BADGE = "https://cdn3.emoji.gg/emojis/6654-blurple-crown.png";
 
 const RECORD_CREATORS = new Set(["260577084223520770"]);
 const RECORD_DEVELOPERS = new Set(["260577084223520770", "1269024115973427374"]);
@@ -235,7 +235,7 @@ export default definePlugin({
                 const modalKey = openModal(props => (
                     <ErrorBoundary noop onError={() => {
                         closeModal(modalKey);
-                        VencordNative.native.openExternal("https://github.com/sponsors/Vendicated");
+                        VencordNative.native.openExternal("https://github.com/sponsors/InfluenceDev");
                     }}>
                         <ModalRoot {...props}>
                             <ModalHeader>
@@ -249,7 +249,7 @@ export default definePlugin({
                                 >
                                     <Flex justifyContent="center" alignItems="center" gap="0.5em">
                                         <Heart />
-                                        Vencord Donor
+                                        Record Donor
                                     </Flex>
                                 </Forms.FormTitle>
                             </ModalHeader>
@@ -270,10 +270,10 @@ export default definePlugin({
                                 </Flex>
                                 <div style={{ padding: "1em" }}>
                                     <Forms.FormText>
-                                        This Badge is a special perk for Vencord Donors
+                                        This Badge is a special perk for ReCord Donors
                                     </Forms.FormText>
                                     <Forms.FormText className={Margins.top20}>
-                                        Please consider supporting the development of Vencord by becoming a donor. It would mean a lot!!
+                                        Please consider supporting the development of ReCord by becoming a donor. It would mean a lot!!
                                     </Forms.FormText>
                                 </div>
                             </ModalContent>
