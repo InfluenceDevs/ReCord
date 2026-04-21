@@ -77,11 +77,12 @@ function applyCssTweaks() {
     }
 
     if (cfg.disableGradients) {
-        // Exclude badge, icon, avatar, emoji and decoration elements — they rely on background-image to render
+        // Exclude badge, icon, avatar, emoji, decoration, and username/name elements.
+        // Username/name elements use background-image+clip for role colors — stripping it makes colored names invisible.
         css.push(
-            "*:not([class*=badge]):not([class*=icon]):not([class*=avatar]):not([class*=emoji]):not([class*=decoration])," +
-            "*:not([class*=badge]):not([class*=icon]):not([class*=avatar]):not([class*=emoji]):not([class*=decoration])::before," +
-            "*:not([class*=badge]):not([class*=icon]):not([class*=avatar]):not([class*=emoji]):not([class*=decoration])::after" +
+            "*:not([class*=badge]):not([class*=icon]):not([class*=avatar]):not([class*=emoji]):not([class*=decoration]):not([class*=username]):not([class*=userName]):not([class*=name])," +
+            "*:not([class*=badge]):not([class*=icon]):not([class*=avatar]):not([class*=emoji]):not([class*=decoration]):not([class*=username]):not([class*=userName]):not([class*=name])::before," +
+            "*:not([class*=badge]):not([class*=icon]):not([class*=avatar]):not([class*=emoji]):not([class*=decoration]):not([class*=username]):not([class*=userName]):not([class*=name])::after" +
             "{background-image:none!important;}"
         );
     }
@@ -99,7 +100,9 @@ function applyCssTweaks() {
     }
 
     if (cfg.hideProfilePanels) {
-        css.push("[class*=profilePanel],[class*=userPanelOverlay],[class*=memberProfile],[class*=userPopoutOverlayBackground]{display:none!important;}");
+        // Hide whole profile surfaces instead of only removing the overlay background,
+        // which can leave transparent/ghost popouts behind.
+        css.push("[class*=profilePanel],[class*=userPanelOverlay],[class*=memberProfile],[class*=userPopoutOuter],[class*=userProfileOuter]{display:none!important;}");
     }
 
     if (cfg.hideGuildBoostEffects) {
@@ -115,7 +118,8 @@ function applyCssTweaks() {
     }
 
     if (cfg.compactMemberList) {
-        css.push("[class*=membersWrap] [class*=member], [class*=membersWrap] [class*=layout]{min-height:30px!important;padding-top:1px!important;padding-bottom:1px!important;}");
+        // Use modest padding reduction; avoid forcing min-height which clips content and makes role-colored names disappear
+        css.push("[class*=membersWrap] [class*=member], [class*=membersWrap] [class*=layout]{padding-top:3px!important;padding-bottom:3px!important;}");
     }
 
     if (cfg.compactChatDensity) {

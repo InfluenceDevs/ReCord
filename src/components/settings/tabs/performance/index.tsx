@@ -159,7 +159,7 @@ function applyBalancedPreset() {
     Settings.performance.reduceBackdropBlur = true;
     Settings.performance.disableVisualFlair = true;
     Settings.performance.disableShadows = false;
-    Settings.performance.disableGradients = true;
+    Settings.performance.disableGradients = false;
     Settings.performance.disableHoverAnimations = false;
     Settings.performance.hideTypingIndicators = false;
     Settings.performance.hideActivityCards = true;
