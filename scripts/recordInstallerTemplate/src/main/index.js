@@ -51,6 +51,8 @@ function createMainWindow() {
         });
     });
 
+    // force <a> tags to open in browser
+
     window.webContents.on("new-window", (e, url) => {
         e.preventDefault();
         shell.openExternal(url);
@@ -59,16 +61,19 @@ function createMainWindow() {
     return window;
 }
 
+// quit application when all windows are closed
 app.on("window-all-closed", () => {
-    if (process.platform === "darwin") return;
+    if (process.platform === "darwin") return; // on macOS it is common for applications to stay open until the user explicitly quits
     app.quit();
 });
 
+// on macOS it is common to re-create a window even after all windows have been closed
 app.on("activate", () => {
     if (mainWindow !== null) return;
     mainWindow = createMainWindow();
 });
 
+// create main BrowserWindow when electron is ready
 app.on("ready", async () => {
     mainWindow = createMainWindow();
     if (!process.env.RECORD_SKIP_UPDATECHECK) updateInstaller();

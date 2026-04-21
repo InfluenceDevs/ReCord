@@ -35,9 +35,10 @@ export default async function () {
                 await shell.openExternal(latestRelease.html_url);
                 process.exit(0);
             }
+            
         }
         else {
-            console.info("The installer is up to date.");
+            console.info(`The installer is up to date.`);
         }
     }
     catch (err) {
