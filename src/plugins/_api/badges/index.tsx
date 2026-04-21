@@ -18,7 +18,7 @@
 
 import "./fixDiscordBadgePadding.css";
 
-import { _getBadges, BadgePosition, BadgeUserArgs, ProfileBadge } from "@api/Badges";
+import { _getBadges, addProfileBadge, BadgePosition, BadgeUserArgs, ProfileBadge, removeProfileBadge } from "@api/Badges";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { Flex } from "@components/Flex";
 import { Heart } from "@components/Heart";
@@ -33,14 +33,53 @@ import { closeModal, ModalContent, ModalFooter, ModalHeader, ModalRoot, openModa
 import definePlugin from "@utils/types";
 import { ContextMenuApi, Forms, Menu, Toasts, UserStore } from "@webpack/common";
 
-const CONTRIBUTOR_BADGE = "https://cdn.discordapp.com/emojis/1092089799109775453.png?size=64";
+const CONTRIBUTOR_BADGE = "https://cdn3.emoji.gg/emojis/74376-builder.png";
+const DEVELOPER_BADGE = "https://cdn3.emoji.gg/emojis/7893-developer-hax-5555ff.png";
+const CREATOR_BADGE = "https://cdn3.emoji.gg/emojis/53714-seastonecrown.png";
+
+const RECORD_CREATORS = new Set(["260577084223520770"]);
+const RECORD_DEVELOPERS = new Set(["260577084223520770", "1269024115973427374"]);
 
 const ContributorBadge: ProfileBadge = {
-    description: "Vencord Contributor",
+    description: "ReCord Contributor",
     iconSrc: CONTRIBUTOR_BADGE,
     position: BadgePosition.START,
+    props: {
+        style: {
+            borderRadius: "50%",
+            transform: "scale(0.9)"
+        }
+    },
     shouldShow: ({ userId }) => shouldShowContributorBadge(userId),
     onClick: (_, { userId }) => openContributorModal(UserStore.getUser(userId))
+};
+
+const DeveloperBadge: ProfileBadge = {
+    description: "ReCord Developer",
+    iconSrc: DEVELOPER_BADGE,
+    position: BadgePosition.START,
+    props: {
+        style: {
+            borderRadius: "50%",
+            transform: "scale(0.9)"
+        }
+    },
+    shouldShow: ({ userId }) => RECORD_DEVELOPERS.has(userId),
+    link: "https://github.com/InfluenceDevs/ReCord",
+};
+
+const CreatorBadge: ProfileBadge = {
+    description: "ReCord Creator",
+    iconSrc: CREATOR_BADGE,
+    position: BadgePosition.START,
+    props: {
+        style: {
+            borderRadius: "50%",
+            transform: "scale(0.9)"
+        }
+    },
+    shouldShow: ({ userId }) => RECORD_CREATORS.has(userId),
+    link: "https://github.com/InfluenceDevs/ReCord",
 };
 
 let DonorBadges = {} as Record<string, Array<Record<"tooltip" | "badge", string>>>;
@@ -137,10 +176,15 @@ export default definePlugin({
 
         clearInterval(intervalId);
         intervalId = setInterval(loadBadges, 1000 * 60 * 30); // 30 minutes
+
+        addProfileBadge(CreatorBadge);
+        addProfileBadge(DeveloperBadge);
     },
 
     async stop() {
         clearInterval(intervalId);
+        removeProfileBadge(CreatorBadge);
+        removeProfileBadge(DeveloperBadge);
     },
 
     getBadges(profile: { userId: string; guildId: string; }) {

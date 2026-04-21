@@ -165,10 +165,15 @@ function makeGhostChannel(conversation: GhostConversationArchive) {
         recipients: conversation.participants.map(participant => participant.id),
         lastMessageId: conversation.messages[conversation.messages.length - 1]?.id,
         isManaged: () => false,
+        isDM: () => baseType === ChannelType.DM,
         isGroupDM: () => baseType === ChannelType.GROUP_DM,
         isMultiUserDM: () => baseType === ChannelType.GROUP_DM,
         isPrivate: () => true,
+        isThread: () => false,
+        isGuildChannel: () => false,
         isArchivedGhost: () => true,
+        hasPermission: () => true,
+        getRecipientId: () => conversation.participants[0]?.id ?? null,
     };
 }
 

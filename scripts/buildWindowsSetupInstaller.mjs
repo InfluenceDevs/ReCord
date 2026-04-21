@@ -1,66 +1,52 @@
 import "./checkNodeVersion.js";
 
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, copyFileSync, readdirSync, createWriteStream } from "fs";
+import { existsSync, mkdirSync, copyFileSync, readdirSync, cpSync, rmSync } from "fs";
 import { dirname, join } from "path";
-import { Readable } from "stream";
-import { finished } from "stream/promises";
 import { fileURLToPath } from "url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const RELEASE_DIR = join(ROOT, "dist", "release");
 const INSTALLER_DIR = join(ROOT, "..", "ReCord-Installer");
-const SETUP_DOWNLOAD_URL = "https://github.com/InfluenceDevs/ReCord/releases/latest/download/ReCordSetup.exe";
+const TEMP_INSTALLER_DIR = join(ROOT, "..", ".record-installer-build");
+const INSTALLER_TEMPLATE_DIR = join(ROOT, "scripts", "recordInstallerTemplate");
+const UPSTREAM_INSTALLER_REPO = "https://github.com/BetterDiscord/Installer.git";
 
-function getRequestHeaders() {
-    const headers = {
-        "User-Agent": "ReCord Setup Builder (https://github.com/InfluenceDevs/ReCord)"
-    };
+function prepareTempInstallerDir() {
+    rmSync(TEMP_INSTALLER_DIR, { force: true, recursive: true });
+    execSync(`git clone --depth=1 --branch development ${UPSTREAM_INSTALLER_REPO} "${TEMP_INSTALLER_DIR}"`, {
+        stdio: "inherit",
+        cwd: ROOT
+    });
 
-    if (process.env.GITHUB_TOKEN) {
-        headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-    }
+    cpSync(INSTALLER_TEMPLATE_DIR, TEMP_INSTALLER_DIR, {
+        force: true,
+        recursive: true
+    });
 
-    return headers;
-}
-
-async function downloadLatestSetup(targetPath) {
-    const res = await fetch(SETUP_DOWNLOAD_URL, { headers: getRequestHeaders() });
-    if (!res.ok || !res.body) {
-        throw new Error(`Failed to download fallback setup from ${SETUP_DOWNLOAD_URL}: ${res.status} ${res.statusText}`);
-    }
-
-    const body = Readable.fromWeb(res.body);
-    await finished(body.pipe(createWriteStream(targetPath)));
+    return TEMP_INSTALLER_DIR;
 }
 
 async function main() {
     mkdirSync(RELEASE_DIR, { recursive: true });
     const out = join(RELEASE_DIR, "ReCordSetup.exe");
-
-    if (!existsSync(INSTALLER_DIR)) {
-        console.warn(`ReCord-Installer directory not found at ${INSTALLER_DIR}. Falling back to latest published ReCordSetup.exe.`);
-        await downloadLatestSetup(out);
-        console.log("Downloaded setup fallback: dist/release/ReCordSetup.exe");
-        return;
-    }
+    const installerDir = existsSync(INSTALLER_DIR)
+        ? INSTALLER_DIR
+        : prepareTempInstallerDir();
 
     console.log("Building ReCord Electron installer...");
 
-    // Install deps then build + package
     execSync("corepack yarn install --frozen-lockfile", {
         stdio: "inherit",
-        cwd: INSTALLER_DIR
+        cwd: installerDir
     });
 
     execSync("corepack yarn dist", {
         stdio: "inherit",
-        cwd: INSTALLER_DIR
+        cwd: installerDir
     });
 
-    // electron-builder outputs to <installer>/dist/<productName> Setup <version>.exe
-    const distDir = join(INSTALLER_DIR, "dist");
-    // electron-builder portable target produces "ReCord Installer-Windows.exe"
+    const distDir = join(installerDir, "dist");
     const setups = readdirSync(distDir).filter(f => f.endsWith(".exe") && !f.includes("Cli") && f.includes("ReCord"));
 
     if (setups.length === 0) {
