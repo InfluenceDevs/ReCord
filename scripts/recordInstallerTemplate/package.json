@@ -37,32 +37,32 @@
   },
   "build": {
     "appId": "app.record.installer",
-    "productName": "ReCord Installer",
-    "compression": "maximum",
-    "copyright": "Copyright © 2024 Influence",
-    "afterAllArtifactBuild": "scripts/fixmac.js",
-    "extraResources": [
-      {
-        "from": "../Vencord/dist",
-        "to": "record-app/dist",
-        "filter": [
-          "**/*.js",
-          "**/*.css",
-          "!**/*.map",
-          "!**/*.LEGAL.txt"
-        ]
-      },
-      {
-        "from": "../Vencord/Images",
-        "to": "record-app/Images",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../Vencord/package.json",
-        "to": "record-app/package.json",
-        "filter": ["package.json"]
-      }
-    ],
+      "productName": "ReCord Installer",
+      "compression": "maximum",
+      "copyright": "Copyright © 2024 Influence",
+      "afterAllArtifactBuild": "scripts/fixmac.js",
+      "extraResources": [
+        {
+          "from": "../Vencord/dist",
+          "to": "record-app/dist",
+          "filter": [
+            "**/*.js",
+            "**/*.css",
+            "!**/*.map",
+            "!**/*.LEGAL.txt"
+          ]
+        },
+        {
+          "from": "../Vencord/Images",
+          "to": "record-app/Images",
+          "filter": ["**/*"]
+        },
+        {
+          "from": "../Vencord/package.json",
+          "to": "record-app/package.json",
+          "filter": ["package.json"]
+        }
+      ],
     "win": {
       "artifactName": "${productName}-Windows.${ext}",
       "icon": "assets/icon.ico",

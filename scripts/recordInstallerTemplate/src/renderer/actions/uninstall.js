@@ -1,4 +1,5 @@
 import path from "path";
+import fs from "fs";
 import os from "os";
 import {spawn} from "child_process";
 
@@ -53,6 +54,7 @@ function runCli(args) {
             if (/press\s+enter\s+to\s+exit/i.test(sanitize(buffered))) {
                 try { proc.stdin.write("\n"); }
                 catch {
+                    // ignore stdin write errors if process is already closing
                 }
             }
         };
@@ -68,6 +70,7 @@ function runCli(args) {
         proc.on("error", reject);
     });
 }
+
 
 export default async function(config) {
     await reset();
@@ -91,8 +94,8 @@ export default async function(config) {
 
     lognewline("Restarting Discord...");
     const killErr = await kill(channels, (100 - progress.value) / channels.length);
-    if (killErr) showRestartNotice();
-    else log("\u2705 Discord restarted");
+    if (killErr) showRestartNotice(); // No need to bail out
+    else log("✅ Discord restarted");
     progress.set(100);
 
     succeed();

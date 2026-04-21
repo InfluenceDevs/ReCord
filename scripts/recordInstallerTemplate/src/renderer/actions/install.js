@@ -28,6 +28,7 @@ function copyDirSync(src, dest) {
 }
 
 function getCliEnv() {
+	// Source may be a temp dir (portable EXE extraction) — copy to a stable persistent location
 	const source = process.resourcesPath
 		? path.join(process.resourcesPath, "record-app")
 		: path.join(__dirname, "..", "..", "..", "extraResources", "record-app");
@@ -69,6 +70,7 @@ function runCli(args) {
 			if (/press\s+enter\s+to\s+exit/i.test(sanitize(buffered))) {
 				try { proc.stdin.write("\n"); }
 				catch {
+					// ignore stdin write errors if process is already closing
 				}
 			}
 		};
@@ -96,7 +98,7 @@ export default async function(config) {
 		lognewline(`Installing ReCord on Discord ${channel}...`);
 		try {
 			await runCli(["-install", "-branch", channel]);
-			log("\u2705 ReCord installed successfully on " + channel);
+			log(`\u2705 ReCord installed successfully on ${channel}`);
 			progress.set(progress.value + progressPerChannel);
 		}
 		catch (err) {
