@@ -45,7 +45,7 @@ import { PlainSettings, Settings, SettingsStore } from "./api/Settings";
 import { getCloudSettings, putCloudSettings, shouldCloudSync } from "./api/SettingsSync/cloudSync";
 import { localStorage } from "./utils/localStorage";
 import { relaunch } from "./utils/native";
-import { checkForUpdates, update, UpdateLogger } from "./utils/updater";
+import { changes, checkForUpdates, update, UpdateLogger } from "./utils/updater";
 import { onceReady } from "./webpack";
 import { patches } from "./webpack/patchWebpack";
 
@@ -108,14 +108,19 @@ async function syncSettings() {
     });
 }
 
-let notifiedForUpdatesThisSession = false;
+let lastNotifiedUpdateHash: string | null = null;
+
+function getLatestUpdateHash() {
+    return changes?.[0]?.hash ?? null;
+}
 
 async function runUpdateCheck() {
     if (IS_UPDATER_DISABLED) return;
 
     const notify = (data: NotificationData) => {
-        if (notifiedForUpdatesThisSession) return;
-        notifiedForUpdatesThisSession = true;
+        const latestUpdateHash = getLatestUpdateHash();
+        if (latestUpdateHash && latestUpdateHash === lastNotifiedUpdateHash) return;
+        if (latestUpdateHash) lastNotifiedUpdateHash = latestUpdateHash;
 
         setTimeout(() => showNotification({
             permanent: true,
@@ -130,13 +135,11 @@ async function runUpdateCheck() {
 
         if (Settings.autoUpdate) {
             await update();
-            if (Settings.autoUpdateNotification) {
-                notify({
-                    title: "ReCord has been updated!",
-                    body: "Click here to restart",
-                    onClick: relaunch
-                });
-            }
+            notify({
+                title: "ReCord has been updated!",
+                body: "Click here to restart",
+                onClick: relaunch
+            });
             return;
         }
 
@@ -158,11 +161,7 @@ async function init() {
 
     if (!IS_WEB && !IS_UPDATER_DISABLED) {
         runUpdateCheck();
-
-        // this tends to get really annoying, so only do this if the user has auto-update without notification enabled
-        if (Settings.autoUpdate && !Settings.autoUpdateNotification) {
-            setInterval(runUpdateCheck, 1000 * 60 * 30); // 30 minutes
-        }
+        setInterval(runUpdateCheck, 1000 * 60 * 30); // 30 minutes
     }
 
     if (IS_DEV) {

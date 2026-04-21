@@ -157,7 +157,7 @@ function applyBalancedPreset() {
     Settings.performance.enabled = true;
     Settings.performance.disableAnimations = true;
     Settings.performance.reduceBackdropBlur = true;
-    Settings.performance.disableVisualFlair = true;
+    Settings.performance.disableVisualFlair = false;
     Settings.performance.disableShadows = false;
     Settings.performance.disableGradients = false;
     Settings.performance.disableHoverAnimations = false;
@@ -169,7 +169,7 @@ function applyBalancedPreset() {
     Settings.performance.compactChannelList = false;
     Settings.performance.compactMemberList = false;
     Settings.performance.compactChatDensity = false;
-    Settings.performance.preferStaticAvatars = true;
+    Settings.performance.preferStaticAvatars = false;
     Settings.performance.pauseHiddenMedia = true;
     Settings.performance.pauseHiddenAudio = true;
     Settings.performance.keepOnlyVisibleVideos = true;

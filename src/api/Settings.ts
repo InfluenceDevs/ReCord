@@ -168,12 +168,12 @@ const DefaultSettings: Settings = {
         compactChannelList: false,
         compactMemberList: false,
         compactChatDensity: false,
-        preferStaticAvatars: true,
+        preferStaticAvatars: false,
         pauseHiddenMedia: true,
         pauseHiddenAudio: true,
         keepOnlyVisibleVideos: true,
         limitBackgroundFps: true,
-        backgroundFps: 8,
+        backgroundFps: 12,
         diagnosticsEnabled: true,
         diagnosticsOverlay: false
     }
