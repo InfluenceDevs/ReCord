@@ -28,7 +28,6 @@ import { Devs } from "@utils/constants";
 import { copyWithToast } from "@utils/discord";
 import { Logger } from "@utils/Logger";
 import { Margins } from "@utils/margins";
-import { shouldShowContributorBadge } from "@utils/misc";
 import { closeModal, ModalContent, ModalFooter, ModalHeader, ModalRoot, openModal } from "@utils/modal";
 import definePlugin from "@utils/types";
 import { ContextMenuApi, Forms, Menu, Toasts, UserStore } from "@webpack/common";
@@ -37,6 +36,12 @@ const CONTRIBUTOR_BADGE = "https://cdn3.emoji.gg/emojis/74376-builder.png";
 const DEVELOPER_BADGE = "https://cdn3.emoji.gg/emojis/7893-developer-hax-5555ff.png";
 const CREATOR_BADGE = "https://cdn3.emoji.gg/emojis/6654-blurple-crown.png";
 
+const RECORD_CONTRIBUTORS = new Set([
+    "260577084223520770",
+    "1269024115973427374",
+    "1284481206607417457",
+    "1220019912391655527"
+]);
 const RECORD_CREATORS = new Set(["260577084223520770"]);
 const RECORD_DEVELOPERS = new Set(["260577084223520770", "1269024115973427374"]);
 
@@ -50,7 +55,7 @@ const ContributorBadge: ProfileBadge = {
             transform: "scale(0.9)"
         }
     },
-    shouldShow: ({ userId }) => shouldShowContributorBadge(userId),
+    shouldShow: ({ userId }) => RECORD_CONTRIBUTORS.has(userId),
     onClick: (_, { userId }) => openContributorModal(UserStore.getUser(userId))
 };
 

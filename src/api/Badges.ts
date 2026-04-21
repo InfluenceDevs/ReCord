@@ -108,7 +108,16 @@ export function _getBadges(args: BadgeUserArgs) {
         );
     }
 
-    return badges;
+    return badges.filter(badge => {
+        if (badge.component) return true;
+
+        const src = badge.iconSrc?.trim();
+        if (!src || src === "undefined" || src.endsWith("/undefined.png")) {
+            return false;
+        }
+
+        return true;
+    });
 }
 
 export interface BadgeUserArgs {
