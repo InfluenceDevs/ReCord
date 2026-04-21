@@ -16,10 +16,34 @@ function toPosixPath(p) {
     return p.replace(/\\/g, "/");
 }
 
+function overlayInstallerTemplate(installerDir) {
+    // Always overlay template so both local and temp installer dirs use ReCord-branded sources.
+    for (const entry of readdirSync(INSTALLER_TEMPLATE_DIR)) {
+        cpSync(join(INSTALLER_TEMPLATE_DIR, entry), join(installerDir, entry), {
+            force: true,
+            recursive: true
+        });
+    }
+}
+
 function configureInstallerResources(installerDir) {
     const packageJsonPath = join(installerDir, "package.json");
     const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
     packageJson.build ??= {};
+
+    // Enforce ReCord branding for every artifact type (portable exe + zip wrapper).
+    packageJson.name = "record-installer";
+    packageJson.productName = "ReCord Installer";
+    packageJson.description = "A simple standalone program which automates the installation, removal and maintenance of ReCord.";
+    packageJson.author = "Influence";
+
+    packageJson.build.appId = "app.record.installer";
+    packageJson.build.productName = "ReCord Installer";
+    packageJson.build.win ??= {};
+    packageJson.build.win.artifactName = "${productName}-Windows.${ext}";
+    packageJson.build.portable ??= {};
+    packageJson.build.portable.requestExecutionLevel ??= "user";
+    packageJson.build.portable.useZip = true;
 
     const distFromInstaller = toPosixPath(relative(installerDir, join(ROOT, "dist")));
     const imagesFromInstaller = toPosixPath(relative(installerDir, join(ROOT, "Images")));
@@ -58,16 +82,6 @@ function prepareTempInstallerDir() {
         cwd: ROOT
     });
 
-    // Overlay template contents into installer root (not a nested recordInstallerTemplate folder)
-    for (const entry of readdirSync(INSTALLER_TEMPLATE_DIR)) {
-        cpSync(join(INSTALLER_TEMPLATE_DIR, entry), join(TEMP_INSTALLER_DIR, entry), {
-            force: true,
-            recursive: true
-        });
-    }
-
-    configureInstallerResources(TEMP_INSTALLER_DIR);
-
     return TEMP_INSTALLER_DIR;
 }
 
@@ -78,6 +92,7 @@ async function main() {
         ? INSTALLER_DIR
         : prepareTempInstallerDir();
 
+    overlayInstallerTemplate(installerDir);
     configureInstallerResources(installerDir);
 
     console.log("Building ReCord Electron installer...");
