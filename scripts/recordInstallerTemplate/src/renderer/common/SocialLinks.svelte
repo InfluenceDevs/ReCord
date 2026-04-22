@@ -34,14 +34,13 @@
     }
 
     .social {
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
         margin-top: 5px;
         margin-right: 5px;
-        background: rgba(17, 24, 52, 0.88);
-        border: 1px solid rgba(153, 185, 240, 0.16);
-        border-radius: 999px;
-        color: #c7d7f8;
+        background-color: var(--bg3-alt);
+        border-radius: 50%;
+        color: var(--text-muted);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -50,18 +49,15 @@
     }
 
     .social:hover {
-        color: #eef4ff;
-        border-color: rgba(152, 188, 255, 0.52);
-        transform: translateY(-1px);
+        color: var(--text-normal);
     }
 
     .social:active {
-        transform: translateY(0);
-        background: #171717;
+        background-color: var(--bg4);
     }
 
     .social svg {
-        width: 11px;
+        width: 14px;
         height: auto;
         fill: currentColor;
     }

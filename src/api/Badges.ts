@@ -18,7 +18,10 @@
 
 import ErrorBoundary from "@components/ErrorBoundary";
 import BadgeAPIPlugin from "@plugins/_api/badges";
+import { Logger } from "@utils/Logger";
 import { ComponentType, HTMLProps } from "react";
+
+const logger = new Logger("Badges");
 
 export const enum BadgePosition {
     START,
@@ -79,33 +82,42 @@ export function removeProfileBadge(badge: ProfileBadge) {
 export function _getBadges(args: BadgeUserArgs) {
     const badges = [] as ProfileBadge[];
     for (const badge of Badges) {
-        if (badge.shouldShow && !badge.shouldShow(args)) {
-            continue;
-        }
+        try {
+            if (badge.shouldShow && !badge.shouldShow(args)) {
+                continue;
+            }
 
-        const b = badge.getBadges
-            ? badge.getBadges(args).map(badge => ({
-                ...args,
-                ...badge,
-                component: badge.component && ErrorBoundary.wrap(badge.component, { noop: true })
-            }))
-            : [{ ...args, ...badge }];
+            const generatedBadges = badge.getBadges?.(args);
+            const b = Array.isArray(generatedBadges)
+                ? generatedBadges.map(badge => ({
+                    ...args,
+                    ...badge,
+                    component: badge.component && ErrorBoundary.wrap(badge.component, { noop: true })
+                }))
+                : [{ ...args, ...badge }];
 
-        if (badge.position === BadgePosition.START) {
-            badges.unshift(...b);
-        } else {
-            badges.push(...b);
+            if (badge.position === BadgePosition.START) {
+                badges.unshift(...b);
+            } else {
+                badges.push(...b);
+            }
+        } catch (error) {
+            logger.error("Failed to resolve a profile badge", error);
         }
     }
 
-    const donorBadges = BadgeAPIPlugin.getDonorBadges(args.userId);
-    if (donorBadges) {
-        badges.unshift(
-            ...donorBadges.map(badge => ({
-                ...args,
-                ...badge,
-            }))
-        );
+    try {
+        const donorBadges = BadgeAPIPlugin.getDonorBadges(args.userId);
+        if (Array.isArray(donorBadges) && donorBadges.length) {
+            badges.unshift(
+                ...donorBadges.map(badge => ({
+                    ...args,
+                    ...badge,
+                }))
+            );
+        }
+    } catch (error) {
+        logger.error("Failed to resolve donor badges", error);
     }
 
     return badges.filter(badge => {

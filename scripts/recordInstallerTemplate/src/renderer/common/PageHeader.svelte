@@ -24,17 +24,18 @@
 
 <style>
     .page-header {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         display: flex;
-        align-items: flex-start;
-        margin-bottom: 12px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid rgba(161, 193, 247, 0.14);
+        align-items: center;
+        margin-bottom: 10px;
     }
 
     .page-header-icon {
         flex: 0 0 auto;
-        margin-right: 12px;
-        color: #6d86ff;
+        margin-right: 8px;
+        color: var(--accent);
     }
 
     .page-header-text {
@@ -46,13 +47,13 @@
 
     .page-header-subtitle {
         color: var(--text-muted);
-        font-size: 12px;
+        font-size: 11px;
     }
 
     :global(.page-header svg) {
         flex: 0 0 auto;
-        width: 22px;
-        height: 22px;
+        width: 20px;
+        height: 20px;
         fill: currentColor;
     }
 </style>

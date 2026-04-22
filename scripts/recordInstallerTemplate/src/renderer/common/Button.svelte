@@ -19,22 +19,19 @@
 <style>
     .button {
         width: auto;
-        border: 1px solid transparent;
+        border: none;
         display: flex;
         align-items: center;
         justify-content: center;
         text-decoration: none;
-        transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+        transition: 150ms ease;
         cursor: pointer;
-        padding: 0 20px;
-        height: 33px;
+        padding: 0 12px;
+        height: 28px;
         white-space: nowrap;
         font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0.02em;
-        border-radius: 6px;
-        position: relative;
-        overflow: hidden;
+        font-weight: 400;
+        border-radius: 2px;
     }
 
     .button[disabled] {
@@ -49,32 +46,28 @@
     }
 
     .button.type-primary {
-        border-color: rgba(131, 152, 255, 0.18);
-        background: linear-gradient(180deg, #5b73ff 0%, #4a63f0 100%);
-        color: #f1f5ff;
-        box-shadow: none;
+        background-color: var(--accent);
+        color: #fff;
     }
 
     .button.type-primary:hover {
-        background: linear-gradient(180deg, #667eff 0%, #536df2 100%);
+        background-color: var(--accent-hover);
     }
 
     .button.type-primary:active {
-        background: #4b63e2;
+        background-color: #274f8a;
     }
 
     .button.type-secondary {
-        background: rgba(28, 36, 70, 0.68);
-        border-color: rgba(115, 137, 211, 0.18);
-        color: #d8e6fa;
+        background-color: var(--bg3);
+        color: var(--text-normal);
     }
 
     .button.type-secondary:hover {
-        border-color: rgba(136, 161, 242, 0.42);
-        background: rgba(31, 46, 94, 0.94);
+        background-color: var(--bg3-alt);
     }
 
     .button.type-secondary:active {
-        background: rgba(34, 51, 102, 0.98);
+        background-color: var(--bg4);
     }
 </style>

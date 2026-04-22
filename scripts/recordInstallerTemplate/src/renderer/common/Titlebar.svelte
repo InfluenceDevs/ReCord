@@ -16,6 +16,7 @@
             <path fill="currentColor" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,33.15-1.71,57.61.54,81.72h0A105.73,105.73,0,0,0,32.71,96.36A77.7,77.7,0,0,0,39.62,85.11a68.42,68.42,0,0,1-10.89-5.19c.92-.69,1.81-1.41,2.67-2.16,21,9.58,43.94,9.58,64.66,0,.87.76,1.76,1.48,2.67,2.16a68.68,68.68,0,0,1-10.9,5.19,77,77,0,0,0,6.92,11.25A105.25,105.25,0,0,0,126.6,81.72h0C129.24,53.79,122.09,29.56,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,52.91s5-12.78,11.43-12.78,11.57,5.73,11.46,12.78S48.86,65.69,42.45,65.69Zm42.24,0c-6.27,0-11.43-5.69-11.43-12.78s5-12.78,11.43-12.78,11.57,5.73,11.46,12.78S91.1,65.69,84.69,65.69Z"/>
         </svg>
     </div>
+    <span class="title">ReCord Installer</span>
     <div class="window-controls">
         {#if macButtons === true}
             <button tabindex="-1" on:click={quit} id="close">
@@ -46,24 +47,31 @@
 
 <style>
     .titlebar {
-        background: rgba(9, 13, 20, 0.95);
-        color: var(--text-light);
-        height: 42px;
+        background-color: var(--bg2);
+        color: white;
+        height: 28px;
         display: flex;
         align-items: center;
-        border-bottom: 1px solid rgba(157, 189, 255, 0.14);
         -webkit-app-region: drag;
-        padding-left: 12px;
     }
 
     .brand-mark {
-        width: 18px;
-        height: 18px;
+        width: 15px;
+        height: 15px;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #586dff;
-        box-shadow: none;
+        color: var(--text-muted);
+        margin: 0 8px;
+        opacity: 0.5;
+    }
+
+    .title {
+        position: absolute;
+        left: 50%;
+        transform: translate(-50%, 0);
+        color: var(--text-muted);
+        font-size: 14px;
     }
 
     .window-controls {
@@ -84,11 +92,11 @@
     /* Standard Titlebar */
 
     .type-standard button {
-        height: 42px;
-        width: 46px;
-        transition: background-color 120ms ease, color 120ms ease;
+        height: 28px;
+        width: 40px;
+        transition: 50ms ease;
         background-color: transparent;
-        color: var(--text-normal);
+        color: var(--text-muted);
     }
 
     .type-standard button svg {
@@ -98,20 +106,20 @@
     }
 
     .type-standard button:hover {
-        background-color: rgba(84, 161, 255, 0.12);
+        background-color: var(--bg3);
     }
 
     .type-standard button:active {
-        background-color: rgba(84, 161, 255, 0.2);
+        background-color: var(--bg3-alt);
     }
 
     .type-standard button#close:hover {
-        background-color: #d05a61;
+        background-color: #d13d3d;
         color: #fff;
     }
 
     .type-standard button#close:active {
-        background-color: #ba4d54;
+        background-color: #b12a2a;
         color: #fff;
     }
 

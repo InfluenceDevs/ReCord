@@ -55,12 +55,9 @@
         width: 100%;
         display: flex;
         flex-direction: row;
-        align-items: center;
+        align-items: flex-end;
         justify-content: space-between;
         flex: 0 0 auto;
-        margin-top: 8px;
-        padding: 10px 2px 0;
-        border-top: 1px solid rgba(121, 143, 214, 0.12);
-        gap: 10px;
+        margin-top: 10px;
     }
 </style>

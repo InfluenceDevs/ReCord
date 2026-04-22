@@ -22,12 +22,15 @@ import { BackupRestoreIcon, CloudIcon, CogWheel, LogIcon, MainSettingsIcon, Micr
 import { AccountCenterTab, BackupAndRestoreTab, CloudTab, ConsoleTab, CustomRpcTab, DownloadsTab, GhostChatsTab, ModulesTab, OpsecTab, PatchHelperTab, PerformanceTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab, VoiceTab } from "@components/settings/tabs";
 import { Devs } from "@utils/constants";
 import { isTruthy } from "@utils/guards";
+import { Logger } from "@utils/Logger";
 import definePlugin, { IconProps, OptionType } from "@utils/types";
 import { waitFor } from "@webpack";
 import { React } from "@webpack/common";
 import type { ComponentType, PropsWithChildren, ReactNode } from "react";
 
 import gitHash from "~git-hash";
+
+const logger = new Logger("Settings");
 
 let LayoutTypes = {
     SECTION: 1,
@@ -169,6 +172,16 @@ export default definePlugin({
 
     buildEntry(options: EntryOptions): SettingsLayoutNode {
         const { key, title, panelTitle = title, Component, Icon } = options;
+        const SafeComponent = typeof Component === "function"
+            ? Component
+            : (() => null) as ComponentType<{}>;
+        const SafeIcon = typeof Icon === "function"
+            ? Icon
+            : PlaceholderIcon;
+
+        if (SafeComponent !== Component || SafeIcon !== Icon) {
+            logger.warn("Skipping invalid settings entry component/icon", { key, title });
+        }
 
         const panel: SettingsLayoutNode = {
             key: key + "_panel",
@@ -180,7 +193,7 @@ export default definePlugin({
                 buildLayout: () => [{
                     type: LayoutTypes.CUSTOM,
                     key: key + "_custom",
-                    Component: Component,
+                    Component: SafeComponent,
                     useSearchTerms: () => [title]
                 }]
             }]
@@ -190,7 +203,7 @@ export default definePlugin({
             key,
             type: LayoutTypes.SIDEBAR_ITEM,
             useTitle: () => title,
-            icon: () => <Icon width={20} height={20} />,
+            icon: () => <SafeIcon width={20} height={20} />,
             buildLayout: () => [panel]
         });
     },

@@ -53,31 +53,29 @@
 
 <style>
     :global([data-focus-visible-added]) {
-        box-shadow: 0 0 0 2px var(--focus-ring) !important;
+        box-shadow: 0 0 0 4px var(--accent-faded) !important;
     }
 
     :root {
-        --bg0: #0b1230;
-        --bg1: #0f1738;
-        --bg2: #121c43;
-        --bg3: #16214d;
-        --bg4: #1e2c63;
+        --bg1: #040405;
+        --bg2: #0c0d10;
+        --bg2-alt: #101116;
+        --bg3: #14151b;
+        --bg3-alt: #191a21;
+        --bg4: #20212b;
 
-        --text-light: #f5f8ff;
-        --text-normal: #c8d5f0;
-        --text-muted: #8293bf;
-        --text-link: #92c0ff;
+        --text-light: #f1f1f1;
+        --text-normal: #bfc4c9;
+        --text-muted: #95989d;
+        --text-link: #5a88ce;
 
-        --accent: #4b63ff;
-        --accent-hover: #5a71ff;
-        --accent-faded: rgba(90, 113, 255, 0.24);
-        --focus-ring: rgba(105, 179, 255, 0.45);
+        --accent: #3a71c1;
+        --accent-hover: #2f5b9d;
+        --accent-faded: rgba(58, 113, 193, 0.4);
 
-        --danger: #ff6c72;
-        --danger-hover: #ff7f86;
-        --danger-faded: rgba(255, 108, 114, 0.3);
-
-        --line: rgba(130, 156, 230, 0.16);
+        --danger: #c13a3a;
+        --danger-hover: #992e2e;
+        --danger-faded: rgba(193, 58, 58, 0.4);
     }
 
     :global(html),
@@ -94,39 +92,37 @@
     :global(*::before) {
         box-sizing: border-box;
         -webkit-user-drag: none;
-        font-family: "gg sans", "Segoe UI", "Helvetica Neue", sans-serif;
+        font-family: "Inter", sans-serif;
         user-select: none;
         outline: none;
     }
 
     :global(a) {
-        color: var(--text-link);
+        color: var(--accent);
         text-decoration: none;
     }
 
     :global(::selection) {
-        background-color: rgba(125, 170, 255, 0.45);
-        color: var(--text-light);
+        background-color: var(--accent-faded);
+        color: var(--text-normal);
     }
 
     :global(::-webkit-scrollbar) {
-        width: 8px;
-        height: 8px;
+        width: 4px;
+        height: 4px;
     }
 
     :global(::-webkit-scrollbar-thumb) {
-        background-color: rgba(156, 182, 255, 0.26);
-        border-radius: 999px;
-        border: 2px solid transparent;
-        background-clip: content-box;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
     }
 
     :global(::-webkit-scrollbar-thumb:hover) {
-        background-color: rgba(156, 182, 255, 0.42);
+        background-color: rgba(255, 255, 255, 0.075);
     }
 
     :global(::-webkit-scrollbar-thumb:active) {
-        background-color: rgba(156, 182, 255, 0.54);
+        background-color: rgba(255, 255, 255, 0.1);
     }
 
     :global(::-webkit-scrollbar-corner) {
@@ -138,13 +134,10 @@
         flex-direction: column;
         overflow: hidden;
         contain: strict;
-        box-shadow: none;
-        border: 1px solid rgba(107, 129, 205, 0.26);
-        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
         width: 100%;
         height: 100%;
         word-break: break-word;
-        background: linear-gradient(180deg, #0a1030 0%, #090f29 100%);
     }
 
     .main-window.platform-darwin {
@@ -161,27 +154,27 @@
         display: flex;
         flex-direction: row;
         z-index: 1;
-        padding: 12px;
-        background: transparent;
+        padding: 20px;
+        background: radial-gradient(var(--bg2) 50%, var(--bg2-alt));
         flex: 1;
-        gap: 12px;
+        gap: 10px;
     }
 
     .sidebar {
-        width: 138px;
-        flex: 0 0 138px;
-        border: 1px solid rgba(117, 137, 211, 0.18);
-        border-radius: 8px;
-        background: linear-gradient(180deg, rgba(9, 17, 47, 0.96) 0%, rgba(7, 14, 40, 0.96) 100%);
+        width: 128px;
+        flex: 0 0 128px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 2px;
+        background: rgba(0, 0, 0, 0.15);
         display: flex;
         flex-direction: column;
-        padding: 8px;
+        padding: 8px 7px;
     }
 
     .sidebar-logo {
-        color: #586dff;
-        margin: 2px 4px 14px;
-        opacity: 0.95;
+        color: var(--accent);
+        margin: 2px 4px 10px;
+        opacity: 0.8;
     }
 
     .steps {
@@ -193,47 +186,47 @@
     .step {
         display: flex;
         align-items: center;
-        gap: 10px;
-        color: #7f92be;
-        border-radius: 7px;
-        padding: 9px 12px;
+        gap: 8px;
+        color: var(--text-muted);
+        border-radius: 2px;
+        padding: 7px 8px;
         border: 1px solid transparent;
     }
 
     .step.active {
-        color: #dce6ff;
-        background: rgba(72, 95, 227, 0.45);
-        border-color: rgba(118, 143, 235, 0.28);
+        color: var(--text-light);
+        background: rgba(58, 113, 193, 0.22);
+        border-color: rgba(58, 113, 193, 0.35);
     }
 
     .step.completed {
-        color: #93a9da;
+        color: var(--text-normal);
     }
 
     .step-index {
-        width: 20px;
-        height: 20px;
-        border-radius: 5px;
-        border: 1px solid rgba(128, 149, 212, 0.45);
-        background: rgba(23, 32, 68, 0.88);
+        width: 18px;
+        height: 18px;
+        border-radius: 2px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--bg3);
         display: grid;
         place-items: center;
-        font-size: 11px;
-        font-weight: 700;
-        color: #c3d1f9;
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--text-normal);
         flex: 0 0 auto;
     }
 
     .step.active .step-index {
-        background: #dfe7ff;
-        color: #273267;
+        background: var(--accent);
+        color: #fff;
         border-color: transparent;
     }
 
     .step-label {
         font-size: 12px;
-        font-weight: 500;
-        letter-spacing: 0.01em;
+        font-weight: 400;
+        letter-spacing: 0;
     }
 
     .sections {
@@ -249,10 +242,10 @@
         flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
-        border: 1px solid rgba(117, 137, 211, 0.14);
-        border-radius: 8px;
-        background: linear-gradient(180deg, rgba(8, 15, 43, 0.98) 0%, rgba(7, 13, 36, 0.98) 100%);
-        padding: 10px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 2px;
+        background: rgba(0, 0, 0, 0.12);
+        padding: 8px;
     }
 
     :global(.page) {
@@ -264,7 +257,7 @@
         position: relative;
         width: 100%;
         min-height: 0;
-        padding: 12px 10px 0;
+        padding: 10px 10px 0;
         border-radius: 0;
         border: none;
         background: transparent;
