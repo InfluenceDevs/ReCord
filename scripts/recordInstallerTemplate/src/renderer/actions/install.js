@@ -170,34 +170,40 @@ function normalizeLegacyAsarLayout(channel) {
 		}
 
 		if (!fs.existsSync(appAsar) && !fs.existsSync(fallbackAsar) && fs.existsSync(appBspatch)) {
-			let recoveredFrom = null;
+			const candidates = [];
 
 			for (const dir of appDirs.slice(1)) {
-				const candidateUnderscore = path.join(discordRoot, dir, "resources", "_app.asar");
+				candidates.push(path.join(discordRoot, dir, "resources", "_app.asar"));
+			}
+
+			for (const dir of appDirs.slice(1)) {
 				const candidateApp = path.join(discordRoot, dir, "resources", "app.asar");
-
-				if (fs.existsSync(candidateUnderscore)) {
-					recoveredFrom = candidateUnderscore;
-					break;
-				}
-
-				if (fs.existsSync(candidateApp)) {
-					const size = fs.statSync(candidateApp).size;
-					if (size > 1024 * 1024) {
-						recoveredFrom = candidateApp;
-						break;
+				try {
+					if (fs.existsSync(candidateApp) && fs.statSync(candidateApp).size > 1024 * 1024) {
+						candidates.push(candidateApp);
 					}
+				} catch {
+					// Ignore candidates that disappear while Discord updates itself.
 				}
 			}
 
-			if (recoveredFrom) {
-				if (fs.existsSync(injectedAppDir)) {
-					fs.rmSync(injectedAppDir, {recursive: true, force: true});
-				}
+			for (const candidate of candidates) {
+				try {
+					if (!fs.existsSync(candidate)) continue;
 
-				fs.copyFileSync(recoveredFrom, appAsar);
-				log(`Recovered missing app.asar on ${channel} from ${path.basename(path.dirname(recoveredFrom))}.`);
+					if (fs.existsSync(injectedAppDir)) {
+						fs.rmSync(injectedAppDir, {recursive: true, force: true});
+					}
+
+					fs.copyFileSync(candidate, appAsar);
+					log(`Recovered missing app.asar on ${channel} using ${candidate}.`);
+					return;
+				} catch {
+					// Try next candidate if this one vanished or is unreadable.
+				}
 			}
+
+			log(`Warning: unable to recover app.asar for Discord ${channel}; no usable backup asar was found.`);
 		}
 	} catch (err) {
 		log(`Warning: could not normalize Discord ${channel} layout automatically: ${err.message}`);
