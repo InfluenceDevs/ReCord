@@ -47,34 +47,22 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
-    border-radius: 5px;
-    border: 1px solid var(--border-subtle);
-    background: var(--background-secondary);
+    width: 16px;
+    height: 16px;
     flex: 0 0 auto;
 }
 
 .vc-plugins-source-badge img {
-    width: 13px;
-    height: 13px;
-    border-radius: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 0;
     object-fit: cover;
+    opacity: 0.95;
+    transition: opacity .15s ease;
 }
 
-.vc-plugins-source-badge.record {
-    border-color: rgba(88, 117, 255, 0.6);
-}
-
-.vc-plugins-source-badge.vencord {
-    border-color: rgba(83, 131, 255, 0.5);
-}
-
-.vc-plugins-source-vencord-glyph {
-    color: #dbe7ff;
-    font-size: 10px;
-    font-weight: 700;
-    line-height: 1;
+.vc-plugins-source-badge:hover img {
+    opacity: 1;
 }
 
 .vc-plugins-settings-button:hover {

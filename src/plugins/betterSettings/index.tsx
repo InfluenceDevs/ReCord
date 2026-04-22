@@ -24,19 +24,19 @@ const settings = definePluginSettings({
     disableFade: {
         description: "Disable the crossfade animation",
         type: OptionType.BOOLEAN,
-        default: true,
+        default: false,
         restartNeeded: true
     },
     organizeMenu: {
         description: "Organizes the settings cog context menu into categories",
         type: OptionType.BOOLEAN,
-        default: true,
+        default: false,
         restartNeeded: true
     },
     eagerLoad: {
         description: "Removes the loading delay when opening the menu for the first time",
         type: OptionType.BOOLEAN,
-        default: true,
+        default: false,
         restartNeeded: true
     }
 });
@@ -81,8 +81,13 @@ export default definePlugin({
     settings,
 
     start() {
-        if (settings.store.organizeMenu)
-            enableStyle(fullHeightStyle);
+        // Temporary safety fallback: these patches have been a frequent source of crashes
+        // when Discord changes internals around settings/profile surfaces.
+        settings.store.disableFade = false;
+        settings.store.organizeMenu = false;
+        settings.store.eagerLoad = false;
+
+        disableStyle(fullHeightStyle);
     },
 
     stop() {

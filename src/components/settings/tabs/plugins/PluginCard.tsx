@@ -51,7 +51,7 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
         : { label: "Vencord", className: "vencord" as const };
 
     const sourceBadge = (
-        <span className={cl("source-badge", source.className)} title={`Source: ${source.label}`}>
+        <span className={cl("source-badge", source.className)} title={source.label}>
             {source.className === "record"
                 ? <img src={RECORD_ICON} alt="ReCord source" width={14} height={14} />
                 : <img src={VENCORD_ICON} alt="Vencord source" width={14} height={14} />
