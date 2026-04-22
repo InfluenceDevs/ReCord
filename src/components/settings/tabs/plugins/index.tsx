@@ -142,6 +142,10 @@ function PluginSettings() {
             });
     }, []);
 
+    const getPluginName = (plugin: any) => typeof plugin?.name === "string" ? plugin.name : "";
+    const getPluginDescription = (plugin: any) => typeof plugin?.description === "string" ? plugin.description : "";
+    const getPluginTags = (plugin: any): string[] => Array.isArray(plugin?.tags) ? plugin.tags.filter((t: unknown) => typeof t === "string") : [];
+
     const depMap = useMemo(() => {
         const o = {} as Record<string, string[]>;
         for (const plugin in Plugins) {
@@ -157,7 +161,7 @@ function PluginSettings() {
     }, []);
 
     const sortedPlugins = useMemo(() =>
-        Object.values(Plugins).sort((a, b) => a.name.localeCompare(b.name)),
+        Object.values(Plugins).sort((a, b) => getPluginName(a).localeCompare(getPluginName(b))),
         []
     );
 
@@ -186,8 +190,14 @@ function PluginSettings() {
     };
 
     const pluginFilter = (plugin: typeof Plugins[keyof typeof Plugins]) => {
+        const pluginName = getPluginName(plugin);
+        const pluginDescription = getPluginDescription(plugin);
+        const pluginTags = getPluginTags(plugin);
+
+        if (!pluginName) return false;
+
         const { status } = searchValue;
-        const enabled = isPluginEnabled(plugin.name);
+        const enabled = isPluginEnabled(pluginName);
 
         switch (status) {
             case SearchStatus.DISABLED:
@@ -197,13 +207,13 @@ function PluginSettings() {
                 if (!enabled) return false;
                 break;
             case SearchStatus.NEW:
-                if (!newPlugins?.includes(plugin.name)) return false;
+                if (!newPlugins?.includes(pluginName)) return false;
                 break;
             case SearchStatus.USER_PLUGINS:
-                if (!PluginMeta[plugin.name]?.userPlugin) return false;
+                if (!PluginMeta[pluginName]?.userPlugin) return false;
                 break;
             case SearchStatus.API_PLUGINS:
-                if (!plugin.name.endsWith("API")) return false;
+                if (!pluginName.endsWith("API")) return false;
                 break;
             case SearchStatus.RECORD_PLUGINS:
                 if (!isReCordPlugin(plugin)) return false;
@@ -213,19 +223,21 @@ function PluginSettings() {
         if (!search.length) return true;
 
         return (
-            plugin.name.toLowerCase().includes(search) ||
-            plugin.description.toLowerCase().includes(search) ||
-            plugin.tags?.some(t => t.toLowerCase().includes(search))
+            pluginName.toLowerCase().includes(search) ||
+            pluginDescription.toLowerCase().includes(search) ||
+            pluginTags.some(t => t.toLowerCase().includes(search))
         );
     };
 
     const [newPlugins] = useAwaiter(() => DataStore.get("ReCord_existingPlugins").then((cachedPlugins: Record<string, number> | undefined) => {
         const now = Date.now() / 1000;
         const existingTimestamps: Record<string, number> = {};
-        const sortedPluginNames = Object.values(sortedPlugins).map(plugin => plugin.name);
+        const sortedPluginNames = Object.values(sortedPlugins).map(plugin => getPluginName(plugin)).filter(Boolean);
 
         const newPlugins: string[] = [];
-        for (const { name: p } of sortedPlugins) {
+        for (const plugin of sortedPlugins) {
+            const p = getPluginName(plugin);
+            if (!p) continue;
             const time = existingTimestamps[p] = cachedPlugins?.[p] ?? now;
             if ((time + 60 * 60 * 24 * 2) > now) {
                 newPlugins.push(p);
@@ -241,6 +253,8 @@ function PluginSettings() {
 
     const showApi = searchValue.status === SearchStatus.API_PLUGINS;
     for (const p of sortedPlugins) {
+        if (!getPluginName(p) || !getPluginDescription(p)) continue;
+
         if (p.hidden || (!p.options && p.name.endsWith("API") && !showApi))
             continue;
 

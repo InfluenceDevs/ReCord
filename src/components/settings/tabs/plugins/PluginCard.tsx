@@ -24,7 +24,6 @@ interface PluginCardProps extends React.HTMLProps<HTMLDivElement> {
 }
 
 const RECORD_ICON = "vencord://assets/icon.png";
-const VENCORD_ICON = `data:image/svg+xml,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%232a5dff'/><path d='M6 6h4l2 7 2-7h4l-4 12h-4z' fill='white'/></svg>")}`;
 
 function toSafeLower(value: unknown) {
     return typeof value === "string" ? value.toLowerCase() : "";
@@ -45,14 +44,17 @@ function isReCordPlugin(plugin: Plugin) {
 }
 
 export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, onMouseLeave, isNew }: PluginCardProps) {
-    const settings = Settings.plugins[plugin.name];
+    const settings = Settings.plugins[plugin.name] ?? (Settings.plugins[plugin.name] = { enabled: isPluginEnabled(plugin.name) } as any);
     const source = isReCordPlugin(plugin)
-        ? { label: "ReCord", icon: RECORD_ICON, className: "record" }
-        : { label: "Vencord", icon: VENCORD_ICON, className: "vencord" };
+        ? { label: "ReCord", className: "record" as const }
+        : { label: "Vencord", className: "vencord" as const };
 
     const sourceBadge = (
         <span className={cl("source-badge", source.className)} title={`Source: ${source.label}`}>
-            <img src={source.icon} alt={`${source.label} source`} width={14} height={14} />
+            {source.className === "record"
+                ? <img src={RECORD_ICON} alt="ReCord source" width={14} height={14} />
+                : <span className={cl("source-vencord-glyph")} aria-hidden="true">V</span>
+            }
         </span>
     );
 

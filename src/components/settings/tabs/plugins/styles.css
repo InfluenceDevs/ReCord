@@ -51,7 +51,7 @@
     height: 18px;
     border-radius: 5px;
     border: 1px solid var(--border-subtle);
-    background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
+    background: var(--background-secondary);
     flex: 0 0 auto;
 }
 
@@ -63,11 +63,18 @@
 }
 
 .vc-plugins-source-badge.record {
-    border-color: color-mix(in srgb, var(--brand-500) 55%, var(--border-subtle));
+    border-color: rgba(88, 117, 255, 0.6);
 }
 
 .vc-plugins-source-badge.vencord {
-    border-color: color-mix(in srgb, var(--blurple-40) 55%, var(--border-subtle));
+    border-color: rgba(83, 131, 255, 0.5);
+}
+
+.vc-plugins-source-vencord-glyph {
+    color: #dbe7ff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
 }
 
 .vc-plugins-settings-button:hover {
