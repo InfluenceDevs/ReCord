@@ -106,6 +106,62 @@ function shouldRetryWithRepair(err) {
 		&& output.includes("cannot find the file specified");
 }
 
+function getDiscordChannelDir(channel) {
+	const map = {
+		stable: "Discord",
+		ptb: "DiscordPTB",
+		canary: "DiscordCanary",
+		development: "DiscordDevelopment"
+	};
+
+	return map[channel] || "Discord";
+}
+
+function getLatestAppDir(discordRoot) {
+	const appDirs = fs.readdirSync(discordRoot, {withFileTypes: true})
+		.filter(entry => entry.isDirectory() && /^app-\d+\.\d+\.\d+/.test(entry.name))
+		.map(entry => entry.name);
+
+	if (!appDirs.length) return null;
+
+	appDirs.sort((a, b) => {
+		const aMtime = fs.statSync(path.join(discordRoot, a)).mtimeMs;
+		const bMtime = fs.statSync(path.join(discordRoot, b)).mtimeMs;
+		return bMtime - aMtime;
+	});
+
+	return appDirs[0];
+}
+
+function normalizeLegacyAsarLayout(channel) {
+	if (process.platform !== "win32") return;
+
+	try {
+		const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
+		const discordRoot = path.join(localAppData, getDiscordChannelDir(channel));
+		if (!fs.existsSync(discordRoot)) return;
+
+		const latestAppDir = getLatestAppDir(discordRoot);
+		if (!latestAppDir) return;
+
+		const resources = path.join(discordRoot, latestAppDir, "resources");
+		const appAsar = path.join(resources, "app.asar");
+		const fallbackAsar = path.join(resources, "_app.asar");
+		const injectedAppDir = path.join(resources, "app");
+
+		if (!fs.existsSync(appAsar) && fs.existsSync(fallbackAsar)) {
+			if (fs.existsSync(injectedAppDir)) {
+				fs.rmSync(injectedAppDir, {recursive: true, force: true});
+			}
+
+			fs.renameSync(fallbackAsar, appAsar);
+			log(`Detected legacy patched layout on ${channel}; restored app.asar before install.`);
+		}
+	} catch (err) {
+		log(`Warning: could not normalize Discord ${channel} layout automatically: ${err.message}`);
+	}
+}
+
 export default async function(config) {
 	await reset();
 	const channels = Object.keys(config);
@@ -116,6 +172,7 @@ export default async function(config) {
 	for (const channel of channels) {
 		lognewline(`Installing ReCord on Discord ${channel}...`);
 		try {
+			normalizeLegacyAsarLayout(channel);
 			await runCli(["-install", "-branch", channel]);
 			log(`\u2705 ReCord installed successfully on ${channel}`);
 			progress.set(progress.value + progressPerChannel);
@@ -124,6 +181,7 @@ export default async function(config) {
 			if (shouldRetryWithRepair(err)) {
 				log("Detected missing app.asar on host layout. Retrying with repair mode...");
 				try {
+					normalizeLegacyAsarLayout(channel);
 					await runCli(["-repair", "-branch", channel]);
 					log(`\u2705 ReCord repaired successfully on ${channel}`);
 					progress.set(progress.value + progressPerChannel);
