@@ -1,15 +1,15 @@
-import {progress} from "../stores/installation";
+import { progress } from "../stores/installation";
 import path from "path";
 import fs from "fs";
 import os from "os";
-import {spawn} from "child_process";
+import { spawn } from "child_process";
 
-import {log, lognewline} from "./utils/log";
+import { log, lognewline } from "./utils/log";
 import succeed from "./utils/succeed";
 import fail from "./utils/fail";
 import reset from "./utils/reset";
 import kill from "./utils/kill";
-import {showRestartNotice} from "./utils/notices";
+import { showRestartNotice } from "./utils/notices";
 
 function getCliPath() {
 	const cliName = process.platform === "win32" ? "ReCordInstallerCli.exe" : "ReCordInstallerCli";
@@ -18,8 +18,8 @@ function getCliPath() {
 }
 
 function copyDirSync(src, dest) {
-	fs.mkdirSync(dest, {recursive: true});
-	for (const entry of fs.readdirSync(src, {withFileTypes: true})) {
+	fs.mkdirSync(dest, { recursive: true });
+	for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
 		const srcPath = path.join(src, entry.name);
 		const destPath = path.join(dest, entry.name);
 		if (entry.isDirectory()) copyDirSync(srcPath, destPath);
@@ -50,7 +50,7 @@ function getCliEnv() {
 
 function runCli(args) {
 	return new Promise((resolve, reject) => {
-		const proc = spawn(getCliPath(), args, {stdio: "pipe", env: getCliEnv()});
+		const proc = spawn(getCliPath(), args, { stdio: "pipe", env: getCliEnv() });
 		let buffered = "";
 		let transcript = "";
 		const sanitize = text => text
@@ -118,7 +118,7 @@ function getDiscordChannelDir(channel) {
 }
 
 function getLatestAppDir(discordRoot) {
-	const appDirs = fs.readdirSync(discordRoot, {withFileTypes: true})
+	const appDirs = fs.readdirSync(discordRoot, { withFileTypes: true })
 		.filter(entry => entry.isDirectory() && /^app-\d+\.\d+\.\d+/.test(entry.name))
 		.map(entry => entry.name);
 
@@ -141,7 +141,7 @@ function normalizeLegacyAsarLayout(channel) {
 		const discordRoot = path.join(localAppData, getDiscordChannelDir(channel));
 		if (!fs.existsSync(discordRoot)) return;
 
-		const appDirs = fs.readdirSync(discordRoot, {withFileTypes: true})
+		const appDirs = fs.readdirSync(discordRoot, { withFileTypes: true })
 			.filter(entry => entry.isDirectory() && /^app-\d+\.\d+\.\d+/.test(entry.name))
 			.map(entry => entry.name)
 			.sort((a, b) => {
@@ -161,7 +161,7 @@ function normalizeLegacyAsarLayout(channel) {
 
 		if (!fs.existsSync(appAsar) && fs.existsSync(fallbackAsar)) {
 			if (fs.existsSync(injectedAppDir)) {
-				fs.rmSync(injectedAppDir, {recursive: true, force: true});
+				fs.rmSync(injectedAppDir, { recursive: true, force: true });
 			}
 
 			fs.renameSync(fallbackAsar, appAsar);
@@ -187,12 +187,32 @@ function normalizeLegacyAsarLayout(channel) {
 				}
 			}
 
+			for (const dir of appDirs.slice(1)) {
+				try {
+					const modulesDir = path.join(discordRoot, dir, "modules");
+					if (!fs.existsSync(modulesDir)) continue;
+
+					const coreModules = fs.readdirSync(modulesDir, { withFileTypes: true })
+						.filter(entry => entry.isDirectory() && entry.name.startsWith("discord_desktop_core-"))
+						.sort((a, b) => b.name.localeCompare(a.name));
+
+					for (const moduleEntry of coreModules) {
+						const coreAsar = path.join(modulesDir, moduleEntry.name, "discord_desktop_core", "core.asar");
+						if (fs.existsSync(coreAsar) && fs.statSync(coreAsar).size > 1024 * 1024) {
+							candidates.push(coreAsar);
+						}
+					}
+				} catch {
+					// Ignore modules folders that disappear while Discord updates itself.
+				}
+			}
+
 			for (const candidate of candidates) {
 				try {
 					if (!fs.existsSync(candidate)) continue;
 
 					if (fs.existsSync(injectedAppDir)) {
-						fs.rmSync(injectedAppDir, {recursive: true, force: true});
+						fs.rmSync(injectedAppDir, { recursive: true, force: true });
 					}
 
 					fs.copyFileSync(candidate, appAsar);
@@ -203,14 +223,14 @@ function normalizeLegacyAsarLayout(channel) {
 				}
 			}
 
-			log(`Warning: unable to recover app.asar for Discord ${channel}; no usable backup asar was found.`);
+			log(`Warning: unable to recover app.asar for Discord ${channel}; no usable backup payload was found.`);
 		}
 	} catch (err) {
 		log(`Warning: could not normalize Discord ${channel} layout automatically: ${err.message}`);
 	}
 }
 
-export default async function(config) {
+export default async function (config) {
 	await reset();
 	const channels = Object.keys(config);
 	if (!channels.length) return fail();
