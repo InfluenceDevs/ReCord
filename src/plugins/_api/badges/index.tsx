@@ -130,33 +130,7 @@ export default definePlugin({
     description: "API to add badges to users",
     authors: [Devs.Megu, Devs.Ven, Devs.TheSun],
     required: true,
-    patches: [
-        {
-            find: "#{intl::PROFILE_USER_BADGES}",
-            replacement: [
-                {
-                    match: /alt:" ","aria-hidden":!0,src:.{0,50}(\i).iconSrc/,
-                    replace: "...$1.props,$&"
-                },
-                {
-                    match: /(?<=forceOpen:.{0,40}?\i\((\i)\.id\).{0,100}?)children:/,
-                    replace: "children:$1.component?$self.renderBadgeComponent({...$1}) :"
-                },
-                // handle onClick and onContextMenu
-                {
-                    match: /href:(\i)\.link/,
-                    replace: "...$self.getBadgeMouseEventHandlers($1),$&"
-                }
-            ]
-        },
-        {
-            find: "getLegacyUsername(){",
-            replacement: {
-                match: /getBadges\(\)\{.{0,100}?return\[/,
-                replace: "$&...$self.getBadges(this),"
-            }
-        }
-    ],
+    patches: [],
 
     // for access from the console or other plugins
     get DonorBadges() {

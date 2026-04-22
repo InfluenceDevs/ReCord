@@ -205,15 +205,7 @@ export default definePlugin({
     name: "FakeProfileThemes",
     description: "Allows profile theming by hiding the colors in your bio thanks to invisible 3y3 encoding",
     authors: [Devs.Alyxia, Devs.Remty],
-    patches: [
-        {
-            find: "UserProfileStore",
-            replacement: {
-                match: /(?<=getUserProfile\(\i\){return )(.+?)(?=})/,
-                replace: "$self.colorDecodeHook($1)"
-            },
-        }
-    ],
+    patches: [],
 
     settingsAboutComponent: SettingsAboutComponentWrapper,
 
