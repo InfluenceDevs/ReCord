@@ -58,9 +58,9 @@
         align-items: center;
         justify-content: space-between;
         flex: 0 0 auto;
-        margin-top: 10px;
-        padding: 10px 2px 0;
-        border-top: 1px solid rgba(121, 143, 214, 0.16);
+        margin-top: 12px;
+        padding: 12px 2px 0;
+        border-top: 1px solid rgba(121, 143, 214, 0.12);
         gap: 10px;
     }
 </style>

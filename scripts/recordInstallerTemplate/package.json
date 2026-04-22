@@ -61,6 +61,10 @@
           "from": "../Vencord/package.json",
           "to": "record-app/package.json",
           "filter": ["package.json"]
+        },
+        {
+          "from": "../Vencord/dist/Installer/ReCordInstallerCli.exe",
+          "to": "ReCordInstallerCli.exe"
         }
       ],
     "win": {

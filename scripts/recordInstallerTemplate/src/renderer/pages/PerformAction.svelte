@@ -2,7 +2,6 @@
     import page from "../transitions/page.js";
     import PageHeader from "../common/PageHeader.svelte";
     import ProgressBar from "../common/ProgressBar.svelte";
-    import TextDisplay from "../common/TextDisplay.svelte";
     import logs from "../stores/logs";
     import install from "../actions/install";
     import repair from "../actions/repair";
@@ -10,19 +9,12 @@
     import debug from "../actions/debug";
     import {canGoBack, canGoForward, nextPage} from "../stores/navigation";
     import {action, paths, progress, platforms, status} from "../stores/installation";
-    import {onDestroy} from "svelte";
 
     canGoForward.set(false);
     canGoBack.set(false);
     status.set("");
 
-    let display;
     let pageIcon;
-    const unsubscribe = logs.subscribe(() => {
-        if (!display) return;
-    });
-
-    onDestroy(unsubscribe);
 
     const currentAction = $action;
     logs.set([]);
@@ -31,6 +23,45 @@
     for (const channel in $paths) {
         if ($platforms[channel]) installPaths[channel] = $paths[channel];
     }
+
+    const primaryTargetPath = Object.values(installPaths)[0] || "";
+
+    function getActionTitle(actionName) {
+        if (actionName === "install") return "Installing";
+        if (actionName === "repair") return "Repairing";
+        if (actionName === "uninstall") return "Uninstalling";
+        return "Working";
+    }
+
+    function mapLogEntry(line) {
+        if (!line) return null;
+
+        if (/^Installing ReCord on Discord/i.test(line) || /^Repairing ReCord on Discord/i.test(line)) {
+            return null;
+        }
+
+        if (/^Restarting Discord/i.test(line)) {
+            return {type: "section", label: "Restarting Discord"};
+        }
+
+        if (/completed!?$/i.test(line)) {
+            return {type: "section", label: line};
+        }
+
+        if (line.startsWith("✅")) {
+            return {type: "success", label: line.replace(/^✅\s*/, "")};
+        }
+
+        if (line.startsWith("❌") || line.startsWith("⚠️")) {
+            return {type: "error", label: line.replace(/^(❌|⚠️)\s*/, "")};
+        }
+
+        return {type: "pending", label: line};
+    }
+
+    $: actionTitle = getActionTitle(currentAction);
+    $: actionSummary = primaryTargetPath ? `Injecting into: ${primaryTargetPath}` : "Preparing ReCord installer actions.";
+    $: renderedLogs = $logs.map(mapLogEntry).filter(Boolean);
 
     // Run action scripts
     if (currentAction === "install") {
@@ -68,12 +99,83 @@
 </script>
 
 <section class="page" in:page out:page="{{out: true}}">
-    <PageHeader>
+    <PageHeader subtitle={actionSummary}>
         <svg slot="icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
             {@html pageIcon}
         </svg>
-        {currentAction[0].toUpperCase()}{currentAction.slice(1)}  
+        {actionTitle}
     </PageHeader>
-    <TextDisplay value={$logs.join("\n")} bind:this={display} autoscroll />
+
+    <div class="action-log">
+        {#each renderedLogs as entry}
+            {#if entry.type === "section"}
+                <div class="section-title">{entry.label}</div>
+            {:else}
+                <div class="log-row {entry.type}">
+                    <span class="log-icon" aria-hidden="true">{entry.type === "pending" ? "○" : "●"}</span>
+                    <span class="log-label">{entry.label}</span>
+                </div>
+            {/if}
+        {/each}
+    </div>
+
+    <div class="progress-meta">
+        <span>{actionTitle} completed</span>
+        <span>{Math.floor($progress)}%</span>
+    </div>
     <ProgressBar value={$progress} max={100} class={$status} />
 </section>
+
+<style>
+    .action-log {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+    }
+
+    .section-title {
+        color: var(--text-light);
+        font-size: 15px;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+
+    .log-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text-normal);
+        font-size: 13px;
+        line-height: 1.35;
+    }
+
+    .log-row.success .log-icon {
+        color: #79de5d;
+    }
+
+    .log-row.error .log-icon {
+        color: #ff6c72;
+    }
+
+    .log-row.pending .log-icon {
+        color: #dce6ff;
+    }
+
+    .log-icon {
+        width: 14px;
+        flex: 0 0 14px;
+        text-align: center;
+        font-size: 11px;
+        line-height: 1;
+    }
+
+    .progress-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 18px 0 8px;
+        color: var(--text-normal);
+        font-size: 13px;
+    }
+</style>

@@ -1,6 +1,6 @@
 <script>
     import {tooltip} from "./tooltip";
-    
+
     const webUrl = "https://github.com/InfluenceDevs/ReCord";
     const githubUrl = "https://github.com/InfluenceDevs/ReCord";
     const donateUrl = "https://github.com/sponsors/InfluenceDevs";
@@ -38,8 +38,8 @@
         height: 30px;
         margin-top: 5px;
         margin-right: 5px;
-        background: #101010;
-        border: 1px solid rgba(153, 185, 240, 0.3);
+        background: rgba(17, 24, 52, 0.88);
+        border: 1px solid rgba(153, 185, 240, 0.16);
         border-radius: 8px;
         color: #c7d7f8;
         display: flex;

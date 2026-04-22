@@ -12,11 +12,11 @@
 <style>
     .progress-bar {
         width: 100%;
-        height: 8px;
+        height: 6px;
         border-radius: 999px;
         overflow: hidden;
-        border: 1px solid rgba(153, 185, 241, 0.24);
-        background-color: #111111;
+        border: 1px solid rgba(153, 185, 241, 0.12);
+        background-color: rgba(21, 29, 53, 0.95);
     }
 
     .progress-fill {
@@ -25,7 +25,7 @@
         overflow: hidden;
         transition: 500ms ease width, 150ms ease background-color;
         transform-origin: left;
-        background: #7eb5ff;
+        background: #7ae05d;
     }
 
     :global(.progress-bar.error .progress-fill) {

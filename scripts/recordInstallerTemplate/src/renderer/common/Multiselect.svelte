@@ -40,9 +40,9 @@
         display: flex;
         align-items: center;
         border-radius: 8px;
-        border: 1px solid rgba(103, 129, 206, 0.26);
-        background: rgba(16, 24, 59, 0.66);
-        padding: 13px 14px;
+        border: 1px solid rgba(103, 129, 206, 0.18);
+        background: rgba(18, 24, 55, 0.82);
+        padding: 12px 14px;
         user-select: none;
         box-shadow: none;
         cursor: pointer;
@@ -67,7 +67,7 @@
     }
 
     .check-container input:checked + .check-item {
-        background: linear-gradient(90deg, rgba(61, 87, 205, 0.9) 0%, rgba(71, 100, 226, 0.86) 100%);
+        background: linear-gradient(90deg, rgba(73, 96, 244, 0.96) 0%, rgba(67, 88, 225, 0.94) 100%);
         border-color: rgba(123, 150, 255, 0.55);
     }
 
@@ -133,9 +133,9 @@
     }
 
     :global(.check-container input:checked + .check-item .button) {
-        background: #89a2ff;
+        background: rgba(151, 171, 255, 0.32);
         border-color: transparent !important;
-        color: #101d4d;
+        color: #f5f8ff;
     }
 
     :global(.check-container input:checked + .check-item .button:active) {

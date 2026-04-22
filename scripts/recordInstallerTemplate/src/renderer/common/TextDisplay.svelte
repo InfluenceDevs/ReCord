@@ -69,8 +69,8 @@
         flex: 1;
         min-height: 0;
         margin-bottom: 10px;
-        background: #0f0f0f;
-        border: 1px solid rgba(152, 185, 242, 0.28);
+        background: rgba(17, 25, 56, 0.82);
+        border: 1px solid rgba(152, 185, 242, 0.12);
         box-shadow: none;
         border-radius: 8px;
     }
@@ -78,7 +78,7 @@
     .text-display .display-inner {
         color: var(--text-normal);
         font-size: 12px;
-        line-height: 1.6;
+        line-height: 1.7;
         word-wrap: normal;
         white-space: pre-wrap;
         user-select: text;
@@ -109,7 +109,7 @@
     }
 
     :global(.copy-input .button.type-secondary) {
-        background: #151515 !important;
+        background: rgba(15, 22, 49, 0.98) !important;
     }
 
     :global(.copy-input .button:hover) {

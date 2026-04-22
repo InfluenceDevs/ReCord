@@ -26,13 +26,13 @@
         text-decoration: none;
         transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
         cursor: pointer;
-        padding: 0 22px;
-        height: 36px;
+        padding: 0 20px;
+        height: 33px;
         white-space: nowrap;
         font-size: 12px;
         font-weight: 700;
         letter-spacing: 0.02em;
-        border-radius: 8px;
+        border-radius: 6px;
         position: relative;
         overflow: hidden;
     }
@@ -49,8 +49,8 @@
     }
 
     .button.type-primary {
-        border-color: rgba(131, 152, 255, 0.25);
-        background: linear-gradient(180deg, #5b74ff 0%, #4c64eb 100%);
+        border-color: rgba(131, 152, 255, 0.18);
+        background: linear-gradient(180deg, #5b73ff 0%, #4a63f0 100%);
         color: #f1f5ff;
         box-shadow: none;
     }
@@ -64,8 +64,8 @@
     }
 
     .button.type-secondary {
-        background: rgba(24, 34, 72, 0.86);
-        border-color: rgba(115, 137, 211, 0.26);
+        background: rgba(28, 36, 70, 0.68);
+        border-color: rgba(115, 137, 211, 0.18);
         color: #d8e6fa;
     }
 

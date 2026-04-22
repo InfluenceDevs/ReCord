@@ -12,6 +12,43 @@ const TEMP_INSTALLER_DIR = join(ROOT, "..", ".record-installer-build");
 const INSTALLER_TEMPLATE_DIR = join(ROOT, "scripts", "recordInstallerTemplate");
 const UPSTREAM_INSTALLER_REPO = "https://github.com/BetterDiscord/Installer.git";
 
+function getCliBinaryName() {
+    switch (process.platform) {
+        case "win32":
+            return "ReCordInstallerCli.exe";
+        case "darwin":
+            return "ReCordInstaller";
+        case "linux":
+            return "ReCordInstallerCli-linux";
+        default:
+            throw new Error(`Unsupported platform: ${process.platform}`);
+    }
+}
+
+function resolveCliBinary() {
+    const cliName = getCliBinaryName();
+    const candidates = [
+        join(ROOT, "dist", "release", "ReCord-Installer-Bundle", cliName),
+        join(ROOT, "dist", "Installer", cliName)
+    ];
+
+    for (const candidate of candidates) {
+        if (existsSync(candidate)) return candidate;
+    }
+
+    console.log(`Preparing ${cliName} for setup installer packaging...`);
+    execSync("node scripts/buildReleaseInstaller.mjs", {
+        stdio: "inherit",
+        cwd: ROOT
+    });
+
+    for (const candidate of candidates) {
+        if (existsSync(candidate)) return candidate;
+    }
+
+    throw new Error(`Unable to locate ${cliName} for setup installer packaging.`);
+}
+
 function toPosixPath(p) {
     return p.replace(/\\/g, "/");
 }
@@ -30,6 +67,8 @@ function configureInstallerResources(installerDir) {
     const packageJsonPath = join(installerDir, "package.json");
     const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
     packageJson.build ??= {};
+    const cliBinary = resolveCliBinary();
+    const cliName = getCliBinaryName();
 
     // Enforce ReCord branding for every artifact type (portable exe + zip wrapper).
     packageJson.name = "record-installer";
@@ -48,6 +87,7 @@ function configureInstallerResources(installerDir) {
     const distFromInstaller = toPosixPath(relative(installerDir, join(ROOT, "dist")));
     const imagesFromInstaller = toPosixPath(relative(installerDir, join(ROOT, "Images")));
     const pkgFromInstaller = toPosixPath(relative(installerDir, join(ROOT, "package.json")));
+    const cliFromInstaller = toPosixPath(relative(installerDir, cliBinary));
 
     packageJson.build.extraResources = [
         {
@@ -69,6 +109,10 @@ function configureInstallerResources(installerDir) {
             from: pkgFromInstaller,
             to: "record-app/package.json",
             filter: ["package.json"]
+        },
+        {
+            from: cliFromInstaller,
+            to: cliName
         }
     ];
 

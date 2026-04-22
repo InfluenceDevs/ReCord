@@ -140,11 +140,11 @@
         contain: strict;
         box-shadow: none;
         border: 1px solid rgba(107, 129, 205, 0.26);
-        border-radius: 10px;
+        border-radius: 12px;
         width: 100%;
         height: 100%;
         word-break: break-word;
-        background: linear-gradient(180deg, #0a1437 0%, #0a1231 100%);
+        background: linear-gradient(180deg, #0a1030 0%, #090f29 100%);
     }
 
     .main-window.platform-darwin {
@@ -161,26 +161,25 @@
         display: flex;
         flex-direction: row;
         z-index: 1;
-        padding: 14px;
+        padding: 16px;
         background: transparent;
         flex: 1;
-        gap: 14px;
+        gap: 18px;
     }
 
     .sidebar {
-        width: 170px;
-        flex: 0 0 170px;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        background: linear-gradient(180deg, rgba(8, 17, 52, 0.92) 0%, rgba(7, 14, 43, 0.9) 100%);
+        width: 162px;
+        flex: 0 0 162px;
+        border-right: 1px solid rgba(117, 137, 211, 0.12);
+        background: transparent;
         display: flex;
         flex-direction: column;
-        padding: 14px 10px;
+        padding: 4px 10px 0 2px;
     }
 
     .sidebar-logo {
-        color: #8ea3ff;
-        margin: 4px 6px 16px;
+        color: #586dff;
+        margin: 2px 10px 18px;
         opacity: 0.95;
     }
 
@@ -196,14 +195,14 @@
         gap: 10px;
         color: #7f92be;
         border-radius: 8px;
-        padding: 10px 10px;
+        padding: 9px 12px;
         border: 1px solid transparent;
     }
 
     .step.active {
         color: #dce6ff;
-        background: rgba(85, 105, 203, 0.34);
-        border-color: rgba(118, 143, 235, 0.38);
+        background: rgba(72, 95, 227, 0.45);
+        border-color: rgba(118, 143, 235, 0.28);
     }
 
     .step.completed {
@@ -213,9 +212,9 @@
     .step-index {
         width: 20px;
         height: 20px;
-        border-radius: 999px;
+        border-radius: 5px;
         border: 1px solid rgba(128, 149, 212, 0.45);
-        background: rgba(13, 26, 66, 0.88);
+        background: rgba(23, 32, 68, 0.88);
         display: grid;
         place-items: center;
         font-size: 11px;
@@ -225,8 +224,8 @@
     }
 
     .step.active .step-index {
-        background: #90a8ff;
-        color: #0f1d4a;
+        background: #dfe7ff;
+        color: #273267;
         border-color: transparent;
     }
 
@@ -249,10 +248,10 @@
         flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        background: linear-gradient(180deg, rgba(6, 14, 40, 0.95) 0%, rgba(4, 11, 34, 0.96) 100%);
-        padding: 12px;
+        border: 1px solid rgba(117, 137, 211, 0.14);
+        border-radius: 12px;
+        background: linear-gradient(180deg, rgba(8, 15, 43, 0.98) 0%, rgba(7, 13, 36, 0.98) 100%);
+        padding: 18px 20px;
     }
 
     :global(.page) {
