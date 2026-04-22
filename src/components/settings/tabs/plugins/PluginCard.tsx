@@ -24,6 +24,7 @@ interface PluginCardProps extends React.HTMLProps<HTMLDivElement> {
 }
 
 const RECORD_ICON = "vencord://assets/icon.png";
+const VENCORD_ICON = "https://raw.githubusercontent.com/Vendicated/Vencord/main/browser/icon.png";
 
 function toSafeLower(value: unknown) {
     return typeof value === "string" ? value.toLowerCase() : "";
@@ -53,7 +54,7 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
         <span className={cl("source-badge", source.className)} title={`Source: ${source.label}`}>
             {source.className === "record"
                 ? <img src={RECORD_ICON} alt="ReCord source" width={14} height={14} />
-                : <span className={cl("source-vencord-glyph")} aria-hidden="true">V</span>
+                : <img src={VENCORD_ICON} alt="Vencord source" width={14} height={14} />
             }
         </span>
     );

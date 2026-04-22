@@ -45,7 +45,7 @@
         gap: 2px;
     }
 
-    .page-header-subtitle {
+    :global(.page-header-subtitle) {
         color: var(--text-muted);
         font-size: 11px;
     }

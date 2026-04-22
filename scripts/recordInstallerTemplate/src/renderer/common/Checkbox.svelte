@@ -39,10 +39,9 @@
     .checkbox-label {
         display: inline-block;
         color: var(--text-normal);
-        font-size: 12px;
+        font-size: 13px;
         line-height: normal;
-        font-weight: 600;
-        letter-spacing: 0.02em;
+        font-weight: 400;
     }
 
     .checkbox-inner {
@@ -79,11 +78,10 @@
         box-sizing: border-box;
         flex: 0 0 auto;
         margin: 0;
-        border-radius: 6px;
+        border-radius: 2px;
         width: 20px;
         height: 20px;
-        border: 1px solid rgba(155, 189, 248, 0.56);
-        background: rgba(24, 36, 58, 0.9);
+        border: 1px solid var(--bg4);
     }
 
     .checkbox:active {
@@ -91,8 +89,8 @@
     }
 
     .checkbox:checked {
-        background: #4f7cff;
-        border-color: rgba(148, 186, 255, 0.64);
+        background-color: var(--accent);
+        border-color: var(--accent);
     }
 
     .checkbox:checked + .checkbox-glyph path {
@@ -101,7 +99,7 @@
     }
 
     .checkbox:checked:active {
-        background: #426de2;
-        border-color: rgba(139, 178, 252, 0.64);
+        background-color: var(--accent-hover);
+        border-color: var(--accent-hover);
     }
 </style>

@@ -19,19 +19,16 @@
     .radio-item {
         display: flex;
         align-items: center;
-        border-radius: 10px;
-        border: 1px solid rgba(145, 184, 255, 0.24);
-        background: rgba(19, 28, 40, 0.86);
-        padding: 12px 14px;
+        border-radius: 3px;
+        background-color: var(--bg3);
+        padding: 12px;
         color: var(--text-normal);
-        font-weight: 700;
-        font-size: 12px;
-        letter-spacing: 0.02em;
+        font-weight: 500;
+        font-size: 13px;
         user-select: none;
-        box-shadow: none;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         cursor: pointer;
-        transition: border-color 130ms ease, background-color 130ms ease, color 130ms ease;
-        min-height: 46px;
+        transition: 100ms ease;
     }
 
     .radio-item > div {
@@ -42,25 +39,24 @@
     }
 
     .radio-container {
+        margin-bottom: 12px;
+    }
+
+    .radio-container:nth-last-child(2) {
         margin: 0;
     }
 
     .radio-item:hover {
         color: var(--text-light);
-        border-color: rgba(145, 184, 255, 0.44);
-        background: rgba(24, 35, 50, 0.9);
     }
 
     :global(.radio-item svg) {
         width: 16px;
         height: 16px;
-        margin-right: 11px;
-        opacity: 0.92;
+        margin-right: 10px;
     }
 
     .radio-container input:checked + .radio-item {
-        color: #f7fbff;
-        border-color: rgba(92, 168, 255, 0.65);
-        background: rgba(29, 44, 62, 0.95);
+        color: #fff;
     }
 </style>

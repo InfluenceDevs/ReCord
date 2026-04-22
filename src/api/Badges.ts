@@ -89,11 +89,15 @@ export function _getBadges(args: BadgeUserArgs) {
 
             const generatedBadges = badge.getBadges?.(args);
             const b = Array.isArray(generatedBadges)
-                ? generatedBadges.map(badge => ({
-                    ...args,
-                    ...badge,
-                    component: badge.component && ErrorBoundary.wrap(badge.component, { noop: true })
-                }))
+                ? generatedBadges
+                    .filter((badge): badge is ProfileBadge => Boolean(badge && typeof badge === "object"))
+                    .map(badge => ({
+                        ...args,
+                        ...badge,
+                        component: typeof badge.component === "function"
+                            ? ErrorBoundary.wrap(badge.component, { noop: true })
+                            : undefined
+                    }))
                 : [{ ...args, ...badge }];
 
             if (badge.position === BadgePosition.START) {
@@ -123,7 +127,9 @@ export function _getBadges(args: BadgeUserArgs) {
     return badges.filter(badge => {
         if (badge.component) return true;
 
-        const src = badge.iconSrc?.trim();
+        const src = typeof badge.iconSrc === "string"
+            ? badge.iconSrc.trim()
+            : "";
         if (!src || src === "undefined" || src.endsWith("/undefined.png")) {
             return false;
         }

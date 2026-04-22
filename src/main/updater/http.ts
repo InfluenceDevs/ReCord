@@ -66,11 +66,13 @@ async function calculateGitChanges() {
     const latestRelease = await githubGet("/releases/latest");
     const latestTag = latestRelease.tag_name as string;
 
-    if (compareSemver(VERSION, latestTag) >= 0) return [];
+    const semverCmp = compareSemver(VERSION, latestTag);
 
     // Some standalone builds do not embed gitHash.
     // In that case we can still check semver + release assets and present a generic changelog item.
     if (!gitHash) {
+        if (semverCmp >= 0) return [];
+
         const isOutdated = await fetchUpdates();
         if (!isOutdated) return [];
 
@@ -85,10 +87,30 @@ async function calculateGitChanges() {
     try {
         comparison = await githubGet(`/compare/${gitHash}...${latestTag}`);
     } catch {
-        return [];
+        if (semverCmp >= 0) return [];
+
+        const isOutdated = await fetchUpdates();
+        if (!isOutdated) return [];
+
+        return [{
+            hash: latestTag,
+            author: "ReCord",
+            message: `Update available: ${latestTag}`
+        }];
     }
 
-    if (comparison?.status !== "behind") return [];
+    if (comparison?.status !== "behind") {
+        if (semverCmp >= 0) return [];
+
+        const isOutdated = await fetchUpdates();
+        if (!isOutdated) return [];
+
+        return [{
+            hash: latestTag,
+            author: "ReCord",
+            message: `Update available: ${latestTag}`
+        }];
+    }
 
     const isOutdated = await fetchUpdates();
     if (!isOutdated) return [];
@@ -104,8 +126,9 @@ async function calculateGitChanges() {
 async function fetchUpdates() {
     const data = await githubGet("/releases/latest");
     const latestTag = data.tag_name as string;
+    const semverCmp = compareSemver(VERSION, latestTag);
 
-    if (compareSemver(VERSION, latestTag) >= 0)
+    if (!gitHash && semverCmp >= 0)
         return false;
 
     if (gitHash) {
@@ -116,7 +139,9 @@ async function fetchUpdates() {
             if (comparison?.status && comparison.status !== "behind")
                 return false;
         } catch {
-            // If compare fails (e.g. shallow/bundled builds), rely on semver result above.
+            // If compare fails (e.g. bundled builds), rely on semver only.
+            if (semverCmp >= 0)
+                return false;
         }
     }
 

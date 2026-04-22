@@ -30,7 +30,7 @@
             <span title={description}>{description}</span>
         </div>
         <div class="controls" on:keypress={e => e.stopPropagation()}>
-            <Button type="secondary" on:click={click}>Install</Button>
+            <Button type="secondary" on:click={click}>Browse</Button>
         </div>
     </div>
 </label>
@@ -39,21 +39,20 @@
     .check-item {
         display: flex;
         align-items: center;
-        border-radius: 8px;
-        border: 1px solid rgba(103, 129, 206, 0.18);
-        background: rgba(18, 24, 55, 0.82);
-        padding: 12px 14px;
+        border-radius: 3px;
+        background-color: var(--bg3);
+        padding: 12px;
         user-select: none;
-        box-shadow: none;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         cursor: pointer;
-        transition: 140ms ease;
+        transition: 100ms ease;
         flex-wrap: nowrap;
         position: relative;
         overflow: hidden;
     }
 
     .check-container {
-        margin-bottom: 10px;
+        margin-bottom: 12px;
     }
 
     .check-container:last-child {
@@ -61,14 +60,12 @@
     }
 
     .check-item.disabled {
-        background: rgba(13, 19, 44, 0.72);
-        border-color: rgba(98, 118, 176, 0.25);
+        background-color: var(--bg2-alt);
         cursor: not-allowed;
     }
 
     .check-container input:checked + .check-item {
-        background: linear-gradient(90deg, rgba(73, 96, 244, 0.96) 0%, rgba(67, 88, 225, 0.94) 100%);
-        border-color: rgba(123, 150, 255, 0.55);
+        background-color: var(--accent);
     }
 
     .check-item.disabled .content,
@@ -83,9 +80,8 @@
     }
 
     :global(.icon img) {
-        width: 30px;
-        height: 30px;
-        border-radius: 8px;
+        width: 32px;
+        height: 32px;
     }
 
     .content {
@@ -113,9 +109,8 @@
 
     .content h5 {
         color: var(--text-normal);
-        font-weight: 700;
-        font-size: 16px;
-        letter-spacing: 0.03em;
+        font-weight: 600;
+        font-size: 13px;
         margin: 0;
     }
 
@@ -133,9 +128,9 @@
     }
 
     :global(.check-container input:checked + .check-item .button) {
-        background: rgba(151, 171, 255, 0.32);
+        background-color: #fff;
         border-color: transparent !important;
-        color: #f5f8ff;
+        color: var(--accent);
     }
 
     :global(.check-container input:checked + .check-item .button:active) {

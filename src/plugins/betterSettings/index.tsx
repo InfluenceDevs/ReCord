@@ -179,27 +179,43 @@ export default definePlugin({
     transformSettingsEntries(list) {
         const items: ReactNode[] = [];
 
+        if (!Array.isArray(list)) {
+            return items;
+        }
+
         for (const item of list) {
-            const { key, props } = item;
-            if (!props) continue;
+            if (!item || typeof item !== "object") {
+                continue;
+            }
 
-            if (key === "vencord_plugins" || key === "vencord_themes") {
-                const children = key === "vencord_plugins"
-                    ? buildPluginMenuEntries()
-                    : buildThemeMenuEntries();
+            try {
+                const { key, props } = item;
+                if (!props || typeof key !== "string") {
+                    items.push(item);
+                    continue;
+                }
 
-                items.push(
-                    <Menu.MenuItem key={key} label={props.label} id={props.label} {...props}>
-                        {children}
-                    </Menu.MenuItem>
-                );
-            } else if (key.endsWith("_section") && props.label) {
-                items.push(
-                    <Menu.MenuItem key={key} label={props.label} id={props.label}>
-                        {this.transformSettingsEntries(props.children)}
-                    </Menu.MenuItem>
-                );
-            } else {
+                if (key === "vencord_plugins" || key === "vencord_themes") {
+                    const children = key === "vencord_plugins"
+                        ? buildPluginMenuEntries()
+                        : buildThemeMenuEntries();
+
+                    items.push(
+                        <Menu.MenuItem key={key} label={props.label} id={props.label} {...props}>
+                            {children}
+                        </Menu.MenuItem>
+                    );
+                } else if (key.endsWith("_section") && props.label) {
+                    items.push(
+                        <Menu.MenuItem key={key} label={props.label} id={props.label}>
+                            {this.transformSettingsEntries(props.children)}
+                        </Menu.MenuItem>
+                    );
+                } else {
+                    items.push(item);
+                }
+            } catch (error) {
+                new Logger("BetterSettings").error("Failed to transform a settings entry", error);
                 items.push(item);
             }
         }

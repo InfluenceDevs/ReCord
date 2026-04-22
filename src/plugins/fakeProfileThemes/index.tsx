@@ -102,14 +102,18 @@ interface ProfileModalProps {
 const ProfileModal = findComponentByCodeLazy<ProfileModalProps>("isTryItOut:", "pendingThemeColors:", "pendingAvatarDecoration:", "EDIT_PROFILE_BANNER");
 
 function SettingsAboutComponentWrapper() {
-    const [, , userProfileLoading] = useAwaiter(() => fetchUserProfile(UserStore.getCurrentUser().id));
+    const currentUser = UserStore.getCurrentUser();
+    const [, , userProfileLoading] = useAwaiter(() => currentUser ? fetchUserProfile(currentUser.id) : Promise.resolve(null));
 
-    return !userProfileLoading && <SettingsAboutComponent />;
+    return currentUser && !userProfileLoading && <SettingsAboutComponent />;
 }
 
 function SettingsAboutComponent() {
+    const currentUser = UserStore.getCurrentUser();
+    if (!currentUser) return null;
+
     const existingColors = decode(
-        UserProfileStore.getUserProfile(UserStore.getCurrentUser().id)?.bio ?? ""
+        UserProfileStore.getUserProfile(currentUser.id)?.bio ?? ""
     ) ?? [0, 0];
     const [color1, setColor1] = useState(existingColors[0]);
     const [color2, setColor2] = useState(existingColors[1]);
@@ -178,16 +182,20 @@ function SettingsAboutComponent() {
                 />
                 <Forms.FormTitle tag="h3">Preview</Forms.FormTitle>
                 <div className="vc-fpt-preview">
-                    <ProfileModal
-                        user={UserStore.getCurrentUser()}
-                        pendingThemeColors={[color1, color2]}
-                        onAvatarChange={() => { }}
-                        onBannerChange={() => { }}
-                        canUsePremiumCustomization={true}
-                        hideExampleButton={true}
-                        hideFakeActivity={true}
-                        isTryItOut={true}
-                    />
+                    {ProfileModal
+                        ? (
+                            <ProfileModal
+                                user={currentUser}
+                                pendingThemeColors={[color1, color2]}
+                                onAvatarChange={() => { }}
+                                onBannerChange={() => { }}
+                                canUsePremiumCustomization={true}
+                                hideExampleButton={true}
+                                hideFakeActivity={true}
+                                isTryItOut={true}
+                            />
+                        )
+                        : null}
                 </div>
             </Forms.FormText>
         </section>);
@@ -218,11 +226,11 @@ export default definePlugin({
 
     settings,
     colorDecodeHook(user: UserProfile) {
-        if (user?.bio) {
+        if (user && typeof user === "object" && user?.bio) {
             // don't replace colors if already set with nitro
             if (settings.store.nitroFirst && user.themeColors) return user;
             const colors = decode(user.bio);
-            if (colors) {
+            if (colors && colors.length === 2 && colors.every(Number.isFinite)) {
                 return virtualMerge(user, {
                     premiumType: 2,
                     themeColors: colors
@@ -232,6 +240,10 @@ export default definePlugin({
         return user;
     },
     addCopy3y3Button: ErrorBoundary.wrap(function ({ primary, accent }: Colors) {
+        if (!Number.isFinite(primary) || !Number.isFinite(accent)) {
+            return null;
+        }
+
         return <Button
             onClick={() => {
                 const colorString = encode(primary, accent);

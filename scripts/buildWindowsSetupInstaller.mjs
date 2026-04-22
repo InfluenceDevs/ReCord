@@ -12,6 +12,19 @@ const TEMP_INSTALLER_DIR = join(ROOT, "..", ".record-installer-build");
 const INSTALLER_TEMPLATE_DIR = join(ROOT, "scripts", "recordInstallerTemplate");
 const UPSTREAM_INSTALLER_REPO = "https://github.com/BetterDiscord/Installer.git";
 
+function ensureFreshAppBuild() {
+    if (process.env.RECORD_SKIP_APP_BUILD === "1") {
+        console.log("Skipping app rebuild because RECORD_SKIP_APP_BUILD=1");
+        return;
+    }
+
+    console.log("Building ReCord app payload from current sources...");
+    execSync("node scripts/build/build.mjs", {
+        stdio: "inherit",
+        cwd: ROOT
+    });
+}
+
 function getCliBinaryName() {
     switch (process.platform) {
         case "win32":
@@ -130,6 +143,8 @@ function prepareTempInstallerDir() {
 }
 
 async function main() {
+    ensureFreshAppBuild();
+
     mkdirSync(RELEASE_DIR, { recursive: true });
     const out = join(RELEASE_DIR, "ReCordSetup.exe");
     const installerDir = existsSync(INSTALLER_DIR)

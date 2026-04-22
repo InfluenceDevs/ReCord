@@ -20,12 +20,13 @@
         if ($location.startsWith("/install") || $location.startsWith("/repair") || $location.startsWith("/uninstall")) return 3;
         return 1;
     })();
+    $: isPlatformSetup = $location.startsWith("/setup/");
 </script>
 
 <div class="main-window platform-{process.platform || "win32"}">
     <Titlebar macButtons={process.platform === "darwin"} />
     <main class="installer-body">
-        <aside class="sidebar">
+        <aside class="sidebar" class:hidden={isPlatformSetup}>
             <div class="sidebar-logo" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36" width="22" height="16">
                     <path fill="currentColor" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,33.15-1.71,57.61.54,81.72h0A105.73,105.73,0,0,0,32.71,96.36A77.7,77.7,0,0,0,39.62,85.11a68.42,68.42,0,0,1-10.89-5.19c.92-.69,1.81-1.41,2.67-2.16,21,9.58,43.94,9.58,64.66,0,.87.76,1.76,1.48,2.67,2.16a68.68,68.68,0,0,1-10.9,5.19,77,77,0,0,0,6.92,11.25A105.25,105.25,0,0,0,126.6,81.72h0C129.24,53.79,122.09,29.56,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,52.91s5-12.78,11.43-12.78,11.57,5.73,11.46,12.78S48.86,65.69,42.45,65.69Zm42.24,0c-6.27,0-11.43-5.69-11.43-12.78s5-12.78,11.43-12.78,11.57,5.73,11.46,12.78S91.1,65.69,84.69,65.69Z"/>
@@ -42,8 +43,8 @@
             </nav>
         </aside>
 
-        <section class="sections">
-            <div class="route-shell">
+        <section class="sections" class:setup-mode={isPlatformSetup}>
+            <div class="route-shell" class:setup-mode={isPlatformSetup}>
                 <Router {routes} />
             </div>
             <Footer />
@@ -52,6 +53,8 @@
 </div>
 
 <style>
+    @import url("https://rsms.me/inter/inter.css");
+
     :global([data-focus-visible-added]) {
         box-shadow: 0 0 0 4px var(--accent-faded) !important;
     }
@@ -160,6 +163,24 @@
         gap: 10px;
     }
 
+    .installer-body::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: var(--background);
+        background-size: 60px;
+        background-repeat: repeat;
+        background-position: center;
+        z-index: -1;
+        opacity: 0.35;
+        pointer-events: none;
+        mask: radial-gradient(transparent, #000);
+        -webkit-mask: radial-gradient(transparent, #000);
+    }
+
     .sidebar {
         width: 128px;
         flex: 0 0 128px;
@@ -169,6 +190,10 @@
         display: flex;
         flex-direction: column;
         padding: 8px 7px;
+    }
+
+    .sidebar.hidden {
+        display: none;
     }
 
     .sidebar-logo {
@@ -238,6 +263,10 @@
         z-index: 1;
     }
 
+    .sections.setup-mode {
+        justify-content: center;
+    }
+
     .route-shell {
         flex: 1 1 auto;
         min-height: 0;
@@ -246,6 +275,16 @@
         border-radius: 2px;
         background: rgba(0, 0, 0, 0.12);
         padding: 8px;
+    }
+
+    .route-shell.setup-mode {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: visible;
+        border: none;
+        background: transparent;
+        padding: 0;
     }
 
     :global(.page) {
@@ -262,5 +301,18 @@
         border: none;
         background: transparent;
         backdrop-filter: none;
+    }
+
+    :global(.route-shell.setup-mode .page) {
+        width: min(100%, 540px);
+        height: auto;
+        min-height: unset;
+        max-height: 100%;
+        padding: 18px 18px 6px;
+        border-radius: 3px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        background: var(--bg2);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
     }
 </style>

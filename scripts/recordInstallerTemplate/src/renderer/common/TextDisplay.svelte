@@ -69,23 +69,22 @@
         flex: 1;
         min-height: 0;
         margin-bottom: 10px;
-        background: rgba(17, 25, 56, 0.82);
-        border: 1px solid rgba(152, 185, 242, 0.12);
-        box-shadow: none;
-        border-radius: 8px;
+        background: var(--bg3);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border-radius: 2px;
     }
 
     .text-display .display-inner {
         color: var(--text-normal);
-        font-size: 12px;
-        line-height: 1.7;
+        font-size: 13px;
+        line-height: 1.5;
         word-wrap: normal;
         white-space: pre-wrap;
         user-select: text;
         height: 100%;
         width: 100%;
         overflow: auto;
-        padding: 14px;
+        padding: 12px;
         border-radius: inherit;
     }
 
@@ -99,17 +98,17 @@
 
     .copy-input {
         position: absolute;
-        bottom: 10px;
-        right: 10px;
+        bottom: 8px;
+        right: 8px;
     }
 
     :global(.copy-input .button) {
-        border: 1px solid rgba(158, 189, 245, 0.38) !important;
-        box-shadow: none;
+        border: none !important;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 
     :global(.copy-input .button.type-secondary) {
-        background: rgba(15, 22, 49, 0.98) !important;
+        background-color: var(--bg4) !important;
     }
 
     :global(.copy-input .button:hover) {
