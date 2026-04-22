@@ -24,25 +24,35 @@ interface PluginCardProps extends React.HTMLProps<HTMLDivElement> {
 }
 
 const RECORD_ICON = "vencord://assets/icon.png";
+const VENCORD_ICON = `data:image/svg+xml,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%232a5dff'/><path d='M6 6h4l2 7 2-7h4l-4 12h-4z' fill='white'/></svg>")}`;
+
+function toSafeLower(value: unknown) {
+    return typeof value === "string" ? value.toLowerCase() : "";
+}
 
 function isReCordPlugin(plugin: Plugin) {
-    const name = plugin.name.toLowerCase();
-    const desc = plugin.description.toLowerCase();
+    const name = toSafeLower((plugin as any)?.name);
+    const desc = toSafeLower((plugin as any)?.description);
+    const tags = Array.isArray((plugin as any)?.tags) ? (plugin as any).tags : [];
+    const authors = Array.isArray((plugin as any)?.authors) ? (plugin as any).authors : [];
 
     if (name.includes("record") || name.includes("re-cord")) return true;
     if (desc.includes("record") || desc.includes("re-cord")) return true;
-    if (plugin.tags?.some(t => t.toLowerCase().includes("record") || t.toLowerCase().includes("re-cord"))) return true;
+    if (tags.some((t: unknown) => toSafeLower(t).includes("record") || toSafeLower(t).includes("re-cord"))) return true;
+    if (authors.some((a: any) => toSafeLower(a?.name).includes("record") || toSafeLower(a?.name).includes("rloxx") || toSafeLower(a?.name).includes("influence"))) return true;
 
     return false;
 }
 
 export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, onMouseLeave, isNew }: PluginCardProps) {
     const settings = Settings.plugins[plugin.name];
-    const sourceLabel = isReCordPlugin(plugin) ? "ReCord" : "Vencord";
+    const source = isReCordPlugin(plugin)
+        ? { label: "ReCord", icon: RECORD_ICON, className: "record" }
+        : { label: "Vencord", icon: VENCORD_ICON, className: "vencord" };
+
     const sourceBadge = (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: 0.85 }}>
-            <img src={RECORD_ICON} alt="" width={14} height={14} style={{ borderRadius: 3 }} />
-            <span>{sourceLabel}</span>
+        <span className={cl("source-badge", source.className)} title={`Source: ${source.label}`}>
+            <img src={source.icon} alt={`${source.label} source`} width={14} height={14} />
         </span>
     );
 
@@ -102,7 +112,6 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
         <AddonCard
             name={plugin.name}
             description={plugin.description}
-            author={sourceBadge}
             isNew={isNew}
             enabled={isEnabled()}
             setEnabled={toggleEnabled}
@@ -110,16 +119,19 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
             infoButton={
-                <button
-                    role="switch"
-                    onClick={() => openPluginModal(plugin, onRestartNeeded)}
-                    className={cl("info-button")}
-                >
-                    {plugin.options && !isObjectEmpty(plugin.options)
-                        ? <CogWheel className={cl("info-icon")} />
-                        : <InfoIcon className={cl("info-icon")} />
-                    }
-                </button>
+                <div className={cl("info-group")}>
+                    {sourceBadge}
+                    <button
+                        role="switch"
+                        onClick={() => openPluginModal(plugin, onRestartNeeded)}
+                        className={cl("info-button")}
+                    >
+                        {plugin.options && !isObjectEmpty(plugin.options)
+                            ? <CogWheel className={cl("info-icon")} />
+                            : <InfoIcon className={cl("info-icon")} />
+                        }
+                    </button>
+                </div>
             } />
     );
 }

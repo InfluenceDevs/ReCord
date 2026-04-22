@@ -169,14 +169,18 @@ function PluginSettings() {
     const onSearch = (query: string) => setSearchValue(prev => ({ ...prev, value: query }));
     const onStatusChange = (status: SearchStatus) => setSearchValue(prev => ({ ...prev, status }));
 
+    const toSafeLower = (value: unknown) => typeof value === "string" ? value.toLowerCase() : "";
+
     const isReCordPlugin = (plugin: typeof Plugins[keyof typeof Plugins]) => {
-        const name = plugin.name.toLowerCase();
-        const desc = plugin.description.toLowerCase();
+        const name = toSafeLower((plugin as any)?.name);
+        const desc = toSafeLower((plugin as any)?.description);
+        const tags = Array.isArray((plugin as any)?.tags) ? (plugin as any).tags : [];
+        const authors = Array.isArray((plugin as any)?.authors) ? (plugin as any).authors : [];
 
         if (name.includes("record") || name.includes("re-cord")) return true;
         if (desc.includes("record") || desc.includes("re-cord")) return true;
-        if (plugin.tags?.some(t => t.toLowerCase().includes("record") || t.toLowerCase().includes("re-cord"))) return true;
-        if (plugin.authors?.some(a => a.name.toLowerCase().includes("rloxx") || a.name.toLowerCase().includes("record"))) return true;
+        if (tags.some((t: unknown) => toSafeLower(t).includes("record") || toSafeLower(t).includes("re-cord"))) return true;
+        if (authors.some((a: any) => toSafeLower(a?.name).includes("rloxx") || toSafeLower(a?.name).includes("record") || toSafeLower(a?.name).includes("influence"))) return true;
 
         return false;
     };

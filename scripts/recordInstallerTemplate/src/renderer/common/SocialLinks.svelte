@@ -34,13 +34,13 @@
     }
 
     .social {
-        width: 30px;
-        height: 30px;
+        width: 24px;
+        height: 24px;
         margin-top: 5px;
         margin-right: 5px;
         background: rgba(17, 24, 52, 0.88);
         border: 1px solid rgba(153, 185, 240, 0.16);
-        border-radius: 8px;
+        border-radius: 999px;
         color: #c7d7f8;
         display: flex;
         align-items: center;
@@ -61,7 +61,7 @@
     }
 
     .social svg {
-        width: 14px;
+        width: 11px;
         height: auto;
         fill: currentColor;
     }

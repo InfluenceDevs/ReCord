@@ -26,8 +26,8 @@
     .page-header {
         display: flex;
         align-items: flex-start;
-        margin-bottom: 16px;
-        padding-bottom: 14px;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
         border-bottom: 1px solid rgba(161, 193, 247, 0.14);
     }
 
@@ -41,12 +41,12 @@
         min-width: 0;
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
     }
 
     .page-header-subtitle {
         color: var(--text-muted);
-        font-size: 13px;
+        font-size: 12px;
     }
 
     :global(.page-header svg) {

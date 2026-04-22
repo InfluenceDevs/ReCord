@@ -94,7 +94,7 @@
     :global(*::before) {
         box-sizing: border-box;
         -webkit-user-drag: none;
-        font-family: "Space Grotesk", "Sora", "Plus Jakarta Sans", "Segoe UI Variable", sans-serif;
+        font-family: "gg sans", "Segoe UI", "Helvetica Neue", sans-serif;
         user-select: none;
         outline: none;
     }
@@ -140,7 +140,7 @@
         contain: strict;
         box-shadow: none;
         border: 1px solid rgba(107, 129, 205, 0.26);
-        border-radius: 12px;
+        border-radius: 10px;
         width: 100%;
         height: 100%;
         word-break: break-word;
@@ -161,32 +161,33 @@
         display: flex;
         flex-direction: row;
         z-index: 1;
-        padding: 16px;
+        padding: 12px;
         background: transparent;
         flex: 1;
-        gap: 18px;
+        gap: 12px;
     }
 
     .sidebar {
-        width: 162px;
-        flex: 0 0 162px;
-        border-right: 1px solid rgba(117, 137, 211, 0.12);
-        background: transparent;
+        width: 138px;
+        flex: 0 0 138px;
+        border: 1px solid rgba(117, 137, 211, 0.18);
+        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(9, 17, 47, 0.96) 0%, rgba(7, 14, 40, 0.96) 100%);
         display: flex;
         flex-direction: column;
-        padding: 4px 10px 0 2px;
+        padding: 8px;
     }
 
     .sidebar-logo {
         color: #586dff;
-        margin: 2px 10px 18px;
+        margin: 2px 4px 14px;
         opacity: 0.95;
     }
 
     .steps {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
     }
 
     .step {
@@ -194,7 +195,7 @@
         align-items: center;
         gap: 10px;
         color: #7f92be;
-        border-radius: 8px;
+        border-radius: 7px;
         padding: 9px 12px;
         border: 1px solid transparent;
     }
@@ -230,8 +231,8 @@
     }
 
     .step-label {
-        font-size: 13px;
-        font-weight: 600;
+        font-size: 12px;
+        font-weight: 500;
         letter-spacing: 0.01em;
     }
 
@@ -249,9 +250,9 @@
         min-height: 0;
         overflow-y: auto;
         border: 1px solid rgba(117, 137, 211, 0.14);
-        border-radius: 12px;
+        border-radius: 8px;
         background: linear-gradient(180deg, rgba(8, 15, 43, 0.98) 0%, rgba(7, 13, 36, 0.98) 100%);
-        padding: 18px 20px;
+        padding: 10px 12px;
     }
 
     :global(.page) {
@@ -263,10 +264,10 @@
         position: relative;
         width: 100%;
         min-height: 0;
-        padding: 12px 14px 0;
-        border-radius: 10px;
-        border: 1px solid rgba(96, 120, 200, 0.18);
-        background: rgba(7, 14, 36, 0.88);
-        backdrop-filter: blur(2px);
+        padding: 12px 10px 0;
+        border-radius: 0;
+        border: none;
+        background: transparent;
+        backdrop-filter: none;
     }
 </style>

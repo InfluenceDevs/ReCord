@@ -37,6 +37,39 @@
     }
 }
 
+.vc-plugins-info-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.vc-plugins-source-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1px solid var(--border-subtle);
+    background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
+    flex: 0 0 auto;
+}
+
+.vc-plugins-source-badge img {
+    width: 13px;
+    height: 13px;
+    border-radius: 3px;
+    object-fit: cover;
+}
+
+.vc-plugins-source-badge.record {
+    border-color: color-mix(in srgb, var(--brand-500) 55%, var(--border-subtle));
+}
+
+.vc-plugins-source-badge.vencord {
+    border-color: color-mix(in srgb, var(--blurple-40) 55%, var(--border-subtle));
+}
+
 .vc-plugins-settings-button:hover {
     color: var(--interactive-icon-hover);
 }
