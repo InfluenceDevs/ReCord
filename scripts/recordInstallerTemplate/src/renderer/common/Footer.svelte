@@ -28,7 +28,7 @@
     else {
         nextButtonContent = "Next";
     }
-    
+
     function navigatePage() {
         if ((event.key === "ArrowRight" && event.ctrlKey) && $canGoForward) {
             goToNext();
@@ -44,7 +44,6 @@
 
 <footer class="install-footer">
     <SocialLinks/>
-    <span class="shortcut-hint">Ctrl+Left / Ctrl+Right</span>
     <ButtonGroup>
         <Button type="secondary" disabled={!$canGoBack} on:click={goBack}>Back</Button>
         <Button type="primary" disabled={!$canGoForward} on:click={goToNext}>{#if $nextPage}{nextButtonContent}{:else}Close{/if}</Button>
@@ -60,17 +59,8 @@
         justify-content: space-between;
         flex: 0 0 auto;
         margin-top: 10px;
-        padding: 10px 0 0;
-        border-top: 1px solid rgba(158, 190, 255, 0.12);
+        padding: 10px 2px 0;
+        border-top: 1px solid rgba(121, 143, 214, 0.16);
         gap: 10px;
-    }
-
-    .shortcut-hint {
-        margin-left: auto;
-        margin-right: 10px;
-        font-size: 10px;
-        color: var(--text-muted);
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
     }
 </style>

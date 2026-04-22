@@ -27,12 +27,12 @@
         transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
         cursor: pointer;
         padding: 0 22px;
-        height: 38px;
+        height: 36px;
         white-space: nowrap;
         font-size: 12px;
         font-weight: 700;
         letter-spacing: 0.02em;
-        border-radius: 9px;
+        border-radius: 8px;
         position: relative;
         overflow: hidden;
     }
@@ -49,32 +49,32 @@
     }
 
     .button.type-primary {
-        border-color: rgba(131, 189, 255, 0.35);
-        background: #55a7ff;
-        color: #02111f;
+        border-color: rgba(131, 152, 255, 0.25);
+        background: linear-gradient(180deg, #5b74ff 0%, #4c64eb 100%);
+        color: #f1f5ff;
         box-shadow: none;
     }
 
     .button.type-primary:hover {
-        background: #69b2ff;
+        background: linear-gradient(180deg, #667eff 0%, #536df2 100%);
     }
 
     .button.type-primary:active {
-        background: #4f9aee;
+        background: #4b63e2;
     }
 
     .button.type-secondary {
-        background: rgba(21, 31, 45, 0.92);
-        border-color: rgba(141, 183, 255, 0.2);
+        background: rgba(24, 34, 72, 0.86);
+        border-color: rgba(115, 137, 211, 0.26);
         color: #d8e6fa;
     }
 
     .button.type-secondary:hover {
-        border-color: rgba(141, 183, 255, 0.34);
-        background: rgba(26, 39, 56, 0.96);
+        border-color: rgba(136, 161, 242, 0.42);
+        background: rgba(31, 46, 94, 0.94);
     }
 
     .button.type-secondary:active {
-        background: rgba(30, 45, 64, 0.98);
+        background: rgba(34, 51, 102, 0.98);
     }
 </style>

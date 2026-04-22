@@ -2,7 +2,7 @@
     import Button from "./Button.svelte";
     import {handleKeyboardToggle} from "../stores/controls.js";
     import {createEventDispatcher} from "svelte";
-    
+
     export let value;
     export let description;
     export let disabled = false;
@@ -30,7 +30,7 @@
             <span title={description}>{description}</span>
         </div>
         <div class="controls" on:keypress={e => e.stopPropagation()}>
-            <Button type="secondary" on:click={click}>Browse</Button>
+            <Button type="secondary" on:click={click}>Install</Button>
         </div>
     </div>
 </label>
@@ -40,9 +40,9 @@
         display: flex;
         align-items: center;
         border-radius: 8px;
-        border: 1px solid rgba(157, 190, 245, 0.26);
-        background: #101010;
-        padding: 12px 14px;
+        border: 1px solid rgba(103, 129, 206, 0.26);
+        background: rgba(16, 24, 59, 0.66);
+        padding: 13px 14px;
         user-select: none;
         box-shadow: none;
         cursor: pointer;
@@ -57,18 +57,18 @@
     }
 
     .check-container:last-child {
-        margin: 0;  
+        margin: 0;
     }
 
     .check-item.disabled {
-        background: #0d0d0d;
-        border-color: rgba(133, 157, 199, 0.26);
+        background: rgba(13, 19, 44, 0.72);
+        border-color: rgba(98, 118, 176, 0.25);
         cursor: not-allowed;
     }
-    
+
     .check-container input:checked + .check-item {
-        background: rgba(126, 181, 255, 0.1);
-        border-color: rgba(126, 181, 255, 0.38);
+        background: linear-gradient(90deg, rgba(61, 87, 205, 0.9) 0%, rgba(71, 100, 226, 0.86) 100%);
+        border-color: rgba(123, 150, 255, 0.55);
     }
 
     .check-item.disabled .content,
@@ -83,8 +83,9 @@
     }
 
     :global(.icon img) {
-        width: 32px;
-        height: 32px;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
     }
 
     .content {
@@ -106,14 +107,14 @@
 
     .content span {
         color: var(--text-muted);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 400;
     }
 
     .content h5 {
         color: var(--text-normal);
-        font-weight: 800;
-        font-size: 12px;
+        font-weight: 700;
+        font-size: 16px;
         letter-spacing: 0.03em;
         margin: 0;
     }
@@ -132,9 +133,9 @@
     }
 
     :global(.check-container input:checked + .check-item .button) {
-        background: #dcecff;
+        background: #89a2ff;
         border-color: transparent !important;
-        color: #0d2240;
+        color: #101d4d;
     }
 
     :global(.check-container input:checked + .check-item .button:active) {
