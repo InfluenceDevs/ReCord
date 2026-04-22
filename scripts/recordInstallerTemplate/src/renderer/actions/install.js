@@ -52,6 +52,7 @@ function runCli(args) {
 	return new Promise((resolve, reject) => {
 		const proc = spawn(getCliPath(), args, {stdio: "pipe", env: getCliEnv()});
 		let buffered = "";
+		let transcript = "";
 		const sanitize = text => text
 			.replace(/BetterDiscord/gi, "ReCord")
 			.replace(/Vencord/gi, "ReCord")
@@ -64,7 +65,10 @@ function runCli(args) {
 
 			for (const line of lines) {
 				const cleaned = sanitize(line).trim();
-				if (cleaned) log(cleaned);
+				if (cleaned) {
+					transcript += cleaned + "\n";
+					log(cleaned);
+				}
 			}
 
 			if (/press\s+enter\s+to\s+exit/i.test(sanitize(buffered))) {
@@ -79,12 +83,27 @@ function runCli(args) {
 		proc.stderr.on("data", handleOutput);
 		proc.on("close", code => {
 			const remainder = sanitize(buffered).trim();
-			if (remainder) log(remainder);
+			if (remainder) {
+				transcript += remainder + "\n";
+				log(remainder);
+			}
 			if (code === 0) resolve();
-			else reject(new Error(`CLI exited with code ${code}`));
+			else {
+				const err = new Error(`CLI exited with code ${code}`);
+				err.output = transcript.trim();
+				reject(err);
+			}
 		});
 		proc.on("error", reject);
 	});
+}
+
+function shouldRetryWithRepair(err) {
+	const output = `${err?.message ?? ""}\n${err?.output ?? ""}`.toLowerCase();
+	return output.includes("rename")
+		&& output.includes("app.asar")
+		&& output.includes("_app.asar")
+		&& output.includes("cannot find the file specified");
 }
 
 export default async function(config) {
@@ -102,6 +121,20 @@ export default async function(config) {
 			progress.set(progress.value + progressPerChannel);
 		}
 		catch (err) {
+			if (shouldRetryWithRepair(err)) {
+				log("Detected missing app.asar on host layout. Retrying with repair mode...");
+				try {
+					await runCli(["-repair", "-branch", channel]);
+					log(`\u2705 ReCord repaired successfully on ${channel}`);
+					progress.set(progress.value + progressPerChannel);
+					continue;
+				}
+				catch (repairErr) {
+					log(`\u274c Repair fallback failed on ${channel}: ${repairErr.message}`);
+					return fail();
+				}
+			}
+
 			log(`\u274c Failed to install on ${channel}: ${err.message}`);
 			return fail();
 		}
