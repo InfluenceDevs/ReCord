@@ -141,13 +141,23 @@ function normalizeLegacyAsarLayout(channel) {
 		const discordRoot = path.join(localAppData, getDiscordChannelDir(channel));
 		if (!fs.existsSync(discordRoot)) return;
 
-		const latestAppDir = getLatestAppDir(discordRoot);
+		const appDirs = fs.readdirSync(discordRoot, {withFileTypes: true})
+			.filter(entry => entry.isDirectory() && /^app-\d+\.\d+\.\d+/.test(entry.name))
+			.map(entry => entry.name)
+			.sort((a, b) => {
+				const aMtime = fs.statSync(path.join(discordRoot, a)).mtimeMs;
+				const bMtime = fs.statSync(path.join(discordRoot, b)).mtimeMs;
+				return bMtime - aMtime;
+			});
+
+		const latestAppDir = appDirs[0];
 		if (!latestAppDir) return;
 
 		const resources = path.join(discordRoot, latestAppDir, "resources");
 		const appAsar = path.join(resources, "app.asar");
 		const fallbackAsar = path.join(resources, "_app.asar");
 		const injectedAppDir = path.join(resources, "app");
+		const appBspatch = path.join(resources, "app.asar.bspatch");
 
 		if (!fs.existsSync(appAsar) && fs.existsSync(fallbackAsar)) {
 			if (fs.existsSync(injectedAppDir)) {
@@ -156,6 +166,38 @@ function normalizeLegacyAsarLayout(channel) {
 
 			fs.renameSync(fallbackAsar, appAsar);
 			log(`Detected legacy patched layout on ${channel}; restored app.asar before install.`);
+			return;
+		}
+
+		if (!fs.existsSync(appAsar) && !fs.existsSync(fallbackAsar) && fs.existsSync(appBspatch)) {
+			let recoveredFrom = null;
+
+			for (const dir of appDirs.slice(1)) {
+				const candidateUnderscore = path.join(discordRoot, dir, "resources", "_app.asar");
+				const candidateApp = path.join(discordRoot, dir, "resources", "app.asar");
+
+				if (fs.existsSync(candidateUnderscore)) {
+					recoveredFrom = candidateUnderscore;
+					break;
+				}
+
+				if (fs.existsSync(candidateApp)) {
+					const size = fs.statSync(candidateApp).size;
+					if (size > 1024 * 1024) {
+						recoveredFrom = candidateApp;
+						break;
+					}
+				}
+			}
+
+			if (recoveredFrom) {
+				if (fs.existsSync(injectedAppDir)) {
+					fs.rmSync(injectedAppDir, {recursive: true, force: true});
+				}
+
+				fs.copyFileSync(recoveredFrom, appAsar);
+				log(`Recovered missing app.asar on ${channel} from ${path.basename(path.dirname(recoveredFrom))}.`);
+			}
 		}
 	} catch (err) {
 		log(`Warning: could not normalize Discord ${channel} layout automatically: ${err.message}`);
