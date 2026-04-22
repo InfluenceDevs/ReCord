@@ -1,7 +1,7 @@
 {
     "name": "record",
     "private": "true",
-    "version": "1.15.31",
+    "version": "1.15.32",
     "description": "ReCord - a Discord client mod forked from Vencord made by Rloxx",
     "homepage": "https://github.com/InfluenceDevs/ReCord#readme",
     "bugs": {

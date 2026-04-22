@@ -94,77 +94,7 @@ export default definePlugin({
         disableStyle(fullHeightStyle);
     },
 
-    patches: [
-        {
-            find: "this.renderArtisanalHack()",
-            replacement: [
-                {
-                    match: /class (\i)(?= extends \i\.PureComponent.+?static contextType=.+?jsx\)\(\1,\{mode:)/,
-                    replace: "var $1=$self.Layer;class VencordPatchedOldFadeLayer",
-                    predicate: () => settings.store.disableFade
-                },
-                { // Lazy-load contents
-                    match: /createPromise:\(\)=>([^:}]*?),webpackId:"?\d+"?,name:(?!="CollectiblesShop")"[^"]+"/g,
-                    replace: "$&,_:$1",
-                    predicate: () => settings.store.eagerLoad
-                }
-            ]
-        },
-        { // For some reason standardSidebarView also has a small fade-in
-            find: 'minimal:"contentColumnMinimal"',
-            replacement: [
-                {
-                    match: /(?=\(0,\i\.\i\)\((\i),\{from:\{position:"absolute")/,
-                    replace: "(_cb=>_cb(void 0,$1))||"
-                },
-                {
-                    match: /\i\.animated\.div/,
-                    replace: '"div"'
-                }
-            ],
-            predicate: () => settings.store.disableFade
-        },
-        { // Disable fade animations for settings menu
-            find: '"data-mana-component":"layer-modal"',
-            replacement: [
-                {
-                    match: /(\i)\.animated\.div(?=,\{"data-mana-component":"layer-modal")/,
-                    replace: '"div"'
-                },
-                {
-                    match: /(?<="data-mana-component":"layer-modal"[^}]*?)style:\i,/,
-                    replace: "style:{},"
-                }
-            ],
-            predicate: () => settings.store.disableFade
-        },
-        { // Disable initial and exit delay for settings menu
-            find: "headerId:void 0,headerIdIsManaged:!1",
-            replacement: {
-                match: /let (\i)=300/,
-                replace: "let $1=0"
-            },
-            predicate: () => settings.store.disableFade
-        },
-        { // Load menu TOC eagerly
-            find: "handleOpenSettingsContextMenu=",
-            replacement: {
-                match: /(?=handleOpenSettingsContextMenu=.{0,100}?null!=\i&&.{0,100}?(await [^};]*?\)\)))/,
-                replace: "_vencordBetterSettingsEagerLoad=(async ()=>$1)();"
-            },
-            predicate: () => settings.store.eagerLoad
-        },
-        { // Settings cog context menu
-            find: "#{intl::USER_SETTINGS_ACTIONS_MENU_LABEL}",
-            predicate: () => settings.store.organizeMenu,
-            replacement: [
-                {
-                    match: /children:\[(\i),(?<=\1=.{0,30}\.openUserSettings.+?)/,
-                    replace: "children:[$self.transformSettingsEntries($1),",
-                },
-            ]
-        },
-    ],
+    patches: [],
 
     // This is the very outer layer of the entire ui, so we can't wrap this in an ErrorBoundary
     // without possibly also catching unrelated errors of children.
