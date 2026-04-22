@@ -134,9 +134,11 @@ async function fetchUpdates() {
     if (gitHash) {
         try {
             const comparison = await githubGet(`/compare/${gitHash}...${latestTag}`);
-            // Do not update when local is already equal/newer or on a diverged commit.
-            // This prevents repeatedly offering older release assets.
-            if (comparison?.status && comparison.status !== "behind")
+            // Prefer precise git comparison when possible.
+            // If compare says we're not behind but semver is still newer,
+            // fall back to semver + release assets because standalone builds
+            // can be on commits that are not directly comparable to release tags.
+            if (comparison?.status && comparison.status !== "behind" && semverCmp >= 0)
                 return false;
         } catch {
             // If compare fails (e.g. bundled builds), rely on semver only.
