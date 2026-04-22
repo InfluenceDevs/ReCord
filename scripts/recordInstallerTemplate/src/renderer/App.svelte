@@ -47,7 +47,7 @@
                 <Router {routes} />
             </div>
             <Footer />
-        </div>
+        </section>
     </main>
 </div>
 
