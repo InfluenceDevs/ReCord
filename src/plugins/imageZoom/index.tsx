@@ -168,10 +168,6 @@ export default definePlugin({
                 {
                     match: /useFullWidth:!0,shouldLink:/,
                     replace: `id:"${ELEMENT_ID}",$&`
-                },
-                {
-                    match: /(?<=null!=(\i)\?.{0,20})\i\.\i,{children:\1/,
-                    replace: "'div',{onClick:e=>e.stopPropagation(),children:$1"
                 }
             ]
         },

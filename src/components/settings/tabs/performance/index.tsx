@@ -215,6 +215,40 @@ function PerformanceTab() {
     useSettings(["performance.*"]);
     const perf = Settings.performance;
     const diagnostics = usePerformanceDiagnostics(perf.diagnosticsEnabled);
+    const [searchQuery, setSearchQuery] = React.useState("");
+
+    const tweakSearchCatalog = React.useMemo(() => [
+        { key: "disableAnimations", title: "Disable Animations", description: "Removes transitions and animations that add frame-time overhead." },
+        { key: "reduceBackdropBlur", title: "Reduce Backdrop Blur", description: "Disables costly blur/filter effects to lower GPU utilization." },
+        { key: "disableVisualFlair", title: "Disable Visual Flair", description: "Hides decorative profile/effect layers and expensive UI glows." },
+        { key: "disableShadows", title: "Disable Shadows", description: "Removes UI shadows and text glows that trigger frequent repaints." },
+        { key: "disableGradients", title: "Disable Gradients", description: "Turns off gradient layers and image backgrounds to reduce GPU fill-rate load." },
+        { key: "disableHoverAnimations", title: "Disable Hover Animations", description: "Stops hover/focus animation effects while navigating channels and DMs." },
+        { key: "hideTypingIndicators", title: "Hide Typing Indicators", description: "Reduces tiny but frequent animation churn in busy channels." },
+        { key: "hideActivityCards", title: "Hide Activity Cards", description: "Removes rich activity surfaces that can increase repaint work." },
+        { key: "hideProfilePanels", title: "Hide Profile Panels", description: "Hides heavy popout/profile panel surfaces that use effects and media." },
+        { key: "hideGuildBoostEffects", title: "Hide Guild Boost Effects", description: "Suppresses premium/boost visual callouts and effect containers." },
+        { key: "hideStickersAndGifPreviews", title: "Hide Sticker and GIF Previews", description: "Disables animated media previews in expression picker surfaces." },
+        { key: "compactChannelList", title: "Compact Channel List", description: "Tighter channel rows reduce rendering area and scroll work." },
+        { key: "compactMemberList", title: "Compact Member List", description: "Tighter member rows reduce list rendering cost in large guilds." },
+        { key: "compactChatDensity", title: "Compact Chat Density", description: "Reduces message vertical spacing to lower the amount of content on-screen." },
+        { key: "preferStaticAvatars", title: "Prefer Static Avatars", description: "Prefers static avatar rendering over animated visuals where possible." },
+        { key: "pauseHiddenMedia", title: "Pause Hidden Media", description: "Pauses autoplay/muted videos while Discord is hidden." },
+        { key: "pauseHiddenAudio", title: "Pause Hidden Audio", description: "Stops background audio streams while Discord is hidden." },
+        { key: "keepOnlyVisibleVideos", title: "Keep Only Visible Videos Running", description: "Pauses video elements that are off-screen to reduce decode/GPU usage." },
+        { key: "limitBackgroundFps", title: "Limit Background FPS", description: "Throttles animation frames when Discord is unfocused/minimized." },
+        { key: "diagnosticsEnabled", title: "Enable Diagnostics", description: "Shows live FPS, GPU renderer, memory, and visibility status." },
+        { key: "diagnosticsOverlay", title: "Show Diagnostics Overlay", description: "Displays a compact floating diagnostics HUD while ReCord is running." },
+    ] as const, []);
+
+    const matchedTweaks = React.useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return [];
+
+        return tweakSearchCatalog.filter(t =>
+            t.title.toLowerCase().includes(query) || t.description.toLowerCase().includes(query)
+        );
+    }, [searchQuery, tweakSearchCatalog]);
 
     const activeCount = [
         perf.disableAnimations,
@@ -299,6 +333,48 @@ function PerformanceTab() {
                 onLabel="Performance Mode ON"
                 offLabel="Performance Mode OFF"
             />
+
+            <div style={{ marginTop: 10 }}>
+                <Forms.FormTitle tag="h5">Search Tweaks</Forms.FormTitle>
+                <Forms.FormText className={Margins.bottom8} style={{ color: "var(--text-muted)" }}>
+                    Search by tweak name or description and toggle matched options quickly.
+                </Forms.FormText>
+                <TextInput
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Search performance tweaks..."
+                />
+
+                {!!searchQuery.trim() && (
+                    <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                        {matchedTweaks.length ? matchedTweaks.map(t => (
+                            <div
+                                key={t.key}
+                                style={{
+                                    border: "1px solid var(--border-subtle)",
+                                    borderRadius: 10,
+                                    background: "var(--background-secondary)",
+                                    padding: 10,
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    gap: 10
+                                }}
+                            >
+                                <div>
+                                    <Forms.FormTitle tag="h5">{t.title}</Forms.FormTitle>
+                                    <Forms.FormText style={{ color: "var(--text-muted)" }}>{t.description}</Forms.FormText>
+                                </div>
+                                <Button size="small" onClick={() => togglePerf(t.key as PerfKey)}>
+                                    {(perf as any)[t.key] ? "Enabled" : "Disabled"}
+                                </Button>
+                            </div>
+                        )) : (
+                            <Forms.FormText style={{ color: "var(--text-muted)" }}>No tweaks matched your search.</Forms.FormText>
+                        )}
+                    </div>
+                )}
+            </div>
 
             <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
                 <ToggleRow

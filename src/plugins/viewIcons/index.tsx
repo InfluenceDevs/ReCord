@@ -96,26 +96,33 @@ function openImage(url: string, width: number, height?: number) {
 
 const UserContext: NavContextMenuPatchCallback = (children, { user, guildId }: UserContextProps) => {
     if (!user) return;
-    const memberAvatar = GuildMemberStore.getMember(guildId!, user.id)?.avatar || null;
+    const memberAvatar = guildId ? GuildMemberStore.getMember(guildId, user.id)?.avatar || null : null;
 
     children.splice(-1, 0, (
         <Menu.MenuGroup>
             <Menu.MenuItem
                 id="view-avatar"
                 label="View Avatar"
-                action={() => openAvatar(IconUtils.getUserAvatarURL(user, true))}
+                action={() => {
+                    const avatarUrl = IconUtils.getUserAvatarURL(user, true);
+                    if (avatarUrl) openAvatar(avatarUrl);
+                }}
                 icon={ImageIcon}
             />
             {memberAvatar && (
                 <Menu.MenuItem
                     id="view-server-avatar"
                     label="View Server Avatar"
-                    action={() => openAvatar(IconUtils.getGuildMemberAvatarURLSimple({
-                        userId: user.id,
-                        avatar: memberAvatar,
-                        guildId: guildId!,
-                        canAnimate: true
-                    }))}
+                    action={() => {
+                        if (!guildId) return;
+                        const serverAvatarUrl = IconUtils.getGuildMemberAvatarURLSimple({
+                            userId: user.id,
+                            avatar: memberAvatar,
+                            guildId,
+                            canAnimate: true
+                        });
+                        if (serverAvatarUrl) openAvatar(serverAvatarUrl);
+                    }}
                     icon={ImageIcon}
                 />
             )}

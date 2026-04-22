@@ -547,9 +547,22 @@ function extractChannelId(payload: any) {
     return String(payload?.channelId ?? payload?.id ?? payload?.channel?.id ?? "");
 }
 
+function isPrivateChannelType(type: number | undefined) {
+    return type === ChannelType.DM || type === ChannelType.GROUP_DM;
+}
+
+function getChannelTypeForPayload(payload: any, channelId: string) {
+    const payloadType = payload?.channel?.type;
+    if (typeof payloadType === "number") return payloadType;
+    return ChannelStore.getChannel(channelId)?.type;
+}
+
 const onChannelDelete = (payload: any) => {
     const channelId = extractChannelId(payload);
-    if (!channelId) return;
+    if (!channelId || isGhostDmId(channelId)) return;
+
+    const channelType = getChannelTypeForPayload(payload, channelId);
+    if (!isPrivateChannelType(channelType)) return;
 
     void captureLoadedMessagesForChannel(channelId);
     void snapshotConversationForId(channelId, "Channel deleted or closed");
@@ -559,7 +572,10 @@ const onChannelDelete = (payload: any) => {
 
 const onChannelCreate = (payload: any) => {
     const channelId = extractChannelId(payload);
-    if (!channelId) return;
+    if (!channelId || isGhostDmId(channelId)) return;
+
+    const channelType = getChannelTypeForPayload(payload, channelId);
+    if (!isPrivateChannelType(channelType)) return;
 
     const channel = payload?.channel;
     if (channel) {
@@ -574,7 +590,10 @@ const onChannelCreate = (payload: any) => {
 
 const onRecipientAdd = (payload: any) => {
     const channelId = extractChannelId(payload);
-    if (!channelId) return;
+    if (!channelId || isGhostDmId(channelId)) return;
+
+    const channelType = getChannelTypeForPayload(payload, channelId);
+    if (!isPrivateChannelType(channelType)) return;
 
     if (payload?.channel) {
         void ensureConversationSnapshot(payload.channel).then(rememberActiveConversation);
@@ -587,7 +606,10 @@ const onRecipientAdd = (payload: any) => {
 
 const onRecipientRemove = (payload: any) => {
     const channelId = extractChannelId(payload);
-    if (!channelId) return;
+    if (!channelId || isGhostDmId(channelId)) return;
+
+    const channelType = getChannelTypeForPayload(payload, channelId);
+    if (!isPrivateChannelType(channelType)) return;
 
     void captureLoadedMessagesForChannel(channelId);
     void snapshotConversationForId(channelId, "Removed from group chat");

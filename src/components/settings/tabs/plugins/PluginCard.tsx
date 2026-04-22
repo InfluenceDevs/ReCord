@@ -23,8 +23,28 @@ interface PluginCardProps extends React.HTMLProps<HTMLDivElement> {
     isNew?: boolean;
 }
 
+const RECORD_ICON = "vencord://assets/icon.png";
+
+function isReCordPlugin(plugin: Plugin) {
+    const name = plugin.name.toLowerCase();
+    const desc = plugin.description.toLowerCase();
+
+    if (name.includes("record") || name.includes("re-cord")) return true;
+    if (desc.includes("record") || desc.includes("re-cord")) return true;
+    if (plugin.tags?.some(t => t.toLowerCase().includes("record") || t.toLowerCase().includes("re-cord"))) return true;
+
+    return false;
+}
+
 export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, onMouseLeave, isNew }: PluginCardProps) {
     const settings = Settings.plugins[plugin.name];
+    const sourceLabel = isReCordPlugin(plugin) ? "ReCord" : "Vencord";
+    const sourceBadge = (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: 0.85 }}>
+            <img src={RECORD_ICON} alt="" width={14} height={14} style={{ borderRadius: 3 }} />
+            <span>{sourceLabel}</span>
+        </span>
+    );
 
     const isEnabled = () => isPluginEnabled(plugin.name);
 
@@ -82,6 +102,7 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
         <AddonCard
             name={plugin.name}
             description={plugin.description}
+            author={sourceBadge}
             isNew={isNew}
             enabled={isEnabled()}
             setEnabled={toggleEnabled}
