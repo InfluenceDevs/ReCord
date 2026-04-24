@@ -214,8 +214,20 @@ export default definePlugin({
 
     buildLayout(originalLayoutBuilder: SettingsLayoutBuilder) {
         const layout = originalLayoutBuilder.buildLayout();
-        if (originalLayoutBuilder.key !== "$Root") return layout;
         if (!Array.isArray(layout)) return layout;
+
+        const isRootLikeLayout = layout.some(node => {
+            const key = node?.key;
+            return typeof key === "string" && (
+                key === "user_section"
+                || key === "billing_section"
+                || key === "activity_section"
+                || key === "logout_section"
+            );
+        });
+
+        // Discord occasionally changes the root builder key; detect root by section keys as a fallback.
+        if (originalLayoutBuilder.key !== "$Root" && !isRootLikeLayout) return layout;
 
         if (layout.some(s => s?.key === "vencord_section")) return layout;
 
