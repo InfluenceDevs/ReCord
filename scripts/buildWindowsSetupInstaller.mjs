@@ -142,6 +142,33 @@ function prepareTempInstallerDir() {
     return TEMP_INSTALLER_DIR;
 }
 
+function runInstallerDist(installerDir) {
+    const unpackedDir = join(installerDir, "dist", "win-ia32-unpacked");
+    const nsisCacheDir = join(process.env.LOCALAPPDATA || "", "electron-builder", "Cache", "nsis");
+    const maxAttempts = 2;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            if (attempt > 1) {
+                console.log("Retrying installer build after cleaning partial output...");
+                rmSync(unpackedDir, { force: true, recursive: true });
+                if (process.platform === "win32" && nsisCacheDir) {
+                    rmSync(nsisCacheDir, { force: true, recursive: true });
+                }
+            }
+
+            execSync("corepack yarn dist", {
+                stdio: "inherit",
+                cwd: installerDir
+            });
+            return;
+        } catch (err) {
+            if (attempt === maxAttempts) throw err;
+            console.warn(`Installer build attempt ${attempt} failed; retrying once.`);
+        }
+    }
+}
+
 async function main() {
     ensureFreshAppBuild();
 
@@ -161,10 +188,7 @@ async function main() {
         cwd: installerDir
     });
 
-    execSync("corepack yarn dist", {
-        stdio: "inherit",
-        cwd: installerDir
-    });
+    runInstallerDist(installerDir);
 
     const distDir = join(installerDir, "dist");
     const setups = readdirSync(distDir).filter(f => f.endsWith(".exe") && !f.includes("Cli") && f.includes("ReCord"));
