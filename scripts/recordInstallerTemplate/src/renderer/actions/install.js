@@ -306,6 +306,21 @@ function tryManualLockedAsarRecovery(channel) {
 	}
 }
 
+function isAlreadyPatchedLayout(channel) {
+	if (process.platform !== "win32") return false;
+
+	try {
+		const resourcesDir = getLatestDiscordResourcesDir(channel);
+		if (!resourcesDir) return false;
+
+		const fallbackAsar = path.join(resourcesDir, "_app.asar");
+		const injectedAppDir = path.join(resourcesDir, "app");
+		return fs.existsSync(fallbackAsar) || fs.existsSync(injectedAppDir);
+	} catch {
+		return false;
+	}
+}
+
 export default async function (config) {
 	await reset();
 	const channels = Object.keys(config);
@@ -323,6 +338,23 @@ export default async function (config) {
 			}
 
 			normalizeLegacyAsarLayout(channel);
+
+			if (isAlreadyPatchedLayout(channel)) {
+				log(`Detected existing ReCord layout on ${channel}. Running repair flow first.`);
+				try {
+					await runCli(["-repair", "-branch", channel]);
+					log(`\u2705 ReCord repaired successfully on ${channel}`);
+					progress.set(progress.value + progressPerChannel);
+					continue;
+				} catch (repairErr) {
+					if (!isLockedAsarRenameError(repairErr)) {
+						log(`Repair-first path failed on ${channel}, falling back to install path...`);
+					} else {
+						throw repairErr;
+					}
+				}
+			}
+
 			await runCli(["-install", "-branch", channel]);
 			log(`\u2705 ReCord installed successfully on ${channel}`);
 			progress.set(progress.value + progressPerChannel);
