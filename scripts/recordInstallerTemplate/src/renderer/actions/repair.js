@@ -115,6 +115,12 @@ export default async function(config) {
     for (const channel of channels) {
         lognewline(`Repairing ReCord on Discord ${channel}...`);
         try {
+            const preKillErr = await kill([channel], 0, false);
+            if (preKillErr) {
+                log(`\u274c Failed to close Discord ${channel} before repair: ${preKillErr.message}`);
+                return fail();
+            }
+
             await runCli(["-repair", "-branch", channel]);
             log(`\u2705 ReCord repaired successfully on ${channel}`);
             progress.set(progress.value + progressPerChannel);

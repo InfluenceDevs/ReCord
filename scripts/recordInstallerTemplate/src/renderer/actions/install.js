@@ -124,6 +124,15 @@ function shouldRetryWithRepair(err) {
 		&& output.includes("cannot find the file specified");
 }
 
+function isDiscordFileLockError(err) {
+	const output = `${err?.message ?? ""}\n${err?.output ?? ""}`.toLowerCase();
+	return output.includes("files are used by a different process")
+		|| output.includes("access is denied")
+		|| output.includes("resource busy")
+		|| output.includes("ep\u0065rm")
+		|| output.includes("ebusy");
+}
+
 function getDiscordChannelDir(channel) {
 	const map = {
 		stable: "Discord",
@@ -258,12 +267,38 @@ export default async function (config) {
 	for (const channel of channels) {
 		lognewline(`Installing ReCord on Discord ${channel}...`);
 		try {
+			const preKillErr = await kill([channel], 0, false);
+			if (preKillErr) {
+				log(`\u274c Failed to close Discord ${channel} before install: ${preKillErr.message}`);
+				return fail();
+			}
+
 			normalizeLegacyAsarLayout(channel);
 			await runCli(["-install", "-branch", channel]);
 			log(`\u2705 ReCord installed successfully on ${channel}`);
 			progress.set(progress.value + progressPerChannel);
 		}
 		catch (err) {
+			if (isDiscordFileLockError(err)) {
+				log("Discord still appears to be running. Retrying after force-closing processes...");
+				const retryKillErr = await kill([channel], 0, false);
+				if (retryKillErr) {
+					log(`\u274c Could not close Discord ${channel}: ${retryKillErr.message}`);
+					return fail();
+				}
+
+				try {
+					normalizeLegacyAsarLayout(channel);
+					await runCli(["-install", "-branch", channel]);
+					log(`\u2705 ReCord installed successfully on ${channel} after closing Discord processes`);
+					progress.set(progress.value + progressPerChannel);
+					continue;
+				}
+				catch (retryErr) {
+					err = retryErr;
+				}
+			}
+
 			if (shouldRetryWithRepair(err)) {
 				log("Detected missing app.asar on host layout. Retrying with repair mode...");
 				try {
