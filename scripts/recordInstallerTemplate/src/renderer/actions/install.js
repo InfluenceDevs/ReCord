@@ -321,6 +321,19 @@ function isAlreadyPatchedLayout(channel) {
 	}
 }
 
+function completeInPlacePatchedUpdate(channel) {
+	try {
+		// Refresh payload files under %APPDATA%\ReCord so existing patched bootstrap can keep running.
+		getCliEnv();
+		log(`\u26a0\ufe0f Discord files are locked, but ReCord is already patched on ${channel}. Skipping unpatch and refreshing payload in place.`);
+		log(`\u2705 ReCord payload refreshed successfully on ${channel}`);
+		return true;
+	} catch (err) {
+		log(`Warning: could not refresh ReCord payload on ${channel}: ${err.message}`);
+		return false;
+	}
+}
+
 export default async function (config) {
 	await reset();
 	const channels = Object.keys(config);
@@ -347,6 +360,11 @@ export default async function (config) {
 					progress.set(progress.value + progressPerChannel);
 					continue;
 				} catch (repairErr) {
+					if (isDiscordFileLockError(repairErr) && completeInPlacePatchedUpdate(channel)) {
+						progress.set(progress.value + progressPerChannel);
+						continue;
+					}
+
 					if (!isLockedAsarRenameError(repairErr)) {
 						log(`Repair-first path failed on ${channel}, falling back to install path...`);
 					} else {
@@ -401,6 +419,11 @@ export default async function (config) {
 				}
 
 				if (recovered) continue;
+
+				if (isDiscordFileLockError(err) && isAlreadyPatchedLayout(channel) && completeInPlacePatchedUpdate(channel)) {
+					progress.set(progress.value + progressPerChannel);
+					continue;
+				}
 			}
 
 			if (shouldRetryWithRepair(err)) {
