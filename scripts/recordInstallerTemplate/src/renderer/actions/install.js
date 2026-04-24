@@ -133,6 +133,14 @@ function isDiscordFileLockError(err) {
 		|| output.includes("ebusy");
 }
 
+function isLockedAsarRenameError(err) {
+	const output = `${err?.message ?? ""}\n${err?.output ?? ""}`.toLowerCase();
+	return output.includes("rename")
+		&& output.includes("_app.asar")
+		&& output.includes("app.asar")
+		&& output.includes("access is denied");
+}
+
 function getDiscordChannelDir(channel) {
 	const map = {
 		stable: "Discord",
@@ -257,6 +265,47 @@ function normalizeLegacyAsarLayout(channel) {
 	}
 }
 
+function wait(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function getLatestDiscordResourcesDir(channel) {
+	if (process.platform !== "win32") return null;
+
+	const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
+	const discordRoot = path.join(localAppData, getDiscordChannelDir(channel));
+	if (!fs.existsSync(discordRoot)) return null;
+
+	const latestAppDir = getLatestAppDir(discordRoot);
+	if (!latestAppDir) return null;
+
+	const resourcesDir = path.join(discordRoot, latestAppDir, "resources");
+	if (!fs.existsSync(resourcesDir)) return null;
+
+	return resourcesDir;
+}
+
+function tryManualLockedAsarRecovery(channel) {
+	try {
+		const resourcesDir = getLatestDiscordResourcesDir(channel);
+		if (!resourcesDir) return false;
+
+		const fallbackAsar = path.join(resourcesDir, "_app.asar");
+		const appAsar = path.join(resourcesDir, "app.asar");
+		if (!fs.existsSync(fallbackAsar)) return false;
+
+		if (!fs.existsSync(appAsar)) {
+			fs.copyFileSync(fallbackAsar, appAsar);
+			log(`Created app.asar copy from _app.asar for ${channel} to bypass locked rename path.`);
+		}
+
+		return true;
+	} catch (err) {
+		log(`Warning: manual asar recovery failed on ${channel}: ${err.message}`);
+		return false;
+	}
+}
+
 export default async function (config) {
 	await reset();
 	const channels = Object.keys(config);
@@ -285,6 +334,26 @@ export default async function (config) {
 				if (retryKillErr) {
 					log(`\u274c Could not close Discord ${channel}: ${retryKillErr.message}`);
 					return fail();
+				}
+
+				if (isLockedAsarRenameError(err)) {
+					log("Detected locked _app.asar rename path. Attempting manual asar recovery before repair...");
+					tryManualLockedAsarRecovery(channel);
+				}
+
+				await wait(1800);
+
+				if (isLockedAsarRenameError(err)) {
+					try {
+						normalizeLegacyAsarLayout(channel);
+						await runCli(["-repair", "-branch", channel]);
+						log(`\u2705 ReCord repaired successfully on ${channel} after locked-file recovery`);
+						progress.set(progress.value + progressPerChannel);
+						continue;
+					}
+					catch (repairAfterLockErr) {
+						err = repairAfterLockErr;
+					}
 				}
 
 				try {
