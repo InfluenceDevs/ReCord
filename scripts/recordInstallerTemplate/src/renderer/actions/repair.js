@@ -27,16 +27,34 @@ function copyDirSync(src, dest) {
     }
 }
 
-function getCliEnv() {
-    // Source may be a temp dir (portable EXE extraction) — copy to a stable persistent location
-    const source = process.resourcesPath
-        ? path.join(process.resourcesPath, "record-app")
-        : path.join(__dirname, "..", "..", "..", "extraResources", "record-app");
+function hasRecordPayload(dir) {
+    if (!dir || !fs.existsSync(dir)) return false;
+    return fs.existsSync(path.join(dir, "dist")) && fs.existsSync(path.join(dir, "package.json"));
+}
 
+function resolveRecordAppSource() {
+    const resourcesPath = process.resourcesPath || "";
+    const candidates = [
+        path.join(resourcesPath, "record-app"),
+        path.join(resourcesPath, "app.asar.unpacked", "record-app"),
+        path.join(path.dirname(process.execPath), "resources", "record-app"),
+        path.join(path.dirname(process.execPath), "resources", "app.asar.unpacked", "record-app"),
+        path.join(__dirname, "..", "..", "..", "extraResources", "record-app")
+    ];
+
+    return candidates.find(hasRecordPayload) || null;
+}
+
+function getCliEnv() {
     const appData = process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming");
     const persistentPath = path.join(appData, "ReCord");
+    const source = resolveRecordAppSource();
 
-    copyDirSync(source, persistentPath);
+    if (source) {
+        copyDirSync(source, persistentPath);
+    } else if (!hasRecordPayload(persistentPath)) {
+        throw new Error("Installer payload (record-app) could not be found in extracted resources.");
+    }
 
     return {
         ...process.env,

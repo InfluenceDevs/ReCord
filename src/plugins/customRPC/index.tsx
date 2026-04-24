@@ -83,7 +83,11 @@ export const settings = definePluginSettings({
     multiRpcEnabled?: boolean;
     multiRpcProfiles?: string;
     multiRpcIntervalSec?: number;
+    multiRpcMode?: "cycle" | "single";
+    multiRpcSingleIndex?: number;
 }>();
+
+type MultiRpcMode = "cycle" | "single";
 
 type RpcProfile = Partial<{
     appID: string;
@@ -129,6 +133,13 @@ function resolveProfileSource(): RpcProfile | undefined {
 
     const profiles = parseProfiles();
     if (!profiles.length) return;
+
+    const mode = (settings.store.multiRpcMode ?? "cycle") as MultiRpcMode;
+    if (mode === "single") {
+        const rawIndex = Number(settings.store.multiRpcSingleIndex ?? 0);
+        const index = Number.isFinite(rawIndex) ? Math.max(0, Math.min(profiles.length - 1, rawIndex)) : 0;
+        return profiles[index];
+    }
 
     const current = profiles[profileCursor % profiles.length];
     profileCursor = (profileCursor + 1) % profiles.length;
@@ -273,6 +284,9 @@ export function refreshMultiRpcScheduler() {
     }
 
     if (!settings.store.multiRpcEnabled) return;
+
+    const mode = (settings.store.multiRpcMode ?? "cycle") as MultiRpcMode;
+    if (mode === "single") return;
 
     const profiles = parseProfiles();
     if (profiles.length < 2) return;

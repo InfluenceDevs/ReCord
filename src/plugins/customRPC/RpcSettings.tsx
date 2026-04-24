@@ -261,6 +261,8 @@ export function RPCSettings() {
     const selectedProfile = selectedProfileIndex == null ? null : profiles[selectedProfileIndex] ?? null;
     const currentType = (selectedProfile?.type ?? s.type ?? ActivityType.PLAYING) as ActivityType;
     const currentTimestampMode = (selectedProfile?.timestampMode ?? s.timestampMode ?? TimestampMode.NONE) as TimestampMode;
+    const rotationMode = (s.multiRpcMode ?? "cycle") as "cycle" | "single";
+    const selectedStaticProfileIndex = Math.max(0, Math.min(profiles.length - 1, Number(s.multiRpcSingleIndex ?? 0) || 0));
 
     const applySetting = React.useCallback(<T,>(settingsKey: SettingsKey, value: T) => {
         if (selectedProfileIndex == null) {
@@ -656,6 +658,37 @@ export function RPCSettings() {
                         { label: "Disabled", value: false, default: true },
                         { label: "Enabled", value: true }
                     ]}
+                />
+
+                <SelectSetting
+                    label="Profile Scheduling"
+                    value={rotationMode}
+                    onValueChange={value => {
+                        settings.store.multiRpcMode = value as "cycle" | "single";
+                        updateRPC();
+                    }}
+                    options={[
+                        { label: "Cycle through profiles", value: "cycle", default: true },
+                        { label: "Use one profile only", value: "single" }
+                    ]}
+                    disabled={!s.multiRpcEnabled}
+                />
+
+                <SelectSetting
+                    label="Single Profile"
+                    value={selectedStaticProfileIndex}
+                    onValueChange={value => {
+                        settings.store.multiRpcSingleIndex = value;
+                        updateRPC();
+                    }}
+                    options={profiles.length
+                        ? profiles.map((profile, index) => ({
+                            label: profile.appName || `Profile ${index + 1}`,
+                            value: index,
+                            default: index === 0
+                        }))
+                        : [{ label: "Create a profile first", value: 0, default: true }]}
+                    disabled={!s.multiRpcEnabled || rotationMode !== "single" || !profiles.length}
                 />
 
                 <PairSetting data={[

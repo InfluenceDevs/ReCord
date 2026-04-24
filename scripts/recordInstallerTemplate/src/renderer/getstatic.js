@@ -7,5 +7,5 @@ export default function getStatic(val) {
     if (isDevelopment) {
       return url.resolve(window.location.origin, val);
     }
-    return path.resolve(__static, val);
+    return url.pathToFileURL(path.resolve(__static, val)).toString();
 }
