@@ -361,43 +361,46 @@ export default async function (config) {
 		}
 		catch (err) {
 			if (isDiscordFileLockError(err)) {
-				log("Discord still appears to be running. Retrying after force-closing processes...");
-				const retryKillErr = await kill([channel], 0, false);
-				if (retryKillErr) {
-					log(`\u274c Could not close Discord ${channel}: ${retryKillErr.message}`);
-					return fail();
-				}
+				let recovered = false;
+				const lockRetryAttempts = 4;
 
-				if (isLockedAsarRenameError(err)) {
-					log("Detected locked _app.asar rename path. Attempting manual asar recovery before repair...");
-					tryManualLockedAsarRecovery(channel);
-				}
+				for (let attempt = 1; attempt <= lockRetryAttempts; attempt++) {
+					log(`Discord files are still locked. Retry ${attempt}/${lockRetryAttempts} after force-closing processes...`);
+					const retryKillErr = await kill([channel], 0, false);
+					if (retryKillErr) {
+						log(`\u274c Could not close Discord ${channel}: ${retryKillErr.message}`);
+						return fail();
+					}
 
-				await wait(1800);
+					if (isLockedAsarRenameError(err)) {
+						log("Detected locked _app.asar rename path. Attempting manual asar recovery before retry...");
+						tryManualLockedAsarRecovery(channel);
+					}
 
-				if (isLockedAsarRenameError(err)) {
+					await wait(1500 * attempt);
+
 					try {
 						normalizeLegacyAsarLayout(channel);
-						await runCli(["-repair", "-branch", channel]);
-						log(`\u2705 ReCord repaired successfully on ${channel} after locked-file recovery`);
+
+						if (isAlreadyPatchedLayout(channel)) {
+							await runCli(["-repair", "-branch", channel]);
+							log(`\u2705 ReCord repaired successfully on ${channel} after lock recovery`);
+						} else {
+							await runCli(["-install", "-branch", channel]);
+							log(`\u2705 ReCord installed successfully on ${channel} after lock recovery`);
+						}
+
 						progress.set(progress.value + progressPerChannel);
-						continue;
+						recovered = true;
+						break;
 					}
-					catch (repairAfterLockErr) {
-						err = repairAfterLockErr;
+					catch (retryErr) {
+						err = retryErr;
+						if (!isDiscordFileLockError(retryErr)) break;
 					}
 				}
 
-				try {
-					normalizeLegacyAsarLayout(channel);
-					await runCli(["-install", "-branch", channel]);
-					log(`\u2705 ReCord installed successfully on ${channel} after closing Discord processes`);
-					progress.set(progress.value + progressPerChannel);
-					continue;
-				}
-				catch (retryErr) {
-					err = retryErr;
-				}
+				if (recovered) continue;
 			}
 
 			if (shouldRetryWithRepair(err)) {
