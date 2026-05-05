@@ -45,7 +45,7 @@ const DEVELOPER_BADGE = "https://cdn3.emoji.gg/emojis/7893-developer-hax-5555ff.
 const CREATOR_BADGE = "https://cdn3.emoji.gg/emojis/6654-blurple-crown.png";
 
 const RECORD_CONTRIBUTORS = new Set([
-    "852733930296573992",
+    "260577084223520770",
     "1449137254491754690",
     "242571001953517578",
     "1220019912391655527",
@@ -54,14 +54,23 @@ const RECORD_CONTRIBUTORS = new Set([
     "852733930296573992"
 ]);
 
-const PLUGIN_AUTHOR_IDS = new Set(
-    Object.values(plugins)
-        .flatMap(plugin => plugin.authors ?? [])
-        .map(author => author.id.toString())
-        .filter(id => id !== "0")
-);
-const RECORD_CREATORS = new Set(["852733930296573992"]);
-const RECORD_DEVELOPERS = new Set(["852733930296573992", "1269024115973427374","760907824401612801"]);
+function getPluginAuthorIds() {
+    try {
+        const source = plugins as unknown as Record<string, { authors?: Array<{ id?: { toString(): string; }; }>; }> | undefined;
+        if (!source || typeof source !== "object") return new Set<string>();
+
+        return new Set(
+            Object.values(source)
+                .flatMap(plugin => plugin?.authors ?? [])
+                .map(author => author?.id?.toString?.() ?? "")
+                .filter(id => id && id !== "0")
+        );
+    } catch {
+        return new Set<string>();
+    }
+}
+const RECORD_CREATORS = new Set(["260577084223520770"]);
+const RECORD_DEVELOPERS = new Set(["260577084223520770", "1269024115973427374","760907824401612801"]);
 
 const ContributorBadge: ProfileBadge = {
     description: "ReCord Contributor",
@@ -73,7 +82,10 @@ const ContributorBadge: ProfileBadge = {
             transform: "scale(0.9)"
         }
     },
-    shouldShow: ({ userId }) => RECORD_CONTRIBUTORS.has(userId) || PLUGIN_AUTHOR_IDS.has(userId),
+    shouldShow: ({ userId }) => {
+        if (RECORD_CONTRIBUTORS.has(userId)) return true;
+        return getPluginAuthorIds().has(userId);
+    },
     onClick: (_, { userId }) => openContributorModal(UserStore.getUser(userId))
 };
 

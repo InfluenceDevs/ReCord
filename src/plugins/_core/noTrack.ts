@@ -121,12 +121,13 @@ export default definePlugin({
                     return;
                 }
 
-                new Logger("NoTrack", "#8caaee").info("Disabling Sentry by erroring its WebpackInstance");
+                new Logger("NoTrack", "#8caaee").info("Disabling Sentry by preventing its global bootstrap");
 
                 Reflect.deleteProperty(Function.prototype, "d");
                 Reflect.deleteProperty(window, "DiscordSentry");
 
-                throw new Error("Sentry successfully disabled");
+                // Avoid throwing here. New Discord builds may surface this as an uncaught startup error.
+                return;
             }
         });
 
