@@ -25,6 +25,7 @@
 import "./fixDiscordBadgePadding.css";
 
 import { _getBadges, addProfileBadge, BadgePosition, BadgeUserArgs, ProfileBadge, removeProfileBadge } from "@api/Badges";
+import { definePluginSettings } from "@api/Settings";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { Flex } from "@components/Flex";
 import { Heart } from "@components/Heart";
@@ -35,7 +36,7 @@ import { copyWithToast } from "@utils/discord";
 import { Logger } from "@utils/Logger";
 import { Margins } from "@utils/margins";
 import { closeModal, ModalContent, ModalFooter, ModalHeader, ModalRoot, openModal } from "@utils/modal";
-import definePlugin from "@utils/types";
+import definePlugin, { OptionType } from "@utils/types";
 import { ContextMenuApi, Forms, Menu, Toasts, UserStore } from "@webpack/common";
 
 import plugins from "~plugins";
@@ -71,6 +72,21 @@ function getPluginAuthorIds() {
 }
 const RECORD_CREATORS = new Set(["260577084223520770"]);
 const RECORD_DEVELOPERS = new Set(["260577084223520770", "1269024115973427374","760907824401612801"]);
+const badgeLogger = new Logger("BadgeAPI");
+
+const settings = definePluginSettings({
+    profileBadgeInjectionMode: {
+        type: OptionType.SELECT,
+        description: "Profile badge injection mode. Safe avoids crash-prone deep rendering patches.",
+        options: [
+            { label: "Safe (recommended)", value: "safe", default: true },
+            { label: "Full (can crash on Discord updates)", value: "full" },
+            { label: "Off", value: "off" }
+        ],
+        default: "safe",
+        restartNeeded: true
+    }
+});
 
 const ContributorBadge: ProfileBadge = {
     description: "ReCord Contributor",
@@ -124,8 +140,12 @@ async function loadBadges(noCache = false) {
     if (noCache)
         init.cache = "no-cache";
 
-    DonorBadges = await fetch("https://badges.vencord.dev/badges.json", init)
-        .then(r => r.json());
+    try {
+        DonorBadges = await fetch("https://badges.vencord.dev/badges.json", init)
+            .then(r => r.json());
+    } catch (error) {
+        badgeLogger.error("Failed to load donor badges", error);
+    }
 }
 
 let intervalId: any;
@@ -160,7 +180,36 @@ export default definePlugin({
     description: "API to add badges to users",
     authors: [Devs.Megu, Devs.Ven, Devs.TheSun],
     required: true,
-    patches: [],
+    patches: [
+        {
+            find: "#{intl::PROFILE_USER_BADGES}",
+            predicate: () => settings.store.profileBadgeInjectionMode === "full",
+            replacement: [
+                {
+                    match: /alt:" ","aria-hidden":!0,src:.{0,50}(\i).iconSrc/,
+                    replace: "...$1.props,$&"
+                },
+                {
+                    match: /(?<=forceOpen:.{0,40}?ariaHidden:!0,)children:(?=.{0,50}?(\i)\.id)/,
+                    replace: "children:$1.component?$self.renderBadgeComponent({...$1}) :"
+                },
+                {
+                    match: /href:(\i)\.link/,
+                    replace: "...$self.getBadgeMouseEventHandlers($1),$&"
+                }
+            ]
+        },
+        {
+            find: "getLegacyUsername(){",
+            predicate: () => settings.store.profileBadgeInjectionMode !== "off",
+            replacement: {
+                match: /getBadges\(\)\{.{0,100}?return\[/,
+                replace: "$&...$self.getBadges(this),"
+            }
+        }
+    ],
+
+    settings,
 
     // for access from the console or other plugins
     get DonorBadges() {
@@ -178,7 +227,7 @@ export default definePlugin({
         }
     },
 
-    userProfileBadge: ContributorBadge,
+    userProfileBadge: CreatorBadge,
 
     async start() {
         await loadBadges();
@@ -186,12 +235,14 @@ export default definePlugin({
         clearInterval(intervalId);
         intervalId = setInterval(loadBadges, 1000 * 60 * 30); // 30 minutes
 
+        addProfileBadge(ContributorBadge);
         addProfileBadge(CreatorBadge);
         addProfileBadge(DeveloperBadge);
     },
 
     async stop() {
         clearInterval(intervalId);
+        removeProfileBadge(ContributorBadge);
         removeProfileBadge(CreatorBadge);
         removeProfileBadge(DeveloperBadge);
     },

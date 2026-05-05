@@ -27,8 +27,75 @@ import { TooltipFallback } from "@components/TooltipFallback";
 import { LazyComponent } from "@utils/lazyReact";
 import * as t from "@vencord/discord-types";
 import { filters, find, findCssClassesLazy, mapMangledCssClasses, mapMangledModuleLazy, proxyLazyWebpack, waitFor } from "@webpack";
+import { React } from "./react";
 
 import { waitForComponent } from "./internal";
+
+const FallbackTextArea = (props: any) => React.createElement("textarea", {
+    value: props?.value ?? "",
+    placeholder: props?.placeholder,
+    autoFocus: props?.autoFocus,
+    disabled: props?.disabled,
+    className: props?.className,
+    rows: props?.rows ?? 4,
+    onKeyDown: props?.onKeyDown,
+    style: {
+        background: "var(--input-background, var(--background-secondary-alt, #1e1f22))",
+        color: "var(--text-normal, #dbdee1)",
+        border: "1px solid transparent",
+        borderRadius: "3px",
+        padding: "10px",
+        fontFamily: "var(--font-primary, 'gg sans', 'Noto Sans', system-ui, sans-serif)",
+        fontSize: "16px",
+        resize: "vertical" as const,
+        boxSizing: "border-box" as const,
+        width: "100%",
+        lineHeight: "1.375",
+        outline: "none",
+        ...props?.style
+    },
+    onChange: (e: any) => props?.onChange?.(e.currentTarget?.value ?? "")
+});
+
+const FallbackSelect = (props: any) => {
+    const options = Array.isArray(props?.options) ? props.options : [];
+    const selectedIdx = Math.max(0, options.findIndex((option: any) => {
+        if (typeof props?.isSelected === "function") return !!props.isSelected(option?.value);
+        return !!option?.default;
+    }));
+
+    return React.createElement(
+        "select",
+        {
+            disabled: props?.disabled,
+            className: props?.className,
+                style: {
+                    background: "var(--input-background, var(--background-secondary-alt, #1e1f22))",
+                    color: "var(--text-normal, #dbdee1)",
+                    border: "1px solid var(--border-faint, transparent)",
+                    borderRadius: "3px",
+                    padding: "6px 10px",
+                    fontFamily: "var(--font-primary, 'gg sans', 'Noto Sans', system-ui, sans-serif)",
+                    fontSize: "14px",
+                    width: "100%",
+                    cursor: "pointer",
+                    outline: "none",
+                    ...props?.style
+                },
+            value: String(selectedIdx),
+            onChange: (e: any) => {
+                const idx = Number(e.currentTarget?.value ?? 0);
+                const selected = options[idx];
+                if (selected && typeof props?.select === "function") {
+                    props.select(selected.value);
+                }
+            }
+        },
+        options.map((option: any, idx: number) =>
+            React.createElement("option", { key: String(option?.value ?? idx), value: String(idx) }, option?.label ?? String(option?.value ?? idx))
+        )
+    );
+};
 
 export const Forms = {
     // TODO: Stop using this and use Heading/Paragraph directly
@@ -57,9 +124,9 @@ export const Tooltip = waitForComponent<t.Tooltip>("Tooltip", m => m.prototype?.
 export const TooltipContainer = TooltipContainerComponent as never;
 
 export const TextInput = waitForComponent<t.TextInput>("TextInput", filters.componentByCode("#{intl::MAXIMUM_LENGTH_ERROR}", '"input"'));
-export const TextArea = waitForComponent<t.TextArea>("TextArea", filters.componentByCode("this.getPaddingRight()},id:"));
-export const Select = waitForComponent<t.Select>("Select", filters.componentByCode('"Select"'));
-export const SearchableSelect = waitForComponent<t.SearchableSelect>("SearchableSelect", filters.componentByCode('"SearchableSelect"'));
+export const TextArea = waitForComponent<t.TextArea>("TextArea", filters.componentByCode("this.getPaddingRight()},id:"), FallbackTextArea as never);
+export const Select = waitForComponent<t.Select>("Select", filters.componentByCode('"Select"'), FallbackSelect as never);
+export const SearchableSelect = waitForComponent<t.SearchableSelect>("SearchableSelect", filters.componentByCode('"SearchableSelect"'), FallbackSelect as never);
 export const Slider = waitForComponent<t.Slider>("Slider", filters.componentByCode("markDash", "this.renderMark("));
 export const Popout = waitForComponent<t.Popout>("Popout", filters.componentByCode("ref:this.ref,", "renderPopout:this.renderPopout,"));
 export const Dialog = waitForComponent<t.Dialog>("Dialog", filters.componentByCode('role:"dialog",tabIndex:-1'));

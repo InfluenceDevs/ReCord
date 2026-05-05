@@ -82,12 +82,14 @@ export enum SearchStatus {
     NEW,
     USER_PLUGINS,
     API_PLUGINS,
-    RECORD_PLUGINS
+    RECORD_PLUGINS,
+    EQUICORD_PLUGINS
 }
 
 export enum SearchSource {
     ALL = "all",
     RECORD = "record",
+    EQUICORD = "equicord",
     VENCORD = "vencord"
 }
 
@@ -110,10 +112,11 @@ const validSearchStatuses = [
     SearchStatus.NEW,
     SearchStatus.USER_PLUGINS,
     SearchStatus.API_PLUGINS,
-    SearchStatus.RECORD_PLUGINS
+    SearchStatus.RECORD_PLUGINS,
+    SearchStatus.EQUICORD_PLUGINS
 ];
 
-const validSearchSources = [SearchSource.ALL, SearchSource.RECORD, SearchSource.VENCORD];
+const validSearchSources = [SearchSource.ALL, SearchSource.RECORD, SearchSource.EQUICORD, SearchSource.VENCORD];
 
 export function normalizePluginFilterState(value?: Partial<PluginFilterState> | null): PluginFilterState {
     const status = validSearchStatuses.includes(value?.status as SearchStatus)
@@ -243,10 +246,26 @@ function PluginSettings() {
     const onSearch = (query: string) => setSearchValue(prev => ({ ...prev, value: query }));
     const onStatusChange = (status: SearchStatus) => setSearchValue(prev => ({ ...prev, status }));
     const onSourceChange = (source: SearchSource) => setSearchValue(prev => ({ ...prev, source }));
+    const applyQuickFilter = (status: SearchStatus, source = searchValue.source) =>
+        setSearchValue(prev => ({ ...prev, status, source }));
+
+    const reconnectGateway = () => window.location.reload();
 
     const toSafeLower = (value: unknown) => typeof value === "string" ? value.toLowerCase() : "";
 
+    const hasEquicordMarker = (plugin: typeof Plugins[keyof typeof Plugins]) => {
+        const name = toSafeLower((plugin as any)?.name);
+        const desc = toSafeLower((plugin as any)?.description);
+        const tags = Array.isArray((plugin as any)?.tags) ? (plugin as any).tags : [];
+
+        return name.includes("equicord")
+            || desc.includes("equicord")
+            || tags.some((t: unknown) => toSafeLower(t).includes("equicord"));
+    };
+
     const isReCordPlugin = (plugin: typeof Plugins[keyof typeof Plugins]) => {
+        if (hasEquicordMarker(plugin)) return false;
+
         const name = toSafeLower((plugin as any)?.name);
         const desc = toSafeLower((plugin as any)?.description);
         const tags = Array.isArray((plugin as any)?.tags) ? (plugin as any).tags : [];
@@ -258,6 +277,10 @@ function PluginSettings() {
         if (authors.some((a: any) => toSafeLower(a?.name).includes("rloxx") || toSafeLower(a?.name).includes("record") || toSafeLower(a?.name).includes("influence"))) return true;
 
         return false;
+    };
+
+    const isEquicordPlugin = (plugin: typeof Plugins[keyof typeof Plugins]) => {
+        return hasEquicordMarker(plugin);
     };
 
     const pluginFilter = (plugin: typeof Plugins[keyof typeof Plugins]) => {
@@ -274,8 +297,11 @@ function PluginSettings() {
             case SearchSource.RECORD:
                 if (!isReCordPlugin(plugin)) return false;
                 break;
+            case SearchSource.EQUICORD:
+                if (!isEquicordPlugin(plugin)) return false;
+                break;
             case SearchSource.VENCORD:
-                if (isReCordPlugin(plugin)) return false;
+                if (isReCordPlugin(plugin) || isEquicordPlugin(plugin)) return false;
                 break;
             case SearchSource.ALL:
             default:
@@ -300,6 +326,9 @@ function PluginSettings() {
                 break;
             case SearchStatus.RECORD_PLUGINS:
                 if (!isReCordPlugin(plugin)) return false;
+                break;
+            case SearchStatus.EQUICORD_PLUGINS:
+                if (!isEquicordPlugin(plugin)) return false;
                 break;
         }
 
@@ -402,6 +431,7 @@ function PluginSettings() {
                                 hasUserPlugins && { label: "Show UserPlugins", value: SearchStatus.USER_PLUGINS },
                                 { label: "Show API Plugins", value: SearchStatus.API_PLUGINS },
                                 { label: "Show ReCord Plugins", value: SearchStatus.RECORD_PLUGINS },
+                                { label: "Show Equicord Plugins", value: SearchStatus.EQUICORD_PLUGINS },
                             ].filter(isTruthy)}
                             serialize={String}
                             select={onStatusChange}
@@ -416,6 +446,7 @@ function PluginSettings() {
                             options={[
                                 { label: "All Sources", value: SearchSource.ALL, default: true },
                                 { label: "ReCord", value: SearchSource.RECORD },
+                                { label: "Equicord", value: SearchSource.EQUICORD },
                                 { label: "Vencord", value: SearchSource.VENCORD },
                             ]}
                             serialize={String}
@@ -425,6 +456,32 @@ function PluginSettings() {
                         />
                     </ErrorBoundary>
                 </div>
+            </div>
+
+            <div className={classes(Margins.bottom20, cl("quick-filters"))}>
+                <Button size="small" variant="secondary" onClick={() => applyQuickFilter(SearchStatus.ALL, SearchSource.ALL)}>
+                    All
+                </Button>
+                <Button size="small" variant="secondary" onClick={() => applyQuickFilter(SearchStatus.ENABLED)}>
+                    Enabled
+                </Button>
+                <Button size="small" variant="secondary" onClick={() => applyQuickFilter(SearchStatus.DISABLED)}>
+                    Disabled
+                </Button>
+                <Button size="small" variant="secondary" onClick={() => applyQuickFilter(SearchStatus.RECORD_PLUGINS, SearchSource.RECORD)}>
+                    ReCord Plugins
+                </Button>
+                <Button size="small" variant="secondary" onClick={() => applyQuickFilter(SearchStatus.EQUICORD_PLUGINS, SearchSource.EQUICORD)}>
+                    Equicord Plugins
+                </Button>
+                <Button size="small" variant="secondary" onClick={() => applyQuickFilter(SearchStatus.API_PLUGINS)}>
+                    API Plugins
+                </Button>
+                {!IS_WEB && (
+                    <Button size="small" variant="primary" onClick={reconnectGateway}>
+                        Reconnect Gateway
+                    </Button>
+                )}
             </div>
 
             <HeadingTertiary className={Margins.top20}>Plugins</HeadingTertiary>

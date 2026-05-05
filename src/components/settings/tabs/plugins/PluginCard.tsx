@@ -24,13 +24,26 @@ interface PluginCardProps extends React.HTMLProps<HTMLDivElement> {
 }
 
 const RECORD_ICON = "vencord://assets/icon.png";
+const EQUICORD_ICON = "https://github.com/Equicord/Equibored/blob/main/icons/equicord/icon.png?raw=1";
 const VENCORD_ICON = "https://raw.githubusercontent.com/Vendicated/Vencord/main/browser/icon.png";
 
 function toSafeLower(value: unknown) {
     return typeof value === "string" ? value.toLowerCase() : "";
 }
 
+function hasEquicordMarker(plugin: Plugin) {
+    const name = toSafeLower((plugin as any)?.name);
+    const desc = toSafeLower((plugin as any)?.description);
+    const tags = Array.isArray((plugin as any)?.tags) ? (plugin as any).tags : [];
+
+    return name.includes("equicord")
+        || desc.includes("equicord")
+        || tags.some((t: unknown) => toSafeLower(t).includes("equicord"));
+}
+
 function isReCordPlugin(plugin: Plugin) {
+    if (hasEquicordMarker(plugin)) return false;
+
     const name = toSafeLower((plugin as any)?.name);
     const desc = toSafeLower((plugin as any)?.description);
     const tags = Array.isArray((plugin as any)?.tags) ? (plugin as any).tags : [];
@@ -44,16 +57,24 @@ function isReCordPlugin(plugin: Plugin) {
     return false;
 }
 
+function isEquicordPlugin(plugin: Plugin) {
+    return hasEquicordMarker(plugin);
+}
+
 export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, onMouseLeave, isNew }: PluginCardProps) {
     const settings = Settings.plugins[plugin.name] ?? (Settings.plugins[plugin.name] = { enabled: isPluginEnabled(plugin.name) } as any);
     const source = isReCordPlugin(plugin)
         ? { label: "ReCord", className: "record" as const }
-        : { label: "Vencord", className: "vencord" as const };
+        : isEquicordPlugin(plugin)
+            ? { label: "Equicord", className: "equicord" as const }
+            : { label: "Vencord", className: "vencord" as const };
 
     const sourceBadge = (
         <span className={cl("source-badge", source.className)} title={source.label}>
             {source.className === "record"
                 ? <img src={RECORD_ICON} alt="ReCord source" width={14} height={14} />
+                : source.className === "equicord"
+                    ? <img src={EQUICORD_ICON} alt="Equicord source" width={14} height={14} />
                 : <img src={VENCORD_ICON} alt="Vencord source" width={14} height={14} />
             }
         </span>

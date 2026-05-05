@@ -1,36 +1,48 @@
-/* ReCord settings layout — Discord-native flat design */
+/* ReCord Control Center - glossy deep-blue dashboard style */
 .vc-record-layout {
+    --record-stroke: color-mix(in srgb, #78a5ff 18%, var(--background-modifier-accent));
+    --record-card-bg:
+        radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, #2f5fff 22%, transparent), transparent 60%),
+        radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, #50a0ff 18%, transparent), transparent 62%),
+        color-mix(in srgb, var(--background-secondary) 92%, #040814 8%);
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 2px;
+    gap: 14px;
+    padding: 4px;
 }
 
 .vc-record-header {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
-    gap: 12px;
-    border: 1px solid var(--background-modifier-accent);
-    border-radius: 8px;
-    padding: 14px;
-    background: var(--background-secondary-alt);
+    gap: 14px;
+    border: 1px solid var(--record-stroke);
+    border-radius: 14px;
+    padding: 16px;
+    background: var(--record-card-bg);
+    box-shadow: 0 14px 36px color-mix(in srgb, #001538 38%, transparent);
 }
 
 .vc-record-header-main {
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-width: 240px;
+    gap: 14px;
+    min-width: 260px;
 }
 
 .vc-record-logo {
-    width: 38px;
-    height: 38px;
-    border-radius: 8px;
-    border: 1px solid var(--background-modifier-accent);
-    background: var(--background-secondary);
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, #85a9ff 32%, transparent);
+    background: linear-gradient(160deg, color-mix(in srgb, #5f89ff 28%, transparent), color-mix(in srgb, var(--background-secondary) 94%, #060a16 6%));
     object-fit: cover;
+}
+
+.vc-record-header h2 {
+    margin: 0;
+    font-size: 24px;
+    letter-spacing: 0.01em;
 }
 
 .vc-record-badges {
@@ -44,40 +56,40 @@
 .vc-record-badge {
     display: inline-flex;
     align-items: center;
-    border: 1px solid var(--background-modifier-accent);
+    border: 1px solid color-mix(in srgb, #7ea4ff 24%, transparent);
     border-radius: 999px;
-    padding: 4px 10px;
+    padding: 5px 11px;
     color: var(--header-primary);
     font-size: 12px;
     font-weight: 600;
-    background: var(--background-secondary);
+    background: color-mix(in srgb, var(--background-secondary) 84%, #0a1838 16%);
 }
 
 .vc-record-badge-soft {
-    font-weight: 400;
+    font-weight: 500;
     color: var(--text-muted);
 }
 
 .vc-record-nav-panel {
-    margin-top: 2px;
+    margin-top: 0;
 }
 
 .vc-record-quick-tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
     margin-top: 8px;
 }
 
 .vc-record-grid {
     display: grid;
-    gap: 12px;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .vc-record-rpc-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(180px, 1fr);
+    grid-template-columns: minmax(0, 1.45fr) minmax(180px, 1fr);
     gap: 12px;
     align-items: start;
     margin-bottom: 12px;
@@ -88,9 +100,9 @@
     flex-direction: column;
     gap: 4px;
     padding: 12px;
-    border: 1px solid var(--background-modifier-accent);
-    border-radius: 8px;
-    background: var(--background-secondary-alt);
+    border: 1px solid var(--record-stroke);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--background-secondary) 90%, #0a1531 10%);
 }
 
 .vc-record-rpc-state strong {
@@ -104,10 +116,11 @@
 }
 
 .vc-record-panel {
-    border: 1px solid var(--background-modifier-accent);
-    border-radius: 8px;
+    border: 1px solid var(--record-stroke);
+    border-radius: 12px;
     padding: 14px;
-    background: var(--background-secondary);
+    background: var(--record-card-bg);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, #95b6ff 10%, transparent);
 }
 
 .vc-record-panel-wide {
@@ -118,9 +131,37 @@
     color: var(--text-muted);
 }
 
+.vc-record-panel .vc-settings-quickActions-card {
+    margin-bottom: 0;
+    padding: 0;
+    gap: 10px;
+}
+
+.vc-record-panel .vc-settings-quickActions-pill {
+    border: 1px solid color-mix(in srgb, #7a9eff 18%, transparent);
+    background: color-mix(in srgb, var(--background-secondary) 86%, #0d1d46 14%);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.vc-record-panel .vc-settings-quickActions-pill:hover {
+    background: color-mix(in srgb, var(--background-secondary) 74%, #1b3876 26%);
+    box-shadow: 0 8px 18px color-mix(in srgb, #09183c 42%, transparent);
+}
+
+@media (width <= 980px) {
+    .vc-record-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .vc-record-quick-tabs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 @media (width <= 700px) {
     .vc-record-header {
-        padding: 12px;
+        padding: 13px;
     }
 
     .vc-record-header-main {
@@ -131,6 +172,10 @@
     .vc-record-badges {
         width: 100%;
         justify-content: flex-start;
+    }
+
+    .vc-record-quick-tabs {
+        grid-template-columns: 1fr;
     }
 
     .vc-record-rpc-grid {

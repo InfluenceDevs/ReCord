@@ -16,6 +16,45 @@ import { Alerts, Button, Forms, React, Toasts, useState } from "@webpack/common"
 
 import { runWithDispatch } from "./runWithDispatch";
 
+function safeShowToast(message: string, type: string = Toasts.Type.MESSAGE) {
+    const toastApi = Toasts as any;
+    if (typeof toastApi?.show === "function" && typeof toastApi?.genId === "function") {
+        toastApi.show({
+            message,
+            id: toastApi.genId(),
+            type,
+            options: {
+                position: toastApi.Position?.BOTTOM
+            }
+        });
+        return;
+    }
+
+    console.info("[ReCord Updater]", message);
+}
+
+async function showRestartPrompt(): Promise<void> {
+    const alertsApi = Alerts as any;
+    if (typeof alertsApi?.show !== "function") {
+        safeShowToast("Updated successfully. Restart Discord manually to apply changes.", Toasts.Type.SUCCESS);
+        return;
+    }
+
+    await new Promise<void>(resolve => {
+        alertsApi.show({
+            title: "Update Success!",
+            body: "Successfully updated. Restart now to apply the changes?",
+            confirmText: "Restart",
+            cancelText: "Not now!",
+            onConfirm() {
+                relaunch();
+                resolve();
+            },
+            onCancel: resolve
+        });
+    });
+}
+
 export interface CommonProps {
     repo: string;
     repoPending: boolean;
@@ -99,20 +138,7 @@ export function Updatable(props: CommonProps) {
                         onClick={runWithDispatch(setIsUpdating, async () => {
                             if (await update()) {
                                 setUpdates([]);
-
-                                await new Promise<void>(r => {
-                                    Alerts.show({
-                                        title: "Update Success!",
-                                        body: "Successfully updated. Restart now to apply the changes?",
-                                        confirmText: "Restart",
-                                        cancelText: "Not now!",
-                                        onConfirm() {
-                                            relaunch();
-                                            r();
-                                        },
-                                        onCancel: r
-                                    });
-                                });
+                                await showRestartPrompt();
                             }
                         })}
                     >
@@ -129,15 +155,7 @@ export function Updatable(props: CommonProps) {
                             setUpdates(changes);
                         } else {
                             setUpdates([]);
-
-                            Toasts.show({
-                                message: "No updates found!",
-                                id: Toasts.genId(),
-                                type: Toasts.Type.MESSAGE,
-                                options: {
-                                    position: Toasts.Position.BOTTOM
-                                }
-                            });
+                            safeShowToast("No updates found!", Toasts.Type.MESSAGE);
                         }
                     })}
                 >

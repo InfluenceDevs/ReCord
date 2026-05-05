@@ -46,11 +46,19 @@ function setRule(guildId: string, patch: Partial<GuildRule>) {
 }
 
 function isDirectMention(message: any, myId: string) {
-    return Array.isArray(message?.mentions) && message.mentions.some((m: any) => m?.id === myId);
+    if (Array.isArray(message?.mentions) && message.mentions.some((m: any) => m?.id === myId)) return true;
+    return Boolean(message?.mentioned);
 }
 
 function isEveryoneLikeMention(message: any) {
-    return !!message?.mention_everyone || (Array.isArray(message?.mention_roles) && message.mention_roles.length > 0);
+    return Boolean(message?.mention_everyone)
+        || Boolean(message?.mentionEveryone)
+        || (Array.isArray(message?.mention_roles) && message.mention_roles.length > 0)
+        || (Array.isArray(message?.mentionRoles) && message.mentionRoles.length > 0);
+}
+
+function getField<T = any>(obj: any, snake: string, camel: string): T | undefined {
+    return (obj?.[snake] ?? obj?.[camel]) as T | undefined;
 }
 
 function shouldSuppressPing(message: any, rule: GuildRule, myId: string) {
@@ -80,17 +88,22 @@ function ackMessage(channelId: string, messageId: string) {
 }
 
 const onMessageCreate = ({ message }: { message?: any; }) => {
-    const guildId = message?.guild_id;
-    if (!guildId || !message?.channel_id || !message?.id) return;
+    const guildId = getField<string>(message, "guild_id", "guildId");
+    const channelId = getField<string>(message, "channel_id", "channelId");
+    const messageId = message?.id as string | undefined;
+    const authorId = getField<string>(message?.author, "id", "id");
+
+    if (!guildId || !channelId || !messageId) return;
 
     const myId = UserStore.getCurrentUser()?.id;
     if (!myId) return;
+    if (authorId === myId) return;
 
     const rule = getRule(guildId);
     if (!shouldSuppressPing(message, rule, myId)) return;
 
     if (rule.autoMarkRead) {
-        ackMessage(message.channel_id, message.id);
+        ackMessage(channelId, messageId);
     }
 };
 

@@ -27,19 +27,19 @@ import { Divider } from "@components/Divider";
 import { FormSwitch } from "@components/FormSwitch";
 import { CopyIcon, FolderIcon, GithubIcon, LogIcon, PaintbrushIcon, RestartIcon, SafetyIcon } from "@components/Icons";
 import { QuickAction, QuickActionCard } from "@components/settings/QuickAction";
-import { BackupAndRestoreTab, CustomRpcTab, openSettingsTabModal, PluginsTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
+import { BackupAndRestoreTab, openSettingsTabModal, PluginsTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { DEFAULT_PLUGIN_FILTER_STATE, normalizePluginFilterState, PLUGIN_FILTER_STORE_KEY, SearchSource, SearchStatus } from "@components/settings/tabs/plugins";
 import { openContributorModal } from "@components/settings/tabs/plugins/ContributorModal";
 import { openPluginModal } from "@components/settings/tabs/plugins/PluginModal";
-import { applyRpcSettingsUpdate, settings as customRpcSettings } from "@plugins/customRPC";
+import { settings as customRpcSettings } from "@plugins/customRPC";
 import { gitRemote } from "@shared/vencordUserAgent";
 import { IS_MAC, IS_WINDOWS } from "@utils/constants";
 import { Margins } from "@utils/margins";
 import { isPluginDev } from "@utils/misc";
 import { relaunch } from "@utils/native";
 import { ActivityType } from "@vencord/discord-types/enums";
-import { Alerts, AuthenticationStore, Forms, React, Select, UserStore } from "@webpack/common";
+import { Alerts, AuthenticationStore, Forms, React, UserStore } from "@webpack/common";
 
 import { VibrancySettings } from "./MacVibrancySettings";
 import { NotificationSection } from "./NotificationSettings";
@@ -192,6 +192,7 @@ function ReCordSettings() {
         }));
         openSettingsTabModal(PluginsTab);
     }, []);
+
 
     return (
         <SettingsTab>

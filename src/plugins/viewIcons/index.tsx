@@ -206,8 +206,8 @@ export default definePlugin({
         {
             find: "imageClassName:null!=",
             replacement: {
-                match: /avatarSrc:(\i),eventHandlers:(\i).+?"div",.{0,100}className:\i,/,
-                replace: "$&style:{cursor:\"pointer\"},onClick:()=>{$self.openAvatar($1)},",
+                match: /avatarSrc:(\i),eventHandlers:(\i).+?"div",.{0,200}?className:\i,/,
+                replace: "$&style:{cursor:\"pointer\"},onClick:()=>{$1&&$self.openAvatar($1)},",
             }
         },
         // Banners

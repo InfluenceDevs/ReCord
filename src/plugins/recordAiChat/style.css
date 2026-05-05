@@ -55,7 +55,13 @@
 .vc-record-ai-chat-modal-body {
     display: grid;
     gap: 14px;
-    width: min(820px, 88vw);
+    width: min(580px, 88vw);
+}
+
+.vc-record-ai-chat-model-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
 .vc-record-ai-chat-status-card,
@@ -71,8 +77,8 @@
 .vc-record-ai-chat-conversation {
     display: grid;
     gap: 10px;
-    min-height: 360px;
-    max-height: 56vh;
+    min-height: 280px;
+    max-height: 50vh;
     overflow: auto;
     padding-right: 6px;
 }
@@ -93,10 +99,10 @@
 
 .vc-record-ai-chat-message {
     display: grid;
-    gap: 6px;
-    padding: 12px 14px;
-    border-radius: 18px;
-    max-width: min(92%, 680px);
+    gap: 4px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    max-width: min(82%, 420px);
 }
 
 .vc-record-ai-chat-message-user {
@@ -122,6 +128,7 @@
     white-space: pre-wrap;
     word-break: break-word;
     line-height: 1.45;
+    color: var(--text-normal, #dbdee1);
 }
 
 .vc-record-ai-chat-composer {

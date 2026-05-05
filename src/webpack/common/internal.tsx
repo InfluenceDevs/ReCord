@@ -31,6 +31,11 @@ export function waitForComponent<T extends ComponentType<any> = ComponentType<an
     const lazyComponent = LazyComponent(() => {
         if (myValue) return myValue;
 
+        if (fallbackValue != null) {
+            logger.warn(`Using fallback for missing ${name} Component`);
+            return fallbackValue as T;
+        }
+
         const error = new Error(`ReCord could not find the ${name} Component`);
         logger.error(error);
 

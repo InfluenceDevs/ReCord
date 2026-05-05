@@ -76,9 +76,19 @@
     align-items: center;
 }
 
+.vc-plugins-quick-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 @media (width <= 800px) {
     .vc-plugins-filter-controls {
         grid-template-columns: 1fr;
+    }
+
+    .vc-plugins-quick-filters {
+        gap: 6px;
     }
 }
 

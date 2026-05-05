@@ -31,7 +31,7 @@ import { getTag, getTags, removeTag, settings, Tag } from "./settings";
 
 const CustomCommandsMarker = Symbol("CustomCommands");
 const ArgumentRegex = /{{(.+?)}}/g;
-const EQUICORD_ICON = "https://avatars.githubusercontent.com/u/121594358?s=64&v=4";
+const EQUICORD_ICON = "https://github.com/Equicord/Equibored/blob/main/icons/equicord/icon.png?raw=1";
 const PendingReplyStore = findByPropsLazy("getPendingReply");
 
 export function parseTagArguments(message: string) {
@@ -92,7 +92,7 @@ export function registerTagCommand(tag: Tag) {
 migratePluginSettings("CustomCommands", "MessageTags");
 export default definePlugin({
     name: "CustomCommands",
-    description: "Allows you to create custom slash commands / tags (Equicord port)",
+    description: "Allows you to create custom slash commands / tags",
     dependencies: ["CommandsAPI"],
     searchTerms: ["MessageTags"],
     authors: [Devs.Rloxx],

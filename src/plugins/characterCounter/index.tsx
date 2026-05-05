@@ -14,7 +14,7 @@ import definePlugin, { OptionType } from "@utils/types";
 import { findByPropsLazy } from "@webpack";
 import { useEffect, UserStore, useState } from "@webpack/common";
 
-const EQUICORD_ICON = "https://avatars.githubusercontent.com/u/121594358?s=64&v=4";
+const EQUICORD_ICON = "https://github.com/Equicord/Equibored/blob/main/icons/equicord/icon.png?raw=1";
 
 const cl = classNameFactory("vc-charCounter-");
 const SlateUtils = findByPropsLazy("getSelectedText");
@@ -37,7 +37,7 @@ function getCounterColor(percentage: number) {
 
 export default definePlugin({
     name: "CharacterCounter",
-    description: "Adds a character counter to the chat input (Equicord port)",
+    description: "Adds a character counter to the chat input",
     authors: [Devs.Rloxx],
     tags: ["Utility", "Equicord"],
     icon: EQUICORD_ICON,

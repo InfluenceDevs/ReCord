@@ -1,5 +1,5 @@
 /*
- * ReCord, a Discord client mod
+ * Vencord, a Discord client mod
  * Copyright (c) 2026 Influence
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
@@ -7,14 +7,14 @@
 import "./style.css";
 
 import { definePluginSettings } from "@api/Settings";
-import ErrorBoundary from "@components/ErrorBoundary";
 import { Button } from "@components/Button";
+import ErrorBoundary from "@components/ErrorBoundary";
 import { Heading } from "@components/Heading";
 import { Devs } from "@utils/constants";
 import { classNameFactory } from "@utils/css";
 import { ModalCloseButton, ModalContent, ModalHeader, ModalProps, ModalRoot, ModalSize, openModal } from "@utils/modal";
 import definePlugin, { OptionType } from "@utils/types";
-import { createRoot, Forms, React, Select, Text, TextArea, TextInput, Toasts, showToast } from "@webpack/common";
+import { createRoot, Forms, React, Select, showToast, Text, TextArea, TextInput, Toasts } from "@webpack/common";
 
 const cl = classNameFactory("vc-record-ai-chat-");
 const BUBBLE_STORAGE_KEY = "record_ai_chat_bubble_position";
@@ -182,6 +182,46 @@ function getResolvedConfig() {
     };
 }
 
+async function ensureProviderCspAllowed(baseUrl: string) {
+    if (IS_WEB) return;
+
+    const csp = (globalThis as any).VencordNative?.csp;
+    if (!csp || !baseUrl) return;
+
+    let host = "provider";
+    try {
+        host = new URL(baseUrl).host;
+    } catch {
+        return;
+    }
+
+    const allowed = await csp.isDomainAllowed(baseUrl, ["connect-src"]);
+    if (allowed) return;
+
+    const res = await csp.requestAddOverride(baseUrl, ["connect-src"], "ReCord AI Chat");
+    if (res === "ok") {
+        throw new Error(`Added ${host} to allow-list. Restart Discord, then send again.`);
+    }
+
+    throw new Error(`Connection to ${host} is blocked by Discord CSP. Allow the provider domain and restart Discord.`);
+}
+
+async function safeProviderFetch(url: string, init: RequestInit) {
+    try {
+        return await fetch(url, init);
+    } catch {
+        const host = (() => {
+            try {
+                return new URL(url).host;
+            } catch {
+                return "provider";
+            }
+        })();
+
+        throw new Error(`Failed to reach ${host}. If this says 'Failed to fetch', allow the provider domain in settings and restart Discord.`);
+    }
+}
+
 function textFromUnknownContent(content: any): string {
     if (typeof content === "string") return content;
     if (Array.isArray(content)) {
@@ -231,10 +271,15 @@ async function parseResponsePayload(response: Response) {
 }
 
 function getApiErrorMessage(payload: any, fallback: string) {
-    return payload?.error?.message
-        || payload?.message
-        || (typeof payload?.raw === "string" ? payload.raw.slice(0, 400) : "")
-        || fallback;
+    if (typeof payload?.raw === "string" && payload.raw.length > 0) {
+        try {
+            const parsed = JSON.parse(payload.raw);
+            return parsed?.error?.message || JSON.stringify(parsed).slice(0, 200);
+        } catch {
+            return payload.raw.slice(0, 300);
+        }
+    }
+    return payload?.error?.message || payload?.message || fallback;
 }
 
 async function requestReply(messages: ChatMessage[]) {
@@ -244,11 +289,13 @@ async function requestReply(messages: ChatMessage[]) {
         throw new Error("Add an API key in the ReCord AI Chat plugin settings first.");
     }
 
+    await ensureProviderCspAllowed(config.baseUrl);
+
     switch (config.provider) {
         case "gemini": {
             const model = normalizeGeminiModel(config.model);
             const url = `${config.baseUrl}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(config.apiKey)}`;
-            const response = await fetch(url, {
+            const response = await safeProviderFetch(url, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -275,7 +322,7 @@ async function requestReply(messages: ChatMessage[]) {
         }
 
         case "anthropic": {
-            const response = await fetch(`${config.baseUrl}/messages`, {
+            const response = await safeProviderFetch(`${config.baseUrl}/messages`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -306,7 +353,7 @@ async function requestReply(messages: ChatMessage[]) {
         case "openai-compatible":
         case "openai":
         default: {
-            const response = await fetch(`${config.baseUrl}/chat/completions`, {
+            const response = await safeProviderFetch(`${config.baseUrl}/chat/completions`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -444,12 +491,23 @@ function FloatingButton() {
 }
 
 function AIChatModal({ modalProps }: { modalProps: ModalProps; }) {
-    const config = getResolvedConfig();
     const [messages, setMessages] = React.useState(() => conversation);
     const [draft, setDraft] = React.useState("");
     const [pending, setPending] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
+    const [activeModel, setActiveModel] = React.useState(() => {
+        const c = getResolvedConfig();
+        return c.model;
+    });
     const scrollerRef = React.useRef<HTMLDivElement | null>(null);
+
+    // Derive config reactively so model picker updates take effect
+    const config = React.useMemo(() => getResolvedConfig(), [activeModel]);
+
+    function pickModel(model: string) {
+        settings.store.model = model;
+        setActiveModel(model);
+    }
 
     React.useEffect(() => {
         const scroller = scrollerRef.current;
@@ -515,6 +573,19 @@ function AIChatModal({ modalProps }: { modalProps: ModalProps; }) {
             </ModalHeader>
 
             <ModalContent className={cl("modal-body")}>
+                {/* Quick model picker */}
+                <div className={cl("model-picker")}>
+                    {PROVIDER_MODEL_PRESETS[config.provider].map(model => (
+                        <Button
+                            key={model}
+                            size="small"
+                            variant={model === config.model ? "primary" : "secondary"}
+                            onClick={() => pickModel(model)}
+                        >
+                            {model}
+                        </Button>
+                    ))}
+                </div>
                 {!config.apiKey && (
                     <div className={cl("status-card")}>
                         <Text variant="text-sm/normal">
@@ -651,6 +722,32 @@ function AIChatSettings() {
         showToast("ReCord AI settings saved.", Toasts.Type.SUCCESS);
     }, [apiKey, baseUrl, maxTokens, model, provider, showFloatingButton, systemPrompt, temperature]);
 
+    const requestProviderDomainAccess = React.useCallback(async () => {
+        if (IS_WEB) {
+            showToast("CSP allow-list is only needed on desktop clients.", Toasts.Type.MESSAGE);
+            return;
+        }
+
+        const csp = (globalThis as any).VencordNative?.csp;
+        if (!csp) {
+            showToast("CSP API is unavailable in this client.", Toasts.Type.FAILURE);
+            return;
+        }
+
+        const effectiveBaseUrl = (baseUrl.trim() || providerInfo.defaultBaseUrl || "").replace(/\/$/, "");
+        if (!effectiveBaseUrl) {
+            showToast("No provider base URL is configured.", Toasts.Type.FAILURE);
+            return;
+        }
+
+        const res = await csp.requestAddOverride(effectiveBaseUrl, ["connect-src"], "ReCord AI Chat");
+        if (res === "ok") {
+            showToast("Provider domain allowed. Restart Discord to apply.", Toasts.Type.SUCCESS);
+        } else {
+            showToast("Provider domain was not allowed.", Toasts.Type.FAILURE);
+        }
+    }, [baseUrl, providerInfo.defaultBaseUrl]);
+
     return (
         <div className={cl("settings-root")}>
             <div className={cl("settings-hero")}>
@@ -757,6 +854,12 @@ function AIChatSettings() {
                 </Field>
             )}
 
+            <Field label="Desktop CSP Access" note="If AI requests fail with 'Failed to fetch', allow this provider domain and restart Discord.">
+                <Button size="small" variant="secondary" onClick={() => void requestProviderDomainAccess()}>
+                    Allow Provider Domain
+                </Button>
+            </Field>
+
             <div className={cl("settings-grid")}>
                 <Field label="Temperature" note="0.0 to 2.0">
                     <TextInput
@@ -844,7 +947,7 @@ function mountFloatingButton() {
 export default definePlugin({
     name: "ReCordAIChat",
     description: "Adds a floating AI chat bubble with popup chat support for OpenAI, Gemini, Anthropic, and OpenAI-compatible APIs.",
-    authors: [Devs.Rloxx],
+    authors: [Devs.Influence],
     tags: ["ai", "chatgpt", "gemini", "anthropic", "assistant"],
     settings,
 
