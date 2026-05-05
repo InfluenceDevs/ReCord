@@ -8,14 +8,12 @@ import { NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { updateMessage } from "@api/MessageUpdater";
 import { Button } from "@components/Button";
 import { DeleteIcon, PencilIcon } from "@components/Icons";
+import { Devs } from "@utils/constants";
 import { ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalRoot, openModal } from "@utils/modal";
 import definePlugin from "@utils/types";
 import type { Message, User } from "@vencord/discord-types";
 import { FluxDispatcher, Forms, Menu, React, TextInput, UserStore } from "@webpack/common";
 
-const Influence = { name: "Influence", id: 0n };
-
-// ─── storage ─────────────────────────────────────────────────────────────────
 
 const MSG_KEY = "record_local_message_overrides";
 const USER_KEY = "record_local_user_overrides";
@@ -287,7 +285,7 @@ function unpatchUserStore() {
 export default definePlugin({
     name: "RecordClientOverrides",
     description: "Locally edit messages and override user display names — changes are visible only to you, never sent to Discord.",
-    authors: [Influence],
+    authors: [Devs.Rloxx],
 
     contextMenus: {
         "message": patchMsgCtx,

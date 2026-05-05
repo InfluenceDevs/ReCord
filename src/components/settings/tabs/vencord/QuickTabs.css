@@ -75,6 +75,34 @@
     grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
 }
 
+.vc-record-rpc-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(180px, 1fr);
+    gap: 12px;
+    align-items: start;
+    margin-bottom: 12px;
+}
+
+.vc-record-rpc-state {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    border: 1px solid var(--background-modifier-accent);
+    border-radius: 8px;
+    background: var(--background-secondary-alt);
+}
+
+.vc-record-rpc-state strong {
+    color: var(--header-primary);
+    font-size: 16px;
+}
+
+.vc-record-rpc-state span {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
 .vc-record-panel {
     border: 1px solid var(--background-modifier-accent);
     border-radius: 8px;
@@ -103,6 +131,10 @@
     .vc-record-badges {
         width: 100%;
         justify-content: flex-start;
+    }
+
+    .vc-record-rpc-grid {
+        grid-template-columns: 1fr;
     }
 }
 

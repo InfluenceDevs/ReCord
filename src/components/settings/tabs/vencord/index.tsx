@@ -18,23 +18,28 @@
 
 import "./QuickTabs.css";
 
+import * as DataStore from "@api/DataStore";
 import { openNotificationLogModal } from "@api/Notifications/notificationLog";
+import { isPluginEnabled } from "@api/PluginManager";
 import { useSettings } from "@api/Settings";
 import { Button } from "@components/Button";
 import { Divider } from "@components/Divider";
 import { FormSwitch } from "@components/FormSwitch";
 import { CopyIcon, FolderIcon, GithubIcon, LogIcon, PaintbrushIcon, RestartIcon, SafetyIcon } from "@components/Icons";
 import { QuickAction, QuickActionCard } from "@components/settings/QuickAction";
-import { BackupAndRestoreTab, openSettingsTabModal, PluginsTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
+import { BackupAndRestoreTab, CustomRpcTab, openSettingsTabModal, PluginsTab, ThemesTab, UpdaterTab } from "@components/settings/tabs";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
+import { DEFAULT_PLUGIN_FILTER_STATE, normalizePluginFilterState, PLUGIN_FILTER_STORE_KEY, SearchSource, SearchStatus } from "@components/settings/tabs/plugins";
 import { openContributorModal } from "@components/settings/tabs/plugins/ContributorModal";
 import { openPluginModal } from "@components/settings/tabs/plugins/PluginModal";
+import { applyRpcSettingsUpdate, settings as customRpcSettings } from "@plugins/customRPC";
 import { gitRemote } from "@shared/vencordUserAgent";
 import { IS_MAC, IS_WINDOWS } from "@utils/constants";
 import { Margins } from "@utils/margins";
 import { isPluginDev } from "@utils/misc";
 import { relaunch } from "@utils/native";
-import { Alerts, AuthenticationStore, Forms, React, UserStore } from "@webpack/common";
+import { ActivityType } from "@vencord/discord-types/enums";
+import { Alerts, AuthenticationStore, Forms, React, Select, UserStore } from "@webpack/common";
 
 import { VibrancySettings } from "./MacVibrancySettings";
 import { NotificationSection } from "./NotificationSettings";
@@ -42,6 +47,30 @@ import { openReCordConsoleModal } from "./ReCordConsole";
 
 const RECORD_ICON = "vencord://assets/icon.png";
 const RECORD_LIGHT_ICON = RECORD_ICON;
+
+const activityTypeOptions = [
+    { label: "Playing", value: ActivityType.PLAYING, default: true },
+    { label: "Streaming", value: ActivityType.STREAMING },
+    { label: "Listening", value: ActivityType.LISTENING },
+    { label: "Watching", value: ActivityType.WATCHING },
+    { label: "Competing", value: ActivityType.COMPETING }
+];
+
+function getActivityTypeLabel(type?: ActivityType) {
+    switch (type) {
+        case ActivityType.STREAMING:
+            return "Streaming";
+        case ActivityType.LISTENING:
+            return "Listening";
+        case ActivityType.WATCHING:
+            return "Watching";
+        case ActivityType.COMPETING:
+            return "Competing";
+        case ActivityType.PLAYING:
+        default:
+            return "Playing";
+    }
+}
 
 type KeysOfType<Object, Type> = {
     [K in keyof Object]: Object[K] extends Type ? K : never;
@@ -125,9 +154,11 @@ function Switches() {
 
 function ReCordSettings() {
     const settings = useSettings(["plugins.Settings.enableQuickNavigationTabs"]);
+    const rpcSettings = customRpcSettings.use();
 
     const needsVibrancySettings = IS_DISCORD_DESKTOP && IS_MAC;
     const showQuickTabs = settings.plugins.Settings.enableQuickNavigationTabs ?? true;
+    const customRpcEnabled = isPluginEnabled("CustomRPC");
     const openUpdaterTab = () => {
         if (UpdaterTab) openSettingsTabModal(UpdaterTab);
     };
@@ -152,6 +183,14 @@ function ReCordSettings() {
         } catch {
             Alerts.show({ title: "Error", body: "Failed to copy token.", confirmText: "OK" });
         }
+    }, []);
+
+    const openPluginsWithFilter = React.useCallback((filter: Partial<typeof DEFAULT_PLUGIN_FILTER_STATE>) => {
+        void DataStore.set(PLUGIN_FILTER_STORE_KEY, normalizePluginFilterState({
+            ...DEFAULT_PLUGIN_FILTER_STATE,
+            ...filter
+        }));
+        openSettingsTabModal(PluginsTab);
     }, []);
 
     return (
@@ -204,7 +243,7 @@ function ReCordSettings() {
                                     <QuickAction Icon={FolderIcon} text="Open UserPlugins Folder" action={() => VencordNative.settings.openUserPluginsFolder()} />
                                     <QuickAction
                                         Icon={FolderIcon}
-                                        text="Open BD Plugins Folder"
+                                        text="Open Plugins Folder"
                                         action={() => (VencordNative.pluginHelpers as any).BetterDiscordCompat?.openPluginsDir?.()}
                                     />
                                 </>
@@ -226,11 +265,25 @@ function ReCordSettings() {
                     <section className="vc-record-panel">
                         <Forms.FormTitle tag="h5">About ReCord</Forms.FormTitle>
                         <Forms.FormText>
-                            ReCord is a Discord client mod forked from Vencord with BetterDiscord compatibility, OPSEC tools, and utility plugins.
+                            ReCord is a Discord client mod forked from Vencord with Custom Plugins compatibility, OPSEC tools, and utility plugins.
                         </Forms.FormText>
                         <Forms.FormText className={Margins.top8}>
                             Built and maintained by Influence.
                         </Forms.FormText>
+                    </section>
+
+                    <section className="vc-record-panel">
+                        <Forms.FormTitle tag="h5">Plugin Browser</Forms.FormTitle>
+                        <Forms.FormText className="vc-record-muted" style={{ marginBottom: 10 }}>
+                            Jump straight into filtered plugin lists instead of rebuilding the browser each time.
+                        </Forms.FormText>
+                        <div className="vc-record-quick-tabs">
+                            <Button size="small" variant="secondary" onClick={() => openPluginsWithFilter({ status: SearchStatus.ENABLED })}>Enabled</Button>
+                            <Button size="small" variant="secondary" onClick={() => openPluginsWithFilter({ status: SearchStatus.DISABLED })}>Disabled</Button>
+                            <Button size="small" variant="secondary" onClick={() => openPluginsWithFilter({ source: SearchSource.RECORD, status: SearchStatus.ALL })}>ReCord</Button>
+                            <Button size="small" variant="secondary" onClick={() => openPluginsWithFilter({ source: SearchSource.VENCORD, status: SearchStatus.ALL })}>Vencord</Button>
+                            <Button size="small" variant="secondary" onClick={() => openPluginsWithFilter({ value: "CustomRPC" })}>Find CustomRPC</Button>
+                        </div>
                     </section>
                 </div>
 

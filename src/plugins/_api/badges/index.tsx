@@ -30,6 +30,7 @@ import { Logger } from "@utils/Logger";
 import { Margins } from "@utils/margins";
 import { closeModal, ModalContent, ModalFooter, ModalHeader, ModalRoot, openModal } from "@utils/modal";
 import definePlugin from "@utils/types";
+import plugins from "~plugins";
 import { ContextMenuApi, Forms, Menu, Toasts, UserStore } from "@webpack/common";
 
 const CONTRIBUTOR_BADGE = "https://cdn3.emoji.gg/emojis/74376-builder.png";
@@ -37,13 +38,22 @@ const DEVELOPER_BADGE = "https://cdn3.emoji.gg/emojis/7893-developer-hax-5555ff.
 const CREATOR_BADGE = "https://cdn3.emoji.gg/emojis/6654-blurple-crown.png";
 
 const RECORD_CONTRIBUTORS = new Set([
-    "260577084223520770",
-    "1269024115973427374",
+    "852733930296573992",
+    "1449137254491754690",
+    "242571001953517578",
+    "1220019912391655527",
     "1284481206607417457",
-    "1220019912391655527"
+    "874672600259895327"
 ]);
-const RECORD_CREATORS = new Set(["260577084223520770"]);
-const RECORD_DEVELOPERS = new Set(["260577084223520770", "1269024115973427374"]);
+
+const PLUGIN_AUTHOR_IDS = new Set(
+    Object.values(plugins)
+        .flatMap(plugin => plugin.authors ?? [])
+        .map(author => author.id.toString())
+        .filter(id => id !== "0")
+);
+const RECORD_CREATORS = new Set(["852733930296573992"]);
+const RECORD_DEVELOPERS = new Set(["852733930296573992", "1269024115973427374","760907824401612801"]);
 
 const ContributorBadge: ProfileBadge = {
     description: "ReCord Contributor",
@@ -55,7 +65,7 @@ const ContributorBadge: ProfileBadge = {
             transform: "scale(0.9)"
         }
     },
-    shouldShow: ({ userId }) => RECORD_CONTRIBUTORS.has(userId),
+    shouldShow: ({ userId }) => RECORD_CONTRIBUTORS.has(userId) || PLUGIN_AUTHOR_IDS.has(userId),
     onClick: (_, { userId }) => openContributorModal(UserStore.getUser(userId))
 };
 

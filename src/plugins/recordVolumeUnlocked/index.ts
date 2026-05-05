@@ -5,9 +5,8 @@
  */
 
 import { definePluginSettings } from "@api/Settings";
+import { Devs } from "@utils/constants";
 import definePlugin, { makeRange, OptionType } from "@utils/types";
-
-const Influence = { name: "Influence", id: 0n };
 const OTHER_USERS_MAX_BOOST = 10; // 10x = 1000% max for OTHER people's volumes
 
 const settings = definePluginSettings({
@@ -23,7 +22,7 @@ const settings = definePluginSettings({
 export default definePlugin({
     name: "RecordVolumeUnlocked",
     description: "Unlocks volume for OTHER PEOPLE in voice chats (up to 1000%). Adjustable slider per user.",
-    authors: [Influence],
+    authors: [Devs.Rloxx],
     tags: ["audio", "volume", "voice"],
     settings,
 
@@ -49,10 +48,6 @@ export default definePlugin({
             find: "AudioContextSettingsMigrated",
             replacement: [
                 {
-                    match: /(?<=isLocalMute\(\i,\i\),volume:(\i).+?\i\(\i,\i,)\1(?=\))/,
-                    replace: "$&>1000?1000:$&"
-                },
-                {
                     match: /(?<=Object\.entries\(\i\.localMutes\).+?volume:).+?(?=,)/,
                     replace: "$&>1000?1000:$&"
                 },
@@ -66,8 +61,8 @@ export default definePlugin({
         {
             find: '="MediaEngineStore",',
             replacement: {
-                match: /(?<=localVolumes\.set\(\i,)({\w+:\i})/,
-                replace: "Object.assign($1,{volume:Math.max($1.volume,512)})"
+                match: /(?<=\i\.volume!==\i\?\i\[\i\]=)(\i\.volume)(?=:delete \i\[\i\])/,
+                replace: "Math.max($1,512)"
             }
         }
     ]

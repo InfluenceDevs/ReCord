@@ -1,15 +1,15 @@
 /*
  * Vencord, a Discord client mod
- * Copyright (c) 2026 Influence
+ * Copyright (c) 2026 Rloxx
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 import { definePluginSettings } from "@api/Settings";
+import { Devs } from "@utils/constants";
 import { Logger } from "@utils/Logger";
 import definePlugin, { OptionType } from "@utils/types";
 
 const logger = new Logger("RecordPlatformSpoof");
-const Influence = { name: "Influence", id: 0n };
 
 // ─── Platform profiles ────────────────────────────────────────────────────────
 
@@ -40,6 +40,11 @@ const PROFILES: Record<string, PlatformProfile> = {
         browser: "Chrome",
         device: "",
     },
+    vr: {
+        os: "Android",
+        browser: "Discord VR",
+        device: "Discord VR",
+    },
 };
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
@@ -54,6 +59,7 @@ export const settings = definePluginSettings({
             { label: "Mobile – iOS", value: "ios" },
             { label: "Mobile – Android", value: "android" },
             { label: "Browser (Chrome / Linux)", value: "web" },
+            { label: "VR (Meta Quest / Discord VR)", value: "vr" },
         ],
     },
     logIdentify: {
@@ -118,8 +124,8 @@ function unpatchSend() {
 
 export default definePlugin({
     name: "RecordPlatformSpoof",
-    description: "Makes Discord think you are on a different platform (mobile iOS/Android or browser). Reconnect to Discord's gateway after changing the setting to apply.",
-    authors: [Influence],
+    description: "Makes Discord think you are on a different platform (Mobile iOS/Android, Browser, or VR). Mobile spoof also affects voice channel presence indicators. Reconnect to Discord's gateway after changing the setting to apply (Settings → scroll down → Reset Connection, or restart Discord).",
+    authors: [Devs.Rloxx],
     tags: ["platform", "mobile", "spoof", "emulator"],
 
     settings,

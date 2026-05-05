@@ -29,7 +29,25 @@ import { serializeErrors, VENCORD_FILES, VERSION } from "./common";
 
 const RECORD_REMOTE = "InfluenceDevs/ReCord";
 const API_BASE = `https://api.github.com/repos/${RECORD_REMOTE}`;
+const DEFAULT_BRANCH = "main";
+const DEVBUILD_TAG = "devbuild";
 let PendingUpdates = [] as [string, string][];
+
+interface UpdateEntry {
+    hash: string;
+    author: string;
+    message: string;
+}
+
+interface GithubReleaseAsset {
+    name: string;
+    browser_download_url: string;
+}
+
+interface GithubRelease {
+    tag_name: string;
+    assets: GithubReleaseAsset[];
+}
 
 function parseSemver(version: string) {
     const match = version.trim().match(/^v?(\d+)\.(\d+)\.(\d+)$/i);
@@ -62,19 +80,72 @@ async function githubGet<T = any>(endpoint: string) {
     });
 }
 
-async function calculateGitChanges() {
-    const latestRelease = await githubGet("/releases/latest");
-    const latestTag = latestRelease.tag_name as string;
+function setPendingUpdates(assets: GithubReleaseAsset[] = []) {
+    PendingUpdates = [];
 
+    assets.forEach(({ name, browser_download_url }) => {
+        if (VENCORD_FILES.some(s => name.startsWith(s))) {
+            PendingUpdates.push([name, browser_download_url]);
+        }
+    });
+
+    return PendingUpdates.length > 0;
+}
+
+async function getRelease(tag = "latest") {
+    if (tag === "latest") {
+        return githubGet<GithubRelease>("/releases/latest");
+    }
+
+    return githubGet<GithubRelease>(`/releases/tags/${tag}`);
+}
+
+async function tryGetMainBranchUpdate() {
+    if (!gitHash) return null;
+
+    const [headCommit, devbuildRelease] = await Promise.all([
+        githubGet<any>(`/commits/${DEFAULT_BRANCH}`),
+        getRelease(DEVBUILD_TAG).catch(() => null)
+    ]);
+
+    const headSha = headCommit?.sha as string | undefined;
+    if (!headSha || headSha.startsWith(gitHash)) {
+        return {
+            hasUpdate: false,
+            entries: [] as UpdateEntry[]
+        };
+    }
+
+    const comparison = await githubGet<any>(`/compare/${gitHash}...${headSha}`).catch(() => null);
+    if (!comparison || comparison.status !== "behind") {
+        return null;
+    }
+
+    const hasAssets = setPendingUpdates(devbuildRelease?.assets ?? []);
+    if (!hasAssets) {
+        PendingUpdates = [];
+        return null;
+    }
+
+    return {
+        hasUpdate: true,
+        entries: (comparison.commits ?? []).map((c: any) => ({
+            hash: c.sha.slice(0, 7),
+            author: c.author?.login ?? c.commit?.author?.name ?? "ReCord",
+            message: c.commit?.message?.split("\n")[0] ?? "Update available"
+        })) as UpdateEntry[]
+    };
+}
+
+async function tryGetLatestReleaseUpdate() {
+    const latestRelease = await getRelease("latest");
+    const latestTag = latestRelease.tag_name as string;
     const semverCmp = compareSemver(VERSION, latestTag);
 
-    // Some standalone builds do not embed gitHash.
-    // In that case we can still check semver + release assets and present a generic changelog item.
     if (!gitHash) {
-        if (semverCmp >= 0) return [];
+        if (semverCmp >= 0) return [] as UpdateEntry[];
 
-        const isOutdated = await fetchUpdates();
-        if (!isOutdated) return [];
+        if (!setPendingUpdates(latestRelease.assets)) return [] as UpdateEntry[];
 
         return [{
             hash: latestTag,
@@ -87,10 +158,9 @@ async function calculateGitChanges() {
     try {
         comparison = await githubGet(`/compare/${gitHash}...${latestTag}`);
     } catch {
-        if (semverCmp >= 0) return [];
+        if (semverCmp >= 0) return [] as UpdateEntry[];
 
-        const isOutdated = await fetchUpdates();
-        if (!isOutdated) return [];
+        if (!setPendingUpdates(latestRelease.assets)) return [] as UpdateEntry[];
 
         return [{
             hash: latestTag,
@@ -100,10 +170,9 @@ async function calculateGitChanges() {
     }
 
     if (comparison?.status !== "behind") {
-        if (semverCmp >= 0) return [];
+        if (semverCmp >= 0) return [] as UpdateEntry[];
 
-        const isOutdated = await fetchUpdates();
-        if (!isOutdated) return [];
+        if (!setPendingUpdates(latestRelease.assets)) return [] as UpdateEntry[];
 
         return [{
             hash: latestTag,
@@ -112,50 +181,36 @@ async function calculateGitChanges() {
         }];
     }
 
-    const isOutdated = await fetchUpdates();
-    if (!isOutdated) return [];
+    if (!setPendingUpdates(latestRelease.assets)) return [] as UpdateEntry[];
 
     return (comparison.commits ?? []).map((c: any) => ({
-        // github api only sends the long sha
         hash: c.sha.slice(0, 7),
-        author: c.author.login,
-        message: c.commit.message.split("\n")[0]
+        author: c.author?.login ?? c.commit?.author?.name ?? "ReCord",
+        message: c.commit?.message.split("\n")[0]
     }));
 }
 
-async function fetchUpdates() {
-    const data = await githubGet("/releases/latest");
-    const latestTag = data.tag_name as string;
-    const semverCmp = compareSemver(VERSION, latestTag);
-
-    if (!gitHash && semverCmp >= 0)
-        return false;
-
-    if (gitHash) {
-        try {
-            const comparison = await githubGet(`/compare/${gitHash}...${latestTag}`);
-            // Prefer precise git comparison when possible.
-            // If compare says we're not behind but semver is still newer,
-            // fall back to semver + release assets because standalone builds
-            // can be on commits that are not directly comparable to release tags.
-            if (comparison?.status && comparison.status !== "behind" && semverCmp >= 0)
-                return false;
-        } catch {
-            // If compare fails (e.g. bundled builds), rely on semver only.
-            if (semverCmp >= 0)
-                return false;
-        }
-    }
-
+async function calculateGitChanges() {
     PendingUpdates = [];
 
-    data.assets.forEach(({ name, browser_download_url }) => {
-        if (VENCORD_FILES.some(s => name.startsWith(s))) {
-            PendingUpdates.push([name, browser_download_url]);
-        }
-    });
+    const mainBranchUpdate = await tryGetMainBranchUpdate().catch(() => null);
+    if (mainBranchUpdate?.hasUpdate) {
+        return mainBranchUpdate.entries;
+    }
 
-    return PendingUpdates.length > 0;
+    return tryGetLatestReleaseUpdate();
+}
+
+async function fetchUpdates() {
+    PendingUpdates = [];
+
+    const mainBranchUpdate = await tryGetMainBranchUpdate().catch(() => null);
+    if (mainBranchUpdate?.hasUpdate) {
+        return PendingUpdates.length > 0;
+    }
+
+    const releaseUpdates = await tryGetLatestReleaseUpdate();
+    return releaseUpdates.length > 0 && PendingUpdates.length > 0;
 }
 
 async function applyUpdates() {

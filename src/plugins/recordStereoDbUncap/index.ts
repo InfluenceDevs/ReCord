@@ -4,15 +4,14 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
-
-const Influence = { name: "Influence", id: 0n };
 const YOUR_MAX_BOOST = 5; // 5x = 500% max for YOUR OWN volume
 
 export default definePlugin({
     name: "RecordStereoDbUncap",
     description: "Enables stereo panning in voice (lets you be heard in stereo). Uncaps YOUR OWN loudness output so Discord doesn't cap your dB.",
-    authors: [Influence],
+    authors: [Devs.Rloxx],
     tags: ["audio", "stereo", "db", "voice"],
     enabledByDefault: true,
 
@@ -56,10 +55,6 @@ export default definePlugin({
             find: "AudioContextSettingsMigrated",
             replacement: [
                 {
-                    match: /(?<=isLocalMute\(\i,\i\),volume:(\i).+?\i\(\i,\i,)\1(?=\))/,
-                    replace: "$&>500?500:$&"
-                },
-                {
                     match: /(?<=Object\.entries\(\i\.localMutes\).+?volume:).+?(?=,)/,
                     replace: "$&>500?500:$&"
                 },
@@ -73,8 +68,8 @@ export default definePlugin({
         {
             find: '="MediaEngineStore",',
             replacement: {
-                match: /(?<=localVolumes\.set\(\i,)({\w+:\i})/,
-                replace: "Object.assign($1,{volume:Math.max($1.volume,256)})"
+                match: /(?<=\i\.volume!==\i\?\i\[\i\]=)(\i\.volume)(?=:delete \i\[\i\])/,
+                replace: "Math.max($1,256)"
             }
         }
     ]

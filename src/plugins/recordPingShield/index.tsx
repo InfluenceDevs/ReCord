@@ -5,6 +5,7 @@
  */
 
 import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
+import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 import { FluxDispatcher, Menu, UserStore } from "@webpack/common";
 
@@ -19,7 +20,6 @@ type GuildRule = {
 type RulesMap = Record<string, GuildRule>;
 
 const STORE_KEY = "record_ping_shield_rules";
-const Influence = { name: "Influence", id: 0n };
 
 function loadRules(): RulesMap {
     try { return JSON.parse(localStorage.getItem(STORE_KEY) ?? "{}"); } catch { return {}; }
@@ -130,7 +130,7 @@ const guildCtxPatch: NavContextMenuPatchCallback = (children, { guild }: { guild
 export default definePlugin({
     name: "RecordPingShield",
     description: "Per-server ping suppression with @everyone-only mode and instant auto-read.",
-    authors: [Influence],
+    authors: [Devs.Rloxx],
     tags: ["ping", "mentions", "guild", "privacy"],
 
     contextMenus: {

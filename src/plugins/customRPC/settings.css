@@ -4,6 +4,40 @@
     gap: 18px;
 }
 
+.vc-customRPC-settings-hero {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border: 1px solid color-mix(in srgb, var(--brand-500) 24%, transparent);
+    border-radius: 22px;
+    background:
+        radial-gradient(circle at top right, color-mix(in srgb, var(--brand-500) 18%, transparent), transparent 38%),
+        linear-gradient(150deg, color-mix(in srgb, var(--background-secondary) 96%, transparent), color-mix(in srgb, var(--background-tertiary) 92%, transparent));
+}
+
+.vc-customRPC-settings-hero-copy {
+    display: grid;
+    gap: 6px;
+}
+
+.vc-customRPC-settings-hero-copy h2,
+.vc-customRPC-settings-hero-copy p {
+    margin: 0;
+}
+
+.vc-customRPC-settings-type-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vc-customRPC-settings-type-label {
+    flex: 1;
+    text-align: center;
+    padding: 6px 0;
+    min-width: 110px;
+}
+
 .vc-customRPC-settings-pair {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -105,6 +139,17 @@
 .vc-customRPC-settings-footnote {
     color: var(--text-muted);
     font-size: 12px;
+}
+
+.vc-customRPC-settings-rotation-summary {
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--brand-500) 18%, transparent);
+    background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
+}
+
+.vc-customRPC-settings-rotation-summary p {
+    margin: 0;
 }
 
 @media (width <= 800px) {

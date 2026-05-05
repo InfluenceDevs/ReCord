@@ -6,7 +6,6 @@
 
 import "./settings.css";
 
-import { isPluginEnabled } from "@api/PluginManager";
 import { Button } from "@components/Button";
 import { Divider } from "@components/Divider";
 import { Heading } from "@components/Heading";
@@ -16,7 +15,7 @@ import { classNameFactory } from "@utils/css";
 import { ActivityType } from "@vencord/discord-types/enums";
 import { React, Select, Text, TextInput } from "@webpack/common";
 
-import CustomRPCPlugin, { refreshMultiRpcScheduler, setRpc, settings, TimestampMode } from ".";
+import { applyRpcSettingsUpdate, settings, TimestampMode } from ".";
 
 const cl = classNameFactory("vc-customRPC-settings-");
 
@@ -65,6 +64,7 @@ type RpcProfile = Partial<{
     buttonTwoURL: string;
     partySize: number;
     partyMaxSize: number;
+    rotate: boolean;
 }>;
 
 const profileKeys: (keyof RpcProfile)[] = [
@@ -90,7 +90,8 @@ const profileKeys: (keyof RpcProfile)[] = [
     "buttonTwoText",
     "buttonTwoURL",
     "partySize",
-    "partyMaxSize"
+    "partyMaxSize",
+    "rotate"
 ];
 
 const makeValidator = (maxLength: number, isRequired = false) => (value: string) => {
@@ -106,11 +107,7 @@ function isAppIdValid(value: string) {
     return true;
 }
 
-const updateRPC = debounce(() => {
-    setRpc(true);
-    if (isPluginEnabled(CustomRPCPlugin.name)) setRpc();
-    refreshMultiRpcScheduler();
-});
+const updateRPC = debounce(applyRpcSettingsUpdate);
 
 function isStreamLinkValid(value: string) {
     if (value && !/https?:\/\/(www\.)?(twitch\.tv|youtube\.com)\/\w+/.test(value)) return "Streaming link must be a valid URL.";
@@ -158,7 +155,8 @@ function buildBlankProfile(): RpcProfile {
     return {
         appName: "",
         type: ActivityType.PLAYING,
-        timestampMode: TimestampMode.NONE
+        timestampMode: TimestampMode.NONE,
+        rotate: true
     };
 }
 
@@ -246,9 +244,45 @@ function SelectSetting<T>({ label, options, disabled, value, onValueChange }: Se
     );
 }
 
+const ACTIVITY_TYPES = [
+    { label: "Playing", value: ActivityType.PLAYING },
+    { label: "Streaming", value: ActivityType.STREAMING },
+    { label: "Listening", value: ActivityType.LISTENING },
+    { label: "Watching", value: ActivityType.WATCHING },
+    { label: "Competing", value: ActivityType.COMPETING },
+];
+
+function ActivityTypePicker({ value, onChange }: { value: ActivityType; onChange: (v: ActivityType) => void; }) {
+    const currentIndex = ACTIVITY_TYPES.findIndex(t => t.value === value);
+    const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+    const label = ACTIVITY_TYPES[safeIndex].label;
+
+    function prev() {
+        const nextIndex = (safeIndex - 1 + ACTIVITY_TYPES.length) % ACTIVITY_TYPES.length;
+        onChange(ACTIVITY_TYPES[nextIndex].value);
+    }
+
+    function next() {
+        const nextIndex = (safeIndex + 1) % ACTIVITY_TYPES.length;
+        onChange(ACTIVITY_TYPES[nextIndex].value);
+    }
+
+    return (
+        <div className={cl("single")}>
+            <Heading tag="h5">Activity Type</Heading>
+            <div className={cl("type-picker")}>
+                <Button size="small" variant="secondary" onClick={prev}>‹</Button>
+                <Text className={cl("type-label")} variant="text-md/semibold">{label}</Text>
+                <Button size="small" variant="secondary" onClick={next}>›</Button>
+            </div>
+        </div>
+    );
+}
+
 export function RPCSettings() {
     const s = settings.use();
     const profiles = React.useMemo(() => parseProfiles(s.multiRpcProfiles), [s.multiRpcProfiles]);
+    const rotationProfiles = React.useMemo(() => profiles.filter(profile => profile.rotate !== false), [profiles]);
     const [selectedProfileIndex, setSelectedProfileIndex] = React.useState<number | null>(null);
 
     React.useEffect(() => {
@@ -309,11 +343,21 @@ export function RPCSettings() {
         });
     }, [profiles]);
 
+    const setProfileRotation = React.useCallback((index: number, rotate: boolean) => {
+        const nextProfiles = [...profiles];
+        nextProfiles[index] = {
+            ...(nextProfiles[index] ?? buildBlankProfile()),
+            rotate
+        };
+        saveProfiles(nextProfiles);
+    }, [profiles]);
+
     const applySelectedProfileToLive = React.useCallback(() => {
         if (!selectedProfile) return;
 
         const target = settings.store as unknown as Record<string, unknown>;
         for (const [key, value] of Object.entries(selectedProfile)) {
+            if (key === "rotate") continue;
             target[key] = value;
         }
 
@@ -329,10 +373,21 @@ export function RPCSettings() {
 
     return (
         <div className={cl("root")}>
+            <div className={cl("hero")}>
+                <div className={cl("hero-copy")}>
+                    <Heading tag="h2">ReCord Rich Presence Studio</Heading>
+                    <Text variant="text-sm/normal">
+                        Build your live status, save alternate RPC presets, choose their activity type, and control exactly which ones enter rotation.
+                    </Text>
+                </div>
+
+
+            </div>
+
             <div className={cl("section")}>
                 <div className={cl("section-heading")}>
                     <Heading tag="h3">Workspace</Heading>
-                    <Text variant="text-sm/normal">Switch between the live Rich Presence and saved reusable profiles. Hit + to create a new RPC without leaving this page.</Text>
+                    <Text variant="text-sm/normal">Switch between the live Rich Presence and saved reusable profiles. Saved profiles can be included in rotation individually.</Text>
                 </div>
 
                 <div className={cl("toolbar")}>
@@ -364,7 +419,7 @@ export function RPCSettings() {
                         >
                             <Heading tag="h4">{profile.appName || `Profile ${index + 1}`}</Heading>
                             <Text variant="text-sm/normal">{profile.details || profile.state || "Empty profile. Start filling out the fields below."}</Text>
-                            <span className={cl("target-meta")}>{getActivityTypeLabel(profile.type)} · saved profile</span>
+                            <span className={cl("target-meta")}>{getActivityTypeLabel(profile.type)} · {profile.rotate !== false ? "included in rotation" : "excluded from rotation"}</span>
 
                             <div className={cl("target-actions")}>
                                 <Button size="small" variant="secondary" onClick={event => {
@@ -372,6 +427,12 @@ export function RPCSettings() {
                                     setSelectedProfileIndex(index);
                                 }}>
                                     Edit
+                                </Button>
+                                <Button size="small" variant={profile.rotate !== false ? "primary" : "secondary"} onClick={event => {
+                                    event.stopPropagation();
+                                    setProfileRotation(index, profile.rotate === false);
+                                }}>
+                                    {profile.rotate !== false ? "In Rotation" : "Skip Rotation"}
                                 </Button>
                                 <Button size="small" variant="dangerSecondary" onClick={event => {
                                     event.stopPropagation();
@@ -385,7 +446,7 @@ export function RPCSettings() {
                 </div>
 
                 <Text className={cl("footnote")} variant="text-sm/normal">
-                    Saved profiles are used by rotation. The Live RPC is the presence Discord sees immediately.
+                    The Live RPC is the presence Discord sees immediately. Rotation only uses profiles marked as included.
                 </Text>
             </div>
 
@@ -397,33 +458,9 @@ export function RPCSettings() {
                     <Text variant="text-sm/normal">{isProfileEditor ? "Changes here are saved to the selected profile card." : "Changes here update your currently active Rich Presence."}</Text>
                 </div>
 
-            <SelectSetting
-                label="Activity Type"
+            <ActivityTypePicker
                 value={currentType}
-                onValueChange={value => applySetting("type", value)}
-                options={[
-                    {
-                        label: "Playing",
-                        value: ActivityType.PLAYING,
-                        default: true
-                    },
-                    {
-                        label: "Streaming",
-                        value: ActivityType.STREAMING
-                    },
-                    {
-                        label: "Listening",
-                        value: ActivityType.LISTENING
-                    },
-                    {
-                        label: "Watching",
-                        value: ActivityType.WATCHING
-                    },
-                    {
-                        label: "Competing",
-                        value: ActivityType.COMPETING
-                    }
-                ]}
+                onChange={value => applySetting("type", value)}
             />
 
             <PairSetting data={[
@@ -644,21 +681,30 @@ export function RPCSettings() {
             <div className={cl("section")}>
                 <div className={cl("section-heading")}>
                     <Heading tag="h3">Rotation</Heading>
-                    <Text variant="text-sm/normal">Cycle through saved profiles automatically when you want the sidebar page to drive your presence hands-free.</Text>
+                    <Text variant="text-sm/normal">Turn rotation on or off, choose whether to cycle or pin one profile, and decide exactly which saved RPC cards are eligible.</Text>
                 </div>
 
-                <SelectSetting
-                    label="Enable Multiple RPC Rotation"
-                    value={s.multiRpcEnabled}
-                    onValueChange={value => {
-                        settings.store.multiRpcEnabled = value;
-                        updateRPC();
-                    }}
-                    options={[
-                        { label: "Disabled", value: false, default: true },
-                        { label: "Enabled", value: true }
-                    ]}
-                />
+                <div className={cl("single")}>
+                    <Heading tag="h5">Rotation</Heading>
+                    <Button
+                        size="medium"
+                        variant={s.multiRpcEnabled ? "primary" : "secondary"}
+                        onClick={() => {
+                            settings.store.multiRpcEnabled = !s.multiRpcEnabled;
+                            updateRPC();
+                        }}
+                    >
+                        {s.multiRpcEnabled ? "Rotation: ON" : "Rotation: OFF"}
+                    </Button>
+                </div>
+
+                <div className={cl("rotation-summary")}>
+                    <Text variant="text-sm/normal">
+                        {rotationProfiles.length
+                            ? `${rotationProfiles.length} profile${rotationProfiles.length === 1 ? "" : "s"} currently available for rotation.`
+                            : "No profiles are marked for rotation yet. Use the button on each profile card above to include one."}
+                    </Text>
+                </div>
 
                 <SelectSetting
                     label="Profile Scheduling"

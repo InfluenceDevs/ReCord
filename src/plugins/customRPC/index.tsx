@@ -31,7 +31,7 @@ import definePlugin, { OptionType } from "@utils/types";
 import { Activity } from "@vencord/discord-types";
 import { ActivityType } from "@vencord/discord-types/enums";
 import { findByCodeLazy, findComponentByCodeLazy } from "@webpack";
-import { ApplicationAssetUtils, Button, FluxDispatcher, Forms, React, UserStore } from "@webpack/common";
+import { ApplicationAssetUtils, Button, FluxDispatcher, Forms, React, Select, UserStore } from "@webpack/common";
 
 import { RPCSettings } from "./RpcSettings";
 
@@ -113,10 +113,17 @@ type RpcProfile = Partial<{
     buttonTwoURL: string;
     partySize: number;
     partyMaxSize: number;
+    rotate: boolean;
 }>;
 
 let multiRpcTimer: ReturnType<typeof setInterval> | null = null;
 let profileCursor = 0;
+
+export function applyRpcSettingsUpdate() {
+    void setRpc(true);
+    if (Vencord.Plugins.isPluginEnabled("CustomRPC")) void setRpc();
+    refreshMultiRpcScheduler();
+}
 
 function parseProfiles(): RpcProfile[] {
     try {
@@ -126,6 +133,10 @@ function parseProfiles(): RpcProfile[] {
     } catch {
         return [];
     }
+}
+
+function getRotationProfiles() {
+    return parseProfiles().filter(profile => profile.rotate !== false);
 }
 
 function resolveProfileSource(): RpcProfile | undefined {
@@ -141,8 +152,11 @@ function resolveProfileSource(): RpcProfile | undefined {
         return profiles[index];
     }
 
-    const current = profiles[profileCursor % profiles.length];
-    profileCursor = (profileCursor + 1) % profiles.length;
+    const rotationProfiles = profiles.filter(profile => profile.rotate !== false);
+    if (!rotationProfiles.length) return;
+
+    const current = rotationProfiles[profileCursor % rotationProfiles.length];
+    profileCursor = (profileCursor + 1) % rotationProfiles.length;
     return current;
 }
 
@@ -288,7 +302,7 @@ export function refreshMultiRpcScheduler() {
     const mode = (settings.store.multiRpcMode ?? "cycle") as MultiRpcMode;
     if (mode === "single") return;
 
-    const profiles = parseProfiles();
+    const profiles = getRotationProfiles();
     if (profiles.length < 2) return;
 
     const intervalSec = Math.max(5, Number(settings.store.multiRpcIntervalSec) || 30);
@@ -297,8 +311,8 @@ export function refreshMultiRpcScheduler() {
 
 export default definePlugin({
     name: "CustomRPC",
-    description: "Add a fully customisable Rich Presence (Game status) to your Discord profile",
-    authors: [Devs.captain, Devs.AutumnVN, Devs.nin0dev],
+    description: "ReCord Rich Presence studio with live RPC editing, activity type control, and selective profile rotation",
+    authors: [Devs.Rloxx, Devs.captain, Devs.AutumnVN, Devs.nin0dev],
     dependencies: ["UserSettingsAPI"],
     // This plugin's patch is not important for functionality, so don't require a restart
     requiresRestart: false,
@@ -306,8 +320,7 @@ export default definePlugin({
 
     start() {
         profileCursor = 0;
-        void setRpc();
-        refreshMultiRpcScheduler();
+        applyRpcSettingsUpdate();
     },
     stop() {
         if (multiRpcTimer) {
@@ -332,6 +345,7 @@ export default definePlugin({
         const [activity] = useAwaiter(() => createActivity(), { fallbackValue: undefined, deps: Object.values(settings.store) });
         const gameActivityEnabled = ShowCurrentGame.useSetting();
         const { profileThemeStyle } = useProfileThemeStyle({});
+        const liveActivityType = (settings.store.type ?? ActivityType.PLAYING) as ActivityType;
 
         return (
             <>
@@ -354,9 +368,13 @@ export default definePlugin({
                 )}
 
                 <Flex flexDirection="column" gap=".5em" className={Margins.top16}>
+                    <Forms.FormTitle tag="h5">ReCord Rich Presence Studio</Forms.FormTitle>
                     <Forms.FormText>
                         Go to the <Link href="https://discord.com/developers/applications">Discord Developer Portal</Link> to create an application and
                         get the application ID.
+                    </Forms.FormText>
+                    <Forms.FormText>
+                        Save multiple RPC cards, choose their activity type individually, and decide which ones are allowed to join automatic rotation.
                     </Forms.FormText>
                     <Forms.FormText>
                         Upload images in the Rich Presence tab to get the image keys.
@@ -370,6 +388,42 @@ export default definePlugin({
                     <Forms.FormText>
                         Some weird unicode text ("fonts" 𝖑𝖎𝖐𝖊 𝖙𝖍𝖎𝖘) may cause the rich presence to not show up, try using normal letters instead.
                     </Forms.FormText>
+
+                    <Forms.FormTitle tag="h5" className={Margins.top8}>Quick Controls</Forms.FormTitle>
+                    <Forms.FormText>
+                        Set the live activity type here and toggle profile rotation without opening the full editor.
+                    </Forms.FormText>
+
+                    <Flex flexDirection="column" gap="0.5em">
+                        <Select
+                            placeholder={"Activity Type"}
+                            options={[
+                                { label: "Playing", value: ActivityType.PLAYING, default: true },
+                                { label: "Streaming", value: ActivityType.STREAMING },
+                                { label: "Listening", value: ActivityType.LISTENING },
+                                { label: "Watching", value: ActivityType.WATCHING },
+                                { label: "Competing", value: ActivityType.COMPETING }
+                            ]}
+                            maxVisibleItems={5}
+                            closeOnSelect={true}
+                            select={value => {
+                                settings.store.type = value;
+                                applyRpcSettingsUpdate();
+                            }}
+                            isSelected={value => value === liveActivityType}
+                            serialize={value => String(value)}
+                        />
+
+                        <Button
+                            color={settings.store.multiRpcEnabled ? Button.Colors.BRAND : Button.Colors.PRIMARY}
+                            onClick={() => {
+                                settings.store.multiRpcEnabled = !settings.store.multiRpcEnabled;
+                                applyRpcSettingsUpdate();
+                            }}
+                        >
+                            {settings.store.multiRpcEnabled ? "Disable Rotation" : "Enable Rotation"}
+                        </Button>
+                    </Flex>
                 </Flex>
 
                 <Divider className={Margins.top8} />

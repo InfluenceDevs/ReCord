@@ -4,10 +4,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
 import { UserProfileStore, UserStore } from "@webpack/common";
-
-const Influence = { name: "Influence", id: 0n };
 
 let originalGetUserProfile: ((...args: any[]) => any) | null = null;
 
@@ -38,7 +37,7 @@ function filterQuestBadge(profile: any, requestedUserId?: string) {
 export default definePlugin({
     name: "RecordHideQuestBadge",
     description: "Removes the quest badge from your own Discord profile.",
-    authors: [Influence],
+    authors: [Devs.Rloxx],
     tags: ["profile", "badge", "quest"],
 
     start() {

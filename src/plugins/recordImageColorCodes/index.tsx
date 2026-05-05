@@ -7,11 +7,10 @@
 import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { Button } from "@components/Button";
 import { copyToClipboard } from "@utils/clipboard";
+import { Devs } from "@utils/constants";
 import { ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalRoot, ModalSize, openModal } from "@utils/modal";
 import definePlugin from "@utils/types";
 import { Forms, Menu, React } from "@webpack/common";
-
-const Influence = { name: "Influence", id: 0n };
 
 type ColorAnalysis = {
     hex: string;
@@ -547,7 +546,7 @@ const imageContextMenuPatch: NavContextMenuPatchCallback = (children, props) => 
 export default definePlugin({
     name: "RecordImageColorCodes",
     description: "Shows HEX and RGB codes for images posted in chat.",
-    authors: [Influence],
+    authors: [Devs.Rloxx],
     tags: ["image", "color", "hex", "rgb"],
 
     patches: [

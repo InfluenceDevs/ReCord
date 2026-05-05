@@ -19,7 +19,7 @@
 import "./checkNodeVersion.js";
 
 import { execFileSync, execSync } from "child_process";
-import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { createWriteStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { Readable } from "stream";
 import { finished } from "stream/promises";
@@ -117,20 +117,44 @@ function getVersion() {
     return JSON.parse(readFileSync(join(BASE_DIR, "package.json"), "utf8")).version;
 }
 
+function isUsableFile(path) {
+    try {
+        return existsSync(path) && statSync(path).size > 0;
+    } catch {
+        return false;
+    }
+}
+
 function findLocalReleaseInstaller() {
     const releaseManifest = join(BASE_DIR, "dist", "release", "release-manifest.json");
     const bundledBinary = join(BASE_DIR, "dist", "release", "ReCord-Installer-Bundle", getPlatformBinaryName());
+    const distBinary = join(BASE_DIR, "dist", "Installer", getPlatformBinaryName());
 
-    if (!existsSync(releaseManifest) || !existsSync(bundledBinary)) return null;
-
-    try {
-        const manifest = JSON.parse(readFileSync(releaseManifest, "utf8"));
-        if (manifest?.version !== getVersion()) return null;
-    } catch {
-        return null;
+    if (existsSync(releaseManifest) && isUsableFile(bundledBinary)) {
+        try {
+            const manifest = JSON.parse(readFileSync(releaseManifest, "utf8"));
+            if (manifest?.version === getVersion()) {
+                return bundledBinary;
+            }
+        } catch {
+            // Fall through to other local candidates.
+        }
     }
 
-    return bundledBinary;
+    if (isUsableFile(distBinary)) {
+        return distBinary;
+    }
+
+    return null;
+}
+
+function buildLocalReleaseInstaller() {
+    console.log("Building local ReCord release installer bundle from current sources...");
+    execFileSync(process.execPath, [join(BASE_DIR, "scripts", "buildReleaseInstaller.mjs")], {
+        cwd: BASE_DIR,
+        stdio: "inherit",
+        env: process.env
+    });
 }
 
 async function ensureBinary() {
@@ -138,6 +162,14 @@ async function ensureBinary() {
     if (localBinary) {
         console.log("Using local ReCord installer bundle binary:", localBinary);
         return localBinary;
+    }
+
+    buildLocalReleaseInstaller();
+
+    const builtLocalBinary = findLocalReleaseInstaller();
+    if (builtLocalBinary) {
+        console.log("Using freshly built local ReCord installer bundle binary:", builtLocalBinary);
+        return builtLocalBinary;
     }
 
     const filename = getFilename();

@@ -6,13 +6,13 @@
 
 import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { definePluginSettings } from "@api/Settings";
+import { Devs } from "@utils/constants";
 import { Logger } from "@utils/Logger";
 import definePlugin, { OptionType } from "@utils/types";
 import { findLazy } from "@webpack";
 import { Alerts, ChannelStore, Constants, FluxDispatcher, Menu, PermissionsBits, PermissionStore, React, RestAPI, showToast, Toasts, UserStore } from "@webpack/common";
 
 const logger = new Logger("RecordPurger");
-const Influence = { name: "Influence", id: 0n };
 
 const HIDDEN_MESSAGES_KEY = "record_hidden_messages";
 
@@ -473,7 +473,7 @@ const onMessageCreate = ({ channelId, message }: { channelId: string; message?: 
 export default definePlugin({
     name: "RecordPurger",
     description: "Bulk purge/hide messages, close all DMs, and leave all group DMs with rate-limit handling.",
-    authors: [Influence],
+    authors: [Devs.Rloxx],
     tags: ["purge", "hide", "messages", "dm", "group"],
 
     settings,

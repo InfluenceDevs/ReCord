@@ -589,7 +589,7 @@ function openNavigatorModal() {
 export default definePlugin({
     name: "ReCordNavigator",
     description: "Browser-like tabs navigator for channels, DMs, and servers",
-    authors: [Devs.Ven],
+    authors: [Devs.Rloxx],
     settings,
 
     chatBarButton: {

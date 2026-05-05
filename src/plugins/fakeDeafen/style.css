@@ -1,0 +1,4 @@
+/* Ensure the voice-panel has room for our extra button */
+[class*="panels"] [class*="avatarWrapper"] {
+    min-width: 0;
+}

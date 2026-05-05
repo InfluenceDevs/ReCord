@@ -21,10 +21,11 @@ import { definePluginSettings } from "@api/Settings";
 import { BackupRestoreIcon, CloudIcon, CogWheel, LogIcon, MainSettingsIcon, Microphone, NotesIcon, PaintbrushIcon, PatchHelperIcon, PlaceholderIcon, PluginsIcon, SafetyIcon, UpdaterIcon, VesktopSettingsIcon } from "@components/Icons";
 import { AccountCenterTab, BackupAndRestoreTab, CloudTab, ConsoleTab, CustomRpcTab, DownloadsTab, GhostChatsTab, ModulesTab, OpsecTab, PatchHelperTab, PerformanceTab, PluginsTab, ReCordTab, ThemesTab, UpdaterTab, VoiceTab } from "@components/settings/tabs";
 import { Devs } from "@utils/constants";
+import { getIntlMessage } from "@utils/discord";
 import { isTruthy } from "@utils/guards";
 import { Logger } from "@utils/Logger";
 import definePlugin, { IconProps, OptionType } from "@utils/types";
-import { waitFor } from "@webpack";
+import { moduleListeners, waitFor } from "@webpack";
 import { React } from "@webpack/common";
 import type { ComponentType, PropsWithChildren, ReactNode } from "react";
 
@@ -81,6 +82,63 @@ interface SettingsLayoutBuilder {
     buildLayout(): SettingsLayoutNode[];
 }
 
+function normalizeKey(value: unknown): string {
+    return typeof value === "string" ? value.toLowerCase() : "";
+}
+
+function keyLooksLikeSection(key: string): boolean {
+    return key.includes("section") || key.includes("settings") || key.includes("category");
+}
+
+function isLikelyRootSettingsLayout(builderKey: string, layout: SettingsLayoutNode[]): boolean {
+    if (builderKey === "$root") return true;
+
+    if (builderKey.includes("root") || builderKey.includes("setting")) return true;
+
+    const keys = layout
+        .map(node => normalizeKey(node?.key))
+        .filter(Boolean);
+
+    const settingsSignals = [
+        "user", "account", "profile", "privacy", "billing", "nitro", "activity", "voice", "notifications", "logout"
+    ];
+
+    const keySignalCount = keys.filter(key => settingsSignals.some(signal => key.includes(signal))).length;
+    const sectionLikeCount = keys.filter(keyLooksLikeSection).length;
+    const hasSidebarLikeNodes = layout.some(node => node?.type === LayoutTypes.SECTION || node?.type === LayoutTypes.SIDEBAR_ITEM);
+
+    return hasSidebarLikeNodes && (keySignalCount >= 2 || sectionLikeCount >= 3 || layout.length >= 8);
+}
+
+function findInsertIndex(layout: SettingsLayoutNode[], settingsLocation: SettingsLocation): number {
+    const keyPriorities: Record<SettingsLocation, string[]> = {
+        top: ["user_section", "user", "account", "profile"],
+        aboveNitro: ["billing_section", "billing", "nitro", "subscriptions"],
+        belowNitro: ["billing_section", "billing", "nitro", "subscriptions"],
+        aboveActivity: ["activity_section", "activity", "game", "overlay"],
+        belowActivity: ["activity_section", "activity", "game", "overlay"],
+        bottom: ["logout_section", "logout", "advanced", "developer"]
+    };
+
+    const priorities = keyPriorities[settingsLocation] ?? keyPriorities.top;
+
+    let idx = -1;
+    for (const needle of priorities) {
+        idx = layout.findIndex(node => normalizeKey(node?.key).includes(needle));
+        if (idx !== -1) break;
+    }
+
+    if (idx === -1 && settingsLocation === "bottom") {
+        idx = layout.length;
+    } else if (idx === -1) {
+        idx = Math.min(2, layout.length);
+    } else if (settingsLocation.startsWith("below")) {
+        idx += 1;
+    }
+
+    return idx;
+}
+
 const settings = definePluginSettings({
     settingsLocation: {
         type: OptionType.SELECT,
@@ -130,20 +188,34 @@ export default definePlugin({
     settings,
     settingsSectionMap,
 
+    _deepScanListener: null as ((exports: any) => void) | null,
+
+    start() {
+        // Runtime root-layout wrapping was causing recursive layout evaluation on recent Discord builds.
+        // Rely on the webpack-level Settings patches for compatibility.
+    },
+
+    stop() {
+        if (this._deepScanListener) {
+            moduleListeners.delete(this._deepScanListener);
+            this._deepScanListener = null;
+        }
+        this.unpatchRootLayout();
+    },
+
     patches: [
         {
             find: "#{intl::COPY_VERSION}",
             replacement: [
                 {
-                    match: /"text-xxs\/normal".{0,300}?(?=null!=(\i)&&(.{0,20}\i\.Text.{0,200}?,children:).{0,15}?("span"),({className:\i\.\i,children:\["Build Override: ",\1\.id\]\})\)\}\))/,
+                    match: /"text-xxs\/normal".{0,300}?(?=null!=(\i)&&(.{0,20}\i\.\i.{0,200}?,children:).{0,15}?("span"),({className:\i\.\i,children:\["Build Override: ",\1\.id\]\})\)\}\))/,
                     replace: (m, _buildOverride, makeRow, component, props) => {
                         props = props.replace(/children:\[.+\]/, "");
                         return `${m},$self.makeInfoElements(${component},${props}).map(e=>${makeRow}e})),`;
                     }
                 },
                 {
-                    match: /"text-xs\/normal".{0,300}?\[\(0,\i\.jsxs?\)\((.{1,10}),(\{[^{}}]+\{.{0,20}className:\i.\i,.+?\})\)," "/,
-                    replace: (m, component, props) => {
+                    match: /"text-xs\/normal".{0,300}?\[\(0,\i\.jsxs?\)\((.{1,10}),(\{[^{}}]+\{.{0,20}className:\i.\i,.+?\})\)," "/,                    noWarn: true,                    replace: (m, component, props) => {
                         props = props.replace(/children:\[.+\]/, "");
                         return `${m},$self.makeInfoElements(${component},${props})`;
                     }
@@ -160,6 +232,19 @@ export default definePlugin({
                 match: /(\i)\.buildLayout\(\)(?=\.map)/,
                 replace: "$self.buildLayout($1)"
             }
+        },
+        {
+            find: ".SEARCH_NO_RESULTS&&0===",
+            replacement: [
+                {
+                    match: /(?<=section:(.{0,50})=>\{)/,
+                    replace: "if($self.isSectionVencord($1))return $self.renderVencordSection($1);"
+                },
+                {
+                    match: /\.map\(\((.{1,3})=>\{(?=[\s\S]{0,200}section:\1)/,
+                    replace: ".concat($self.makeSettingsCategories(SectionTypes)).map(($1=>{if($self.isSectionVencord($1))return $self.renderVencordSection($1);"
+                }
+            ]
         },
         {
             find: "getWebUserSettingFromSection",
@@ -212,22 +297,37 @@ export default definePlugin({
         return settingsSectionMap;
     },
 
+    rootLayout: null as SettingsLayoutBuilder | null,
+    originalRootBuildLayout: null as (() => SettingsLayoutNode[]) | null,
+
+    patchRootLayout(rootLayout: SettingsLayoutBuilder) {
+        if (this.rootLayout === rootLayout) return;
+
+        this.unpatchRootLayout();
+
+        const originalBuildLayout = rootLayout.buildLayout.bind(rootLayout);
+        this.rootLayout = rootLayout;
+        this.originalRootBuildLayout = originalBuildLayout;
+
+        rootLayout.buildLayout = () => this.buildLayout({
+            key: rootLayout.key,
+            buildLayout: originalBuildLayout
+        });
+    },
+
+    unpatchRootLayout() {
+        if (!this.rootLayout || !this.originalRootBuildLayout) return;
+
+        this.rootLayout.buildLayout = this.originalRootBuildLayout;
+        this.rootLayout = null;
+        this.originalRootBuildLayout = null;
+    },
+
     buildLayout(originalLayoutBuilder: SettingsLayoutBuilder) {
         const layout = originalLayoutBuilder.buildLayout();
+        if (originalLayoutBuilder.key !== "$Root") return layout;
+
         if (!Array.isArray(layout)) return layout;
-
-        const isRootLikeLayout = layout.some(node => {
-            const key = node?.key;
-            return typeof key === "string" && (
-                key === "user_section"
-                || key === "billing_section"
-                || key === "activity_section"
-                || key === "logout_section"
-            );
-        });
-
-        // Discord occasionally changes the root builder key; detect root by section keys as a fallback.
-        if (originalLayoutBuilder.key !== "$Root" && !isRootLikeLayout) return layout;
 
         if (layout.some(s => s?.key === "vencord_section")) return layout;
 
@@ -366,23 +466,7 @@ export default definePlugin({
 
         const { settingsLocation } = settings.store;
 
-        const places: Record<SettingsLocation, string> = {
-            top: "user_section",
-            aboveNitro: "billing_section",
-            belowNitro: "billing_section",
-            aboveActivity: "activity_section",
-            belowActivity: "activity_section",
-            bottom: "logout_section"
-        };
-
-        const key = places[settingsLocation] ?? places.top;
-        let idx = layout.findIndex(s => typeof s?.key === "string" && s.key === key);
-
-        if (idx === -1) {
-            idx = 2;
-        } else if (settingsLocation.startsWith("below")) {
-            idx += 1;
-        }
+        const idx = findInsertIndex(layout, settingsLocation);
 
         layout.splice(idx, 0, vencordSection);
 
@@ -392,6 +476,171 @@ export default definePlugin({
     /** @deprecated Use customEntries */
     customSections: [] as ((SectionTypes: SectionTypes) => any)[],
     customEntries: [] as EntryOptions[],
+
+    makeSettingsCategories(SectionTypes: SectionTypes) {
+        return [
+            {
+                section: SectionTypes.HEADER,
+                label: "ReCord",
+                className: "vc-settings-header"
+            },
+            {
+                section: "ReCordSettings",
+                label: "ReCord",
+                element: ReCordTab,
+                className: "vc-settings"
+            },
+            {
+                section: "ReCordPlugins",
+                label: "Plugins",
+                element: PluginsTab,
+                className: "vc-plugins"
+            },
+            {
+                section: "ReCordThemes",
+                label: "Themes",
+                element: ThemesTab,
+                className: "vc-themes"
+            },
+            !IS_UPDATER_DISABLED && UpdaterTab && {
+                section: "ReCordUpdater",
+                label: "Updater",
+                element: UpdaterTab,
+                className: "vc-updater"
+            },
+            {
+                section: "ReCordCloud",
+                label: "Cloud",
+                element: CloudTab,
+                className: "vc-cloud"
+            },
+            {
+                section: "ReCordBackupAndRestore",
+                label: "Backup & Restore",
+                element: BackupAndRestoreTab,
+                className: "vc-backup-restore"
+            },
+            {
+                section: "ReCordConsole",
+                label: "Console",
+                element: ConsoleTab,
+                className: "vc-console"
+            },
+            {
+                section: "ReCordAccountCenter",
+                label: "Account Center",
+                element: AccountCenterTab,
+                className: "vc-account-center"
+            },
+            {
+                section: "ReCordGhostChats",
+                label: "Ghost Chats",
+                element: GhostChatsTab,
+                className: "vc-ghost-chats"
+            },
+            {
+                section: "ReCordOpsec",
+                label: "OPSEC",
+                element: OpsecTab,
+                className: "vc-opsec"
+            },
+            {
+                section: "ReCordPerformance",
+                label: "Performance",
+                element: PerformanceTab,
+                className: "vc-performance"
+            },
+            {
+                section: "ReCordVoice",
+                label: "Voice",
+                element: VoiceTab,
+                className: "vc-voice"
+            },
+            {
+                section: "ReCordModules",
+                label: "Modules",
+                element: ModulesTab,
+                className: "vc-modules"
+            },
+            {
+                section: "ReCordDownloads",
+                label: "Downloads",
+                element: DownloadsTab,
+                className: "vc-downloads"
+            },
+            isPluginEnabled("CustomRPC") && {
+                section: "ReCordCustomRPC",
+                label: "CustomRPC",
+                element: CustomRpcTab,
+                className: "vc-custom-rpc"
+            },
+            IS_DEV && PatchHelperTab && {
+                section: "ReCordPatchHelper",
+                label: "Patch Helper",
+                element: PatchHelperTab,
+                className: "vc-patch-helper"
+            },
+            ...this.customSections.map(func => func(SectionTypes)),
+            {
+                section: SectionTypes.DIVIDER
+            }
+        ].filter(Boolean);
+    },
+
+    isRightSpot({ header, settings: sectionSettings }: { header?: string; settings?: string[]; }) {
+        const firstChild = sectionSettings?.[0];
+
+        if (firstChild === "LOGOUT" || firstChild === "SOCIAL_LINKS") return true;
+
+        const { settingsLocation } = settings.store;
+
+        if (settingsLocation === "bottom") return firstChild === "LOGOUT";
+        if (settingsLocation === "belowActivity") return firstChild === "CHANGELOG";
+
+        if (!header) return false;
+
+        try {
+            const names: Record<Exclude<SettingsLocation, "bottom" | "belowActivity">, string> = {
+                top: getIntlMessage("USER_SETTINGS"),
+                aboveNitro: getIntlMessage("BILLING_SETTINGS"),
+                belowNitro: getIntlMessage("APP_SETTINGS"),
+                aboveActivity: getIntlMessage("ACTIVITY_SETTINGS")
+            };
+
+            if (!names[settingsLocation] || names[settingsLocation].endsWith("_SETTINGS")) {
+                return firstChild === "PREMIUM";
+            }
+
+            return header === names[settingsLocation];
+        } catch {
+            return firstChild === "PREMIUM";
+        }
+    },
+
+    patchedSettings: new WeakSet(),
+
+    addSettings(elements: any[], element: { header?: string; settings: string[]; }, sectionTypes: SectionTypes) {
+        if (this.patchedSettings.has(elements) || !this.isRightSpot(element)) return;
+
+        this.patchedSettings.add(elements);
+        logger.info("[ReCord Settings Injector] Injecting fallback settings categories", {
+            header: element.header,
+            firstChild: element.settings?.[0]
+        });
+        elements.push(...this.makeSettingsCategories(sectionTypes));
+    },
+
+    wrapSettingsHook(originalHook: (...args: any[]) => Record<string, unknown>[]) {
+        return (...args: any[]) => {
+            const elements = originalHook(...args);
+            if (!this.patchedSettings.has(elements)) {
+                logger.info("[ReCord Settings Injector] Wrapping settings hook with fallback categories");
+                elements.unshift(...this.makeSettingsCategories(FallbackSectionTypes));
+            }
+
+            return elements;
+        };
+    },
 
     get electronVersion() {
         return VencordNative.native.getVersions().electron || window.legcord?.electron || null;

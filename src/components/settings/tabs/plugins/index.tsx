@@ -47,6 +47,7 @@ import { UIElementsButton } from "./UIElements";
 
 export const cl = classNameFactory("vc-plugins-");
 export const logger = new Logger("PluginSettings", "#a6d189");
+export const PLUGIN_FILTER_STORE_KEY = "ReCord_pluginFilter";
 
 function ReloadRequiredCard({ required }: { required: boolean; }) {
     return (
@@ -74,7 +75,7 @@ function ReloadRequiredCard({ required }: { required: boolean; }) {
     );
 }
 
-const enum SearchStatus {
+export enum SearchStatus {
     ALL,
     ENABLED,
     DISABLED,
@@ -82,6 +83,51 @@ const enum SearchStatus {
     USER_PLUGINS,
     API_PLUGINS,
     RECORD_PLUGINS
+}
+
+export enum SearchSource {
+    ALL = "all",
+    RECORD = "record",
+    VENCORD = "vencord"
+}
+
+export interface PluginFilterState {
+    value: string;
+    status: SearchStatus;
+    source: SearchSource;
+}
+
+export const DEFAULT_PLUGIN_FILTER_STATE: PluginFilterState = {
+    value: "",
+    status: SearchStatus.ALL,
+    source: SearchSource.ALL
+};
+
+const validSearchStatuses = [
+    SearchStatus.ALL,
+    SearchStatus.ENABLED,
+    SearchStatus.DISABLED,
+    SearchStatus.NEW,
+    SearchStatus.USER_PLUGINS,
+    SearchStatus.API_PLUGINS,
+    SearchStatus.RECORD_PLUGINS
+];
+
+const validSearchSources = [SearchSource.ALL, SearchSource.RECORD, SearchSource.VENCORD];
+
+export function normalizePluginFilterState(value?: Partial<PluginFilterState> | null): PluginFilterState {
+    const status = validSearchStatuses.includes(value?.status as SearchStatus)
+        ? value!.status as SearchStatus
+        : DEFAULT_PLUGIN_FILTER_STATE.status;
+    const source = validSearchSources.includes(value?.source as SearchSource)
+        ? value!.source as SearchSource
+        : DEFAULT_PLUGIN_FILTER_STATE.source;
+
+    return {
+        value: typeof value?.value === "string" ? value.value : DEFAULT_PLUGIN_FILTER_STATE.value,
+        status,
+        source
+    };
 }
 
 function ExcludedPluginsList({ search }: { search: string; }) {
@@ -120,6 +166,8 @@ function ExcludedPluginsList({ search }: { search: string; }) {
 function PluginSettings() {
     const settings = useSettings();
     const changes = useMemo(() => new ChangeList<string>(), []);
+    const [searchValue, setSearchValue] = useState<PluginFilterState>(DEFAULT_PLUGIN_FILTER_STATE);
+    const [filtersReady, setFiltersReady] = useState(false);
 
     useCleanupEffect(() => {
         if (changes.hasChanges)
@@ -167,11 +215,34 @@ function PluginSettings() {
 
     const hasUserPlugins = useMemo(() => !IS_STANDALONE && Object.values(PluginMeta).some(m => m.userPlugin), []);
 
-    const [searchValue, setSearchValue] = useState({ value: "", status: SearchStatus.ALL });
+    React.useEffect(() => {
+        let cancelled = false;
+
+        void DataStore.get(PLUGIN_FILTER_STORE_KEY)
+            .then((storedFilter: Partial<PluginFilterState> | undefined) => {
+                if (!cancelled) {
+                    setSearchValue(normalizePluginFilterState(storedFilter));
+                    setFiltersReady(true);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setFiltersReady(true);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    React.useEffect(() => {
+        if (!filtersReady) return;
+        void DataStore.set(PLUGIN_FILTER_STORE_KEY, searchValue);
+    }, [filtersReady, searchValue]);
 
     const search = searchValue.value.toLowerCase();
     const onSearch = (query: string) => setSearchValue(prev => ({ ...prev, value: query }));
     const onStatusChange = (status: SearchStatus) => setSearchValue(prev => ({ ...prev, status }));
+    const onSourceChange = (source: SearchSource) => setSearchValue(prev => ({ ...prev, source }));
 
     const toSafeLower = (value: unknown) => typeof value === "string" ? value.toLowerCase() : "";
 
@@ -198,6 +269,18 @@ function PluginSettings() {
 
         const { status } = searchValue;
         const enabled = isPluginEnabled(pluginName);
+
+        switch (searchValue.source) {
+            case SearchSource.RECORD:
+                if (!isReCordPlugin(plugin)) return false;
+                break;
+            case SearchSource.VENCORD:
+                if (isReCordPlugin(plugin)) return false;
+                break;
+            case SearchSource.ALL:
+            default:
+                break;
+        }
 
         switch (status) {
             case SearchStatus.DISABLED:
@@ -323,6 +406,21 @@ function PluginSettings() {
                             serialize={String}
                             select={onStatusChange}
                             isSelected={v => v === searchValue.status}
+                            closeOnSelect={true}
+                        />
+                    </ErrorBoundary>
+                </div>
+                <div>
+                    <ErrorBoundary noop>
+                        <Select
+                            options={[
+                                { label: "All Sources", value: SearchSource.ALL, default: true },
+                                { label: "ReCord", value: SearchSource.RECORD },
+                                { label: "Vencord", value: SearchSource.VENCORD },
+                            ]}
+                            serialize={String}
+                            select={onSourceChange}
+                            isSelected={v => v === searchValue.source}
                             closeOnSelect={true}
                         />
                     </ErrorBoundary>
