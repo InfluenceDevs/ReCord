@@ -128,16 +128,34 @@ function patchSend() {
     origSend = WebSocket.prototype.send;
 
     WebSocket.prototype.send = function(data) {
+        const patchIdentifyObject = (parsed: any) => {
+            if (parsed?.op !== 2 || !parsed?.d?.properties) return parsed;
+            parsed.d.properties = applySpoof(parsed.d.properties as Record<string, string>);
+            return parsed;
+        };
+
         if (typeof data === "string") {
             try {
-                const parsed = JSON.parse(data) as any;
-                // op 2 = IDENTIFY
-                if (parsed?.op === 2 && parsed?.d?.properties) {
-                    parsed.d.properties = applySpoof(parsed.d.properties as Record<string, string>);
-                    data = JSON.stringify(parsed);
-                }
+                data = JSON.stringify(patchIdentifyObject(JSON.parse(data)));
             } catch {
                 // not JSON – leave untouched (ETF binary etc.)
+            }
+        } else if (data && typeof data === "object") {
+            try {
+                if ("op" in (data as any) && "d" in (data as any)) {
+                    data = patchIdentifyObject(data);
+                } else if (data instanceof ArrayBuffer) {
+                    const decoded = new TextDecoder().decode(new Uint8Array(data));
+                    const parsed = patchIdentifyObject(JSON.parse(decoded));
+                    data = new TextEncoder().encode(JSON.stringify(parsed)).buffer;
+                } else if (ArrayBuffer.isView(data)) {
+                    const view = data as ArrayBufferView;
+                    const decoded = new TextDecoder().decode(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
+                    const parsed = patchIdentifyObject(JSON.parse(decoded));
+                    data = new TextEncoder().encode(JSON.stringify(parsed));
+                }
+            } catch {
+                // non-JSON binary frame or unsupported payload shape
             }
         }
         return origSend!.call(this, data);

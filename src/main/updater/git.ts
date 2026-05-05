@@ -71,44 +71,30 @@ async function getRepo() {
 }
 
 async function calculateGitChanges() {
-    try {
-        if (!await isGitRepo()) return [];
+    if (!await isGitRepo()) return [];
 
-        await migrateLegacyOriginIfNeeded();
+    await migrateLegacyOriginIfNeeded();
 
-        try {
-            await git("fetch", "origin", "main");
-        } catch (e) {
-            console.error("[Updater] Failed to fetch:", e);
-        }
+    await git("fetch", "origin", "main");
 
-        const branch = (await git("branch", "--show-current")).stdout.trim() || "main";
+    const branch = (await git("branch", "--show-current")).stdout.trim() || "main";
 
-        try {
-            const existsOnOrigin = (await git("ls-remote", "origin", branch)).stdout.length > 0;
-            if (!existsOnOrigin) {
-                console.warn(`[Updater] Branch ${branch} not found on origin`);
-                return [];
-            }
-        } catch (e) {
-            console.error("[Updater] Failed to check remote branch:", e);
-            return [];
-        }
-
-        const res = await git("log", `HEAD...origin/${branch}`, "--pretty=format:%an/%h/%s");
-
-        const commits = res.stdout.trim();
-        return commits ? commits.split("\n").map(line => {
-            const [author, hash, ...rest] = line.split("/");
-            return {
-                hash, author,
-                message: rest.join("/").split("\n")[0]
-            };
-        }) : [];
-    } catch (e) {
-        console.error("[Updater] Error calculating git changes:", e);
+    const existsOnOrigin = (await git("ls-remote", "origin", branch)).stdout.length > 0;
+    if (!existsOnOrigin) {
+        console.warn(`[Updater] Branch ${branch} not found on origin`);
         return [];
     }
+
+    const res = await git("log", `HEAD...origin/${branch}`, "--pretty=format:%an/%h/%s");
+
+    const commits = res.stdout.trim();
+    return commits ? commits.split("\n").map(line => {
+        const [author, hash, ...rest] = line.split("/");
+        return {
+            hash, author,
+            message: rest.join("/").split("\n")[0]
+        };
+    }) : [];
 }
 
 async function pull() {
