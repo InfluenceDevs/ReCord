@@ -180,34 +180,8 @@ export default definePlugin({
     description: "API to add badges to users",
     authors: [Devs.Megu, Devs.Ven, Devs.TheSun],
     required: true,
-    patches: [
-        {
-            find: "#{intl::PROFILE_USER_BADGES}",
-            predicate: () => settings.store.profileBadgeInjectionMode === "full",
-            replacement: [
-                {
-                    match: /alt:" ","aria-hidden":!0,src:.{0,50}(\i).iconSrc/,
-                    replace: "...$1.props,$&"
-                },
-                {
-                    match: /(?<=forceOpen:.{0,40}?ariaHidden:!0,)children:(?=.{0,50}?(\i)\.id)/,
-                    replace: "children:$1.component?$self.renderBadgeComponent({...$1}) :"
-                },
-                {
-                    match: /href:(\i)\.link/,
-                    replace: "...$self.getBadgeMouseEventHandlers($1),$&"
-                }
-            ]
-        },
-        {
-            find: "getLegacyUsername(){",
-            predicate: () => settings.store.profileBadgeInjectionMode !== "off",
-            replacement: {
-                match: /getBadges\(\)\{.{0,100}?return\[/,
-                replace: "$&...$self.getBadges(this),"
-            }
-        }
-    ],
+    // Temporarily disabled: Discord internals changed and profile badge patches can crash profile rendering.
+    patches: [],
 
     settings,
 
