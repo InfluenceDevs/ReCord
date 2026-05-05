@@ -1,20 +1,26 @@
 /*
- * Vencord, a modification for Discord's desktop app
- * Copyright (c) 2022 Vendicated and contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Vendicated and contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+/**/
+// * Vencord, a modification for Discord's desktop app
+// * Copyright (c) 2022 Vendicated and contributors
+// *
+// * This program is free software: you can redistribute it and/or modify
+// * it under the terms of the GNU General Public License as published by
+// * the Free Software Foundation, either version 3 of the License, or
+// * (at your option) any later version.
+// *
+// * This program is distributed in the hope that it will be useful,
+// * but WITHOUT ANY WARRANTY; without even the implied warranty of
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// * GNU General Public License for more details.
+// *
+// * You should have received a copy of the GNU General Public License
+// * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+/**/
 
 import "./fixDiscordBadgePadding.css";
 
@@ -30,8 +36,9 @@ import { Logger } from "@utils/Logger";
 import { Margins } from "@utils/margins";
 import { closeModal, ModalContent, ModalFooter, ModalHeader, ModalRoot, openModal } from "@utils/modal";
 import definePlugin from "@utils/types";
-import plugins from "~plugins";
 import { ContextMenuApi, Forms, Menu, Toasts, UserStore } from "@webpack/common";
+
+import plugins from "~plugins";
 
 const CONTRIBUTOR_BADGE = "https://cdn3.emoji.gg/emojis/74376-builder.png";
 const DEVELOPER_BADGE = "https://cdn3.emoji.gg/emojis/7893-developer-hax-5555ff.png";
@@ -43,7 +50,8 @@ const RECORD_CONTRIBUTORS = new Set([
     "242571001953517578",
     "1220019912391655527",
     "1284481206607417457",
-    "874672600259895327"
+    "874672600259895327",
+    "852733930296573992"
 ]);
 
 const PLUGIN_AUTHOR_IDS = new Set(
